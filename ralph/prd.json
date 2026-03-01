@@ -1,0 +1,410 @@
+{
+  "project": "MangaTracker",
+  "branchName": "ralph/manga-reading-tracker",
+  "description": "Manga Reading Tracker - A web app to track manga reading progress and receive email notifications when new chapters are released",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Create manga table migration",
+      "description": "As a developer, I need the manga table in PostgreSQL so the app can persist tracked manga.",
+      "acceptanceCriteria": [
+        "Flyway migration V1__create_manga_table.sql creates manga table with columns: id (UUID PK), title (VARCHAR 255 NOT NULL), source_url (TEXT NOT NULL UNIQUE), current_chapter (INTEGER NOT NULL DEFAULT 0), latest_chapter (INTEGER NOT NULL DEFAULT 0), notifications_enabled (BOOLEAN NOT NULL DEFAULT TRUE), last_checked_at (TIMESTAMP NULLABLE), created_at (TIMESTAMP NOT NULL), updated_at (TIMESTAMP NOT NULL)",
+        "Unique index on manga(source_url)",
+        "Migration runs successfully on app startup",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "Create notification_log and app_settings table migrations",
+      "description": "As a developer, I need the notification_log and app_settings tables so the app can track sent notifications and persist settings.",
+      "acceptanceCriteria": [
+        "Flyway migration V2__create_notification_log_table.sql creates notification_log table with columns: id (UUID PK), manga_id (UUID FK → manga.id), chapter_number (INTEGER NOT NULL), sent_at (TIMESTAMP NOT NULL)",
+        "Unique index on notification_log(manga_id, chapter_number) to prevent duplicate sends",
+        "Flyway migration V3__create_app_settings_table.sql creates app_settings table with columns: id (INTEGER PK DEFAULT 1), email_notifications_enabled (BOOLEAN NOT NULL DEFAULT TRUE), notification_email (VARCHAR 255 NOT NULL), poll_interval_minutes (INTEGER NOT NULL DEFAULT 30)",
+        "CHECK constraint on app_settings ensures id = 1 (single-row table)",
+        "Seed row inserted for app_settings on migration (id=1, email='user@localhost', poll=30)",
+        "Migrations run successfully on app startup",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "Implement MangaScraper interface, ScraperRegistry, and SakuraMangasScraper",
+      "description": "As a developer, I need a modular scraper layer so the app can extract manga title and latest chapter from sakuramangas.org.",
+      "acceptanceCriteria": [
+        "MangaScraper interface defined with methods: boolean supports(String url) and ScrapedManga scrape(String url) throws ScrapingException",
+        "ScrapedManga record defined with fields: String title, int latestChapter",
+        "ScrapingException defined as a runtime exception",
+        "ScraperRegistry @Component resolves the correct MangaScraper for a given URL; throws UnsupportedSourceException if none found",
+        "SakuraMangasScraper @Component implements MangaScraper for sakuramangas.org URLs",
+        "SakuraMangasScraper uses Jsoup to fetch the page and extracts title and latest chapter number",
+        "SakuraMangasScraper throws ScrapingException if title or chapter cannot be extracted",
+        "Network timeout retries up to 3 times with exponential backoff",
+        "Jsoup dependency added to pom.xml",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "Implement MangaService: add, list, update, and delete manga",
+      "description": "As a developer, I need the MangaService to orchestrate all business logic for managing tracked manga.",
+      "acceptanceCriteria": [
+        "Manga JPA entity and MangaRepository (JpaRepository) created",
+        "MangaService.addManga(String sourceUrl) validates URL against supported sites, calls ScraperRegistry to scrape, saves to DB with currentChapter=0; throws DuplicateMangaException if sourceUrl already exists",
+        "MangaService.listManga() returns all manga sorted by updatedAt DESC",
+        "MangaService.updateManga(UUID id, Integer currentChapter, Boolean notificationsEnabled) updates allowed fields; validates currentChapter >= 0 and <= latestChapter; throws MangaNotFoundException if id not found",
+        "MangaService.deleteManga(UUID id) removes manga and cascades to its notification_log entries; throws MangaNotFoundException if id not found",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-005",
+      "title": "Implement SettingsService and AppSettings repository",
+      "description": "As a developer, I need the SettingsService to read and write the single-row app_settings table.",
+      "acceptanceCriteria": [
+        "AppSettings JPA entity and AppSettingsRepository (JpaRepository) created",
+        "SettingsService.getSettings() returns the single app_settings row (id=1); creates default row if missing",
+        "SettingsService.updateSettings(Boolean emailNotificationsEnabled, String notificationEmail, Integer pollIntervalMinutes) updates and saves the row",
+        "notificationEmail validated as a non-blank string",
+        "pollIntervalMinutes validated as a positive integer",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "Implement NotificationService: detect new chapters and send emails",
+      "description": "As a developer, I need the NotificationService to detect new chapters for a manga and send deduplicated email notifications.",
+      "acceptanceCriteria": [
+        "NotificationLog JPA entity and NotificationLogRepository created",
+        "NotificationService.notify(Manga manga, int newLatestChapter) checks if notification already sent for that chapter via notification_log unique constraint; skips if already sent",
+        "Email sent only if manga.notificationsEnabled = true AND app_settings.emailNotificationsEnabled = true AND newLatestChapter > manga.currentChapter",
+        "Email includes: manga title, new chapter number, link to source URL",
+        "Email sent using Spring JavaMailSender; from address from app.notification.from-email config",
+        "NotificationLog entry saved after successful send to prevent duplicates",
+        "Spring Mail dependency added to pom.xml; Mailhog configured in application.properties for local dev",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-007",
+      "title": "Implement periodic scraping job (@Scheduled)",
+      "description": "As a system, I need a background job that periodically polls all tracked manga URLs for new chapter releases.",
+      "acceptanceCriteria": [
+        "ScrapingJob @Component with @Scheduled method runs at configurable interval (default 30 minutes) using app.scraper.poll-interval config",
+        "For each manga in the DB, calls ScraperRegistry to scrape the sourceUrl",
+        "If latestChapter from scrape > current manga.latestChapter, updates manga.latestChapter and manga.updatedAt in DB, then calls NotificationService.notify()",
+        "Scraping failures (network timeout, parse error, 4xx/5xx) are caught and logged per manga; job continues to remaining manga",
+        "manga.lastCheckedAt updated after each attempt (success or failure)",
+        "Typecheck passes"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-008",
+      "title": "Implement MangaController REST endpoints",
+      "description": "As a developer, I need the REST API endpoints for manga CRUD so the Angular frontend can communicate with the backend.",
+      "acceptanceCriteria": [
+        "GET /api/manga returns 200 with JSON array of all manga sorted by updatedAt DESC",
+        "POST /api/manga accepts { sourceUrl } body, returns 201 with created manga JSON; returns 400 for unsupported/malformed URL, 422 if scraping cannot extract data, 409 if URL already tracked",
+        "PATCH /api/manga/{id} accepts { currentChapter?, notificationsEnabled? } body, returns 200 with updated manga JSON; returns 404 if not found, 400 if currentChapter validation fails",
+        "DELETE /api/manga/{id} returns 204 No Content; returns 404 if not found",
+        "All responses use application/json",
+        "MangaController annotated with @RestController and @RequestMapping('/api/manga')",
+        "Typecheck passes"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-009",
+      "title": "Implement SettingsController REST endpoints",
+      "description": "As a developer, I need the REST API endpoints for reading and updating app settings.",
+      "acceptanceCriteria": [
+        "GET /api/settings returns 200 with current app settings JSON",
+        "PUT /api/settings accepts { emailNotificationsEnabled, notificationEmail, pollIntervalMinutes } body, returns 200 with updated settings JSON; returns 400 on validation failure",
+        "SettingsController annotated with @RestController and @RequestMapping('/api/settings')",
+        "Typecheck passes"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-010",
+      "title": "Create Angular HTTP service for manga and settings API",
+      "description": "As a developer, I need an Angular service that wraps all API calls so components can interact with the backend.",
+      "acceptanceCriteria": [
+        "MangaService Angular service created with methods: getManga(), addManga(sourceUrl), updateManga(id, patch), deleteManga(id)",
+        "SettingsService Angular service created with methods: getSettings(), updateSettings(settings)",
+        "All methods return Observable using HttpClient",
+        "HttpClientModule (or provideHttpClient()) configured in app.config or app.module",
+        "API base URL configurable via environment.ts (default: http://localhost:8080)",
+        "Typecheck passes"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-011",
+      "title": "Build reading list dashboard component",
+      "description": "As a user, I want to see all my tracked manga in a list so I can manage my reading progress.",
+      "acceptanceCriteria": [
+        "Dashboard component displays all tracked manga in a list/table",
+        "Each row shows: title, current chapter, latest available chapter, source URL (as link)",
+        "Manga with unread chapters (latestChapter > currentChapter) are visually distinguished with a badge or highlight",
+        "List is sorted by most recently updated (backend returns this order)",
+        "Dashboard loads manga on init via MangaService.getManga()",
+        "Loading state shown while fetching",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 11,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-012",
+      "title": "Build add-manga form component",
+      "description": "As a user, I want to paste a manga URL so the system automatically detects the title and adds it to my list.",
+      "acceptanceCriteria": [
+        "Input field accepts a URL string",
+        "Submit button calls MangaService.addManga(url) and shows loading state",
+        "On success: shows confirmation with detected manga title and refreshes the reading list",
+        "On error 400/409/422: shows descriptive error message to user",
+        "Input field cleared after successful add",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 12,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-013",
+      "title": "Build update-reading-progress UI",
+      "description": "As a user, I want to update which chapter I've read so the tracker reflects my actual progress.",
+      "acceptanceCriteria": [
+        "Each manga row has an editable current chapter field (input or +/- buttons)",
+        "Input validated client-side: must be a positive integer, cannot exceed latestChapter",
+        "On change, calls MangaService.updateManga(id, { currentChapter }) and updates row immediately",
+        "Error shown if server rejects the update",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 13,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-014",
+      "title": "Build delete-manga UI with confirmation",
+      "description": "As a user, I want to remove a manga I no longer follow so my list stays clean.",
+      "acceptanceCriteria": [
+        "Each manga row has a delete button",
+        "Clicking delete shows a confirmation dialog/prompt before deletion",
+        "On confirm, calls MangaService.deleteManga(id) and removes the manga from the list",
+        "On cancel, no action taken",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 14,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-015",
+      "title": "Build notification preferences settings page",
+      "description": "As a user, I want to enable or disable email notifications so I control what I receive.",
+      "acceptanceCriteria": [
+        "Settings page accessible via navigation link",
+        "Global toggle to enable/disable all email notifications (emailNotificationsEnabled)",
+        "Input field for notification email address",
+        "Poll interval input (minutes)",
+        "Save button calls SettingsService.updateSettings() and shows success/error feedback",
+        "Per-manga notification toggle in the reading list calls MangaService.updateManga(id, { notificationsEnabled }) and updates immediately",
+        "Settings page loads current settings on init via SettingsService.getSettings()",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 15,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-016",
+      "title": "Write unit tests for scraper layer",
+      "description": "As a developer, I want unit tests for the scraper logic so HTML parsing and data extraction are verified automatically.",
+      "acceptanceCriteria": [
+        "Unit tests written BEFORE or alongside implementation (TDD)",
+        "Tests for SakuraMangasScraper.supports(): returns true for sakuramangas.org URLs, false for others",
+        "Tests for SakuraMangasScraper.scrape(): given sample HTML, correctly extracts title and latestChapter",
+        "Tests for SakuraMangasScraper.scrape(): throws ScrapingException when title or chapter cannot be extracted",
+        "Tests for ScraperRegistry.resolve(): returns correct scraper for known URL, throws UnsupportedSourceException for unknown URL",
+        "Tests use JUnit 5 + Mockito; Jsoup is tested with stubbed HTML strings",
+        "All tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 16,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-017",
+      "title": "Write unit tests for service layer",
+      "description": "As a developer, I want unit tests for MangaService, NotificationService, and SettingsService so core business logic is verified.",
+      "acceptanceCriteria": [
+        "Unit tests written BEFORE or alongside implementation (TDD)",
+        "MangaService tests: addManga() happy path saves manga with correct fields; throws DuplicateMangaException on duplicate URL; throws UnsupportedSourceException for bad URL",
+        "MangaService tests: updateManga() validates currentChapter bounds; throws MangaNotFoundException for unknown id",
+        "MangaService tests: deleteManga() removes entity; throws MangaNotFoundException for unknown id",
+        "NotificationService tests: notify() skips send if notification already in log; skips if notificationsEnabled = false; saves log entry after send",
+        "SettingsService tests: getSettings() creates default row if missing; updateSettings() validates and saves",
+        "Tests use JUnit 5 + Mockito; repositories and mail sender are mocked",
+        "All tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 17,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-018",
+      "title": "Write integration tests for REST API endpoints",
+      "description": "As a developer, I want integration tests for the REST API so endpoint contracts are verified end-to-end.",
+      "acceptanceCriteria": [
+        "Integration tests use Spring Boot @WebMvcTest or @SpringBootTest test slices",
+        "POST /api/manga: 201 on valid URL, 400 on unsupported URL, 409 on duplicate URL",
+        "GET /api/manga: 200 with correct manga list",
+        "PATCH /api/manga/{id}: 200 on valid update, 400 on invalid currentChapter, 404 on unknown id",
+        "DELETE /api/manga/{id}: 204 on success, 404 on unknown id",
+        "GET /api/settings and PUT /api/settings: 200 on success, 400 on invalid input",
+        "ScraperService mocked in API tests to avoid real HTTP calls",
+        "All tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 18,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-019",
+      "title": "Write integration tests for repository layer with Testcontainers",
+      "description": "As a developer, I want repository integration tests backed by a real PostgreSQL container so data layer is verified.",
+      "acceptanceCriteria": [
+        "Testcontainers dependency added to pom.xml (testcontainers-postgresql)",
+        "MangaRepository tests: save, findAll sorted by updatedAt DESC, findBySourceUrl, delete",
+        "NotificationLogRepository tests: save notification log entry; unique constraint prevents duplicate (manga_id, chapter_number)",
+        "AppSettingsRepository tests: save and retrieve single settings row",
+        "Tests use @DataJpaTest with a Testcontainers PostgreSQL instance",
+        "All tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 19,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-020",
+      "title": "Set up Playwright and write E2E tests",
+      "description": "As a developer, I want end-to-end tests with Playwright so critical user flows are verified in a real browser.",
+      "acceptanceCriteria": [
+        "Playwright installed and configured for the Angular frontend (playwright.config.ts)",
+        "E2E test: add manga by URL → verify it appears in the reading list with detected title",
+        "E2E test: update reading progress → verify the chapter number updates in the UI",
+        "E2E test: remove manga → verify it is gone from the list after confirmation",
+        "Tests run against the locally running frontend (localhost:4200) with backend at localhost:8080",
+        "All E2E tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 20,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-021",
+      "title": "Dockerize backend with multi-stage Dockerfile",
+      "description": "As a developer, I want a Docker image for the Spring Boot backend so it can be built and run consistently.",
+      "acceptanceCriteria": [
+        "Dockerfile in backend/ (or root) with multi-stage build: stage 1 uses Maven to compile and package; stage 2 uses JRE base image and copies the JAR",
+        "Image exposes port 8080",
+        "ENTRYPOINT runs the Spring Boot JAR",
+        "Build args or ENV vars accepted for: DB_URL, DB_USERNAME, DB_PASSWORD, MAIL_HOST, MAIL_PORT, NOTIFICATION_FROM_EMAIL",
+        "Typecheck passes"
+      ],
+      "priority": 21,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-022",
+      "title": "Dockerize frontend with nginx and create docker-compose.yml",
+      "description": "As a developer, I want a Docker image for the Angular frontend and a docker-compose.yml to run the full stack locally.",
+      "acceptanceCriteria": [
+        "Dockerfile in frontend/ with multi-stage build: stage 1 uses Node to run ng build; stage 2 uses nginx to serve the dist/ output",
+        "nginx.conf proxies /api requests to the backend container",
+        "docker-compose.yml defines services: db (PostgreSQL 16), mailhog (SMTP 1025, UI 8025), backend (port 8080, depends_on db), frontend (port 4200, depends_on backend)",
+        "docker compose up starts the full stack and the app is reachable at localhost:4200",
+        "Typecheck passes"
+      ],
+      "priority": 22,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-023",
+      "title": "Configure GitHub Actions CI: format, lint, and test stages",
+      "description": "As a developer, I want a CI pipeline that enforces code quality and runs all tests on every push and PR.",
+      "acceptanceCriteria": [
+        ".github/workflows/ci.yml created and triggers on push/PR to main",
+        "Stage 1 — Format & Lint: Checkstyle fails build on Java violations; ESLint + Prettier fails build on Angular violations; ng build --configuration production passes with strict mode",
+        "Stage 2 — Tests: runs JUnit 5 unit tests; runs Spring Boot integration tests; runs Playwright E2E tests",
+        "Pipeline fails fast if any step fails",
+        "Testcontainers works in CI (Docker-in-Docker or service containers)",
+        "Typecheck passes"
+      ],
+      "priority": 23,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-024",
+      "title": "Configure SonarCloud static analysis stage and Docker build/deploy stage",
+      "description": "As a developer, I want SonarCloud quality gates and automated Docker image builds in the CI pipeline.",
+      "acceptanceCriteria": [
+        "SonarCloud analysis step added to CI workflow after tests",
+        "Quality gate configured: 80%+ code coverage, zero bugs, zero code smells; pipeline blocks merge if gate fails",
+        "CI stage builds Docker images for backend and frontend",
+        "Images pushed to a container registry (GitHub Container Registry or Docker Hub) on merge to main",
+        "AI-powered PR review step added (Claude or CodeRabbit action posts review comments on PRs)",
+        "Branch protection rule requires all CI stages to pass + at least 1 human approval before merge",
+        "Typecheck passes"
+      ],
+      "priority": 24,
+      "passes": false,
+      "notes": ""
+    }
+  ]
+}
