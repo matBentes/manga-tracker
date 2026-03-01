@@ -31,6 +31,10 @@ jobs:
           key: gradle-${{ hashFiles('backend/**/*.gradle*', 'backend/gradle/wrapper/gradle-wrapper.properties') }}
           restore-keys: gradle-
 
+      - name: Spotless (Java format check)
+        working-directory: backend
+        run: ./gradlew spotlessCheck --no-daemon
+
       - name: Checkstyle (Java)
         working-directory: backend
         run: ./gradlew checkstyleMain checkstyleTest --no-daemon

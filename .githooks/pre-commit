@@ -1,10 +1,22 @@
 #!/bin/sh
-# Auto-format staged frontend files with Prettier before commit
+# Auto-format staged files before commit
 
+# ── Frontend: Prettier ────────────────────────────────────────────────────────
 FRONTEND_STAGED=$(git diff --cached --name-only --diff-filter=ACM | grep '^frontend/src/.*\.\(ts\|html\|scss\|json\)$')
 
 if [ -n "$FRONTEND_STAGED" ]; then
   cd frontend
   echo "$FRONTEND_STAGED" | sed 's|^frontend/||' | xargs npx prettier --write
   echo "$FRONTEND_STAGED" | xargs git add
+  cd ..
+fi
+
+# ── Backend: Spotless (skips gracefully if JVM not available) ─────────────────
+BACKEND_STAGED=$(git diff --cached --name-only --diff-filter=ACM | grep '^backend/.*\.java$')
+
+if [ -n "$BACKEND_STAGED" ] && command -v java >/dev/null 2>&1; then
+  cd backend
+  ./gradlew spotlessApply --no-daemon -q
+  echo "$BACKEND_STAGED" | xargs git add
+  cd ..
 fi
