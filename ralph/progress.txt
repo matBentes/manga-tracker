@@ -1,0 +1,25 @@
+## Codebase Patterns
+- Backend uses Gradle (NOT Maven despite PRD docs), Java 21, Spring Boot 3.4.4
+- Flyway migrations in: backend/src/main/resources/db/migration/
+- Migration naming: V{n}__{description}.sql (e.g. V1__create_manga_table.sql)
+- application.properties uses env var fallbacks: ${DB_URL:jdbc:postgresql://localhost:5432/manga_tracker}
+- ddl-auto=validate (JPA validates against Flyway schema at startup)
+- Java/JVM is NOT installed in the devcontainer — typecheck verification is by inspection
+- Docker is NOT available — Testcontainers integration tests cannot run locally
+- Checkstyle config: backend/config/checkstyle/checkstyle.xml
+
+---
+
+## 2026-03-01 - US-001
+- What was implemented: Created V1__create_manga_table.sql with manga table (UUID PK, VARCHAR title, TEXT source_url UNIQUE, INTEGER current/latest_chapter, BOOLEAN notifications_enabled, TIMESTAMP columns). Added explicit CREATE UNIQUE INDEX on source_url. Removed V1__create_initial_schema.sql (which had all 3 tables).
+- Files changed:
+  - backend/src/main/resources/db/migration/V1__create_manga_table.sql (created)
+  - backend/src/main/resources/db/migration/V1__create_initial_schema.sql (deleted)
+  - ralph/prd.json (US-001 passes set to true)
+- **Learnings for future iterations:**
+  - The old V1__create_initial_schema.sql had all 3 tables (manga, notification_log, app_settings) — US-002 needs to create V2 and V3 for notification_log and app_settings
+  - JVM not available in sandbox, so `./gradlew compileJava` cannot run; typecheck verified by inspection
+  - Docker not available, so Testcontainers-based tests cannot run
+  - PostgreSQL allows both a UNIQUE constraint and a separate CREATE UNIQUE INDEX on the same column (redundant but valid)
+  - Timestamps: AC says TIMESTAMP, old file used TIMESTAMPTZ — new file uses TIMESTAMP to match AC exactly
+---
