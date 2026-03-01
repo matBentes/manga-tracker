@@ -1,0 +1,10 @@
+#!/bin/sh
+# Auto-format staged frontend files with Prettier before commit
+
+FRONTEND_STAGED=$(git diff --cached --name-only --diff-filter=ACM | grep '^frontend/src/.*\.\(ts\|html\|scss\|json\)$')
+
+if [ -n "$FRONTEND_STAGED" ]; then
+  cd frontend
+  echo "$FRONTEND_STAGED" | sed 's|^frontend/||' | xargs npx prettier --write
+  echo "$FRONTEND_STAGED" | xargs git add
+fi
