@@ -18,7 +18,9 @@ public class SakuraMangasScraper implements MangaScraper {
   private static final int TIMEOUT_MS = 15000;
   // Keyword-anchored pattern tried first (e.g. "Capítulo 180", "Chapter 180")
   private static final Pattern CHAPTER_KEYWORD_PATTERN =
-      Pattern.compile("(?:chapter|cap[ií]tulo|cap\\.?|ch\\.?)\\s*(\\d+)", Pattern.CASE_INSENSITIVE);
+      Pattern.compile(
+          "(?:chapter|cap[ií]tulo|cap\\.?|ch\\.?)\\s*(\\d+)",
+          Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
   // Fallback: first standalone number in the text
   private static final Pattern CHAPTER_PATTERN = Pattern.compile("(\\d+)(\\.\\d+)?");
 
