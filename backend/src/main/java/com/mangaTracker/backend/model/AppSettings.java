@@ -19,8 +19,7 @@ import lombok.Setter;
 @AllArgsConstructor
 public class AppSettings {
 
-  @Id
-  private Integer id;
+  @Id private Integer id;
 
   @Column(name = "email_notifications_enabled", nullable = false)
   private boolean emailNotificationsEnabled;
