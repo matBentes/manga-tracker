@@ -146,7 +146,7 @@ jobs:
       #   working-directory: frontend
       #   run: npx playwright test
 
-  # ── Stage 3: AI Code Review ────────────────────────────────────────────────
+  # ── Stage 3: PR Summary ────────────────────────────────────────────────────
   code-review:
     name: Code Review
     runs-on: ubuntu-latest
@@ -160,14 +160,35 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Install Claude Code
-        run: npm install -g @anthropic-ai/claude-code
-
-      - name: AI Code Review
-        run: claude --skip-permissions -p "/code-review --comment"
+      - name: Post PR summary comment
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BASE=${{ github.event.pull_request.base.sha }}
+          HEAD=${{ github.event.pull_request.head.sha }}
+
+          STATS=$(git diff --stat $BASE $HEAD | tail -1)
+          FILES=$(git diff --name-only $BASE $HEAD | sed 's/^/- `/' | sed 's/$$/`/')
+
+          BODY=$(cat <<EOF
+          ## PR Summary
+
+          **$STATS**
+
+          ### Changed files
+          $FILES
+
+          ### Review checklist
+          - [ ] Logic is correct and edge cases are handled
+          - [ ] No secrets or sensitive data committed
+          - [ ] New code has corresponding tests
+          - [ ] Migrations are backwards-compatible
+          EOF
+          )
+
+          gh pr comment ${{ github.event.pull_request.number }} \
+            --body "$BODY" \
+            --repo ${{ github.repository }}
 
   # ── Stage 4: Build & push Docker images ───────────────────────────────────
   build-deploy:
