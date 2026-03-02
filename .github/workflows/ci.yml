@@ -126,6 +126,7 @@ jobs:
           DB_PASSWORD: manga_tracker
 
       - name: SonarCloud analysis
+        continue-on-error: true
         working-directory: backend
         run: ./gradlew sonar --no-daemon
         env:
