@@ -64,7 +64,8 @@ class MangaControllerTest {
 
   @Test
   void addManga_returns400_onUnsupportedUrl() throws Exception {
-    when(mangaService.addManga(any())).thenThrow(new UnsupportedSourceException("Unsupported source"));
+    when(mangaService.addManga(any()))
+        .thenThrow(new UnsupportedSourceException("Unsupported source"));
 
     mockMvc
         .perform(
