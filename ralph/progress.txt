@@ -1,3 +1,21 @@
+## 2026-03-02 - US-011
+- What was implemented: Angular DashboardComponent displaying the reading list with loading state, unread-chapter highlighting, and error handling
+- Files changed:
+  - frontend/src/app/dashboard/dashboard.component.ts (created — standalone component, inject(MangaService), ngOnInit loads manga, hasUnreadChapters helper)
+  - frontend/src/app/dashboard/dashboard.component.html (created — @if/@for control flow, table with title/current/latest/source columns, unread-badge, loading-state, error-state, empty-state)
+  - frontend/src/app/dashboard/dashboard.component.scss (created — table styles, .has-unread row highlight, .unread-badge purple pill, loading spinner animation)
+  - frontend/src/app/app.component.ts (updated — imports DashboardComponent, removed unused title property)
+  - frontend/src/app/app.component.html (updated — replaced Angular default placeholder with <app-dashboard />)
+  - ralph/prd.json (US-011 passes set to true)
+  - ralph/progress.txt (updated)
+- **Learnings for future iterations:**
+  - Angular 18 built-in control flow (@if, @for) requires NO imports — works in standalone components with empty `imports: []`
+  - Self-closing component tags work in Angular 18 templates: `<app-dashboard />` is valid
+  - `loadManga()` kept private — called only from ngOnInit for this story; future stories (US-012/013) that need to refresh the list should make it public or add a dedicated `refresh()` method
+  - `[href]` binding with external URLs from DB is safe for http/https — Angular strips dangerous protocols; `rel="noopener noreferrer"` added for security on target="_blank" links
+  - `ng build` (esbuild) doubles as typecheck — fast and reliable; `ng lint` checks ESLint + Prettier in one command
+---
+
 ## 2026-03-01 - US-010
 - What was implemented: Angular HTTP services for manga and settings API
 - Files changed:

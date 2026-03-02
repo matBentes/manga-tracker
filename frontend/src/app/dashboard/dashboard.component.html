@@ -1,0 +1,46 @@
+<div class="dashboard">
+  <h1 class="dashboard-title">Manga Reading List</h1>
+
+  @if (isLoading) {
+    <div class="loading-state">
+      <span class="loading-spinner"></span>
+      <span>Loading your manga list...</span>
+    </div>
+  } @else if (error) {
+    <div class="error-state">{{ error }}</div>
+  } @else if (mangaList.length === 0) {
+    <div class="empty-state">
+      <p>No manga tracked yet. Add your first manga to get started!</p>
+    </div>
+  } @else {
+    <table class="manga-table">
+      <thead>
+        <tr>
+          <th>Title</th>
+          <th>Current Chapter</th>
+          <th>Latest Chapter</th>
+          <th>Source</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (manga of mangaList; track manga.id) {
+          <tr [class.has-unread]="hasUnreadChapters(manga)">
+            <td class="title-cell">
+              <span class="manga-title">{{ manga.title }}</span>
+              @if (hasUnreadChapters(manga)) {
+                <span class="unread-badge">New chapters!</span>
+              }
+            </td>
+            <td>{{ manga.currentChapter }}</td>
+            <td>{{ manga.latestChapter }}</td>
+            <td>
+              <a [href]="manga.sourceUrl" target="_blank" rel="noopener noreferrer" class="source-link"
+                >View</a
+              >
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+</div>
