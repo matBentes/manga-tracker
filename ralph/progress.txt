@@ -1,3 +1,15 @@
+## 2026-03-02 - US-021
+- What was implemented: Dockerized backend with multi-stage Dockerfile; Dockerfile already existed in backend/ from a prior session but was missing explicit ENV declarations for the required runtime variables
+- Files changed:
+  - backend/Dockerfile (updated — added explicit ENV declarations for DB_URL, DB_USERNAME, DB_PASSWORD, MAIL_HOST, MAIL_PORT, NOTIFICATION_FROM_EMAIL with sensible localhost defaults)
+  - ralph/prd.json (US-021 passes set to true)
+- **Learnings for future iterations:**
+  - The Dockerfile uses Gradle (not Maven as PRD mentions) — this is correct since the project uses Gradle; `RUN ./gradlew bootJar --no-daemon -x test` builds the fat JAR
+  - Explicit `ENV` declarations in the Dockerfile runtime stage serve dual purpose: document which env vars the image accepts, and provide sensible defaults (overridden by docker-compose or -e flags at runtime)
+  - Spring Boot reads env vars naturally — no special config needed beyond application.properties `${VAR:default}` syntax; the ENV declarations make this contract explicit in the image
+  - docker-compose.yml at /workspace/ already wires together all services (db, mailhog, backend, frontend) with correct env vars passed to backend service
+---
+
 ## 2026-03-02 - US-020 (re-implemented — files were missing from previous run)
 - What was implemented: Playwright E2E test setup for the Angular frontend with 3 E2E tests covering all critical user flows
 - Files changed:
