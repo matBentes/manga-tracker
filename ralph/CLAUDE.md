@@ -105,3 +105,15 @@ If there are still stories with `passes: false`, end your response normally (ano
 - Commit frequently
 - Keep CI green
 - Read the Codebase Patterns section in progress.txt before starting
+
+## Reference Documentation
+
+Comprehensive project documentation lives in `/workspace/docs/`:
+
+- `docs/api.md` — REST API reference (endpoints, schemas, error format)
+- `docs/architecture.md` — System diagram, data flows, database schema, scraper design, CI pipeline
+- `docs/developer-guide.md` — Project structure, running tests, adding a new scraper, code style, common gotchas
+
+## Local Helper Scripts
+
+- `overnight.sh` — local helper script for running the agent overnight; **not committed to the repo**
