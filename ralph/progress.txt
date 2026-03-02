@@ -1,3 +1,19 @@
+## 2026-03-02 - US-013
+- What was implemented: Update-reading-progress UI — each manga row in the dashboard now shows a number input for current chapter instead of static text; client-side validation (0..latestChapter), API call on blur/change, inline saving indicator, and per-row error message on failure
+- Files changed:
+  - frontend/src/app/dashboard/dashboard.component.ts (added savingState/updateError maps, onChapterChange() handler)
+  - frontend/src/app/dashboard/dashboard.component.html (replaced static chapter text with `<input type="number">`, saving indicator, error display)
+  - frontend/src/app/dashboard/dashboard.component.scss (added .chapter-cell, .chapter-control, .chapter-input, .chapter-saving, .chapter-error styles)
+  - ralph/prd.json (US-013 passes set to true)
+  - ralph/progress.txt (updated)
+- **Learnings for future iterations:**
+  - Use `[value]="manga.currentChapter"` + `(change)="handler(manga, $event)"` for inputs that trigger API calls on blur — avoids calling API on every keystroke (no NgModel needed; no FormsModule import required)
+  - Mutating `manga.currentChapter` directly on the list object (since objects are by reference) triggers Angular change detection and updates `[value]` binding automatically
+  - `Record<string, boolean>` and `Record<string, string | null>` work well as per-row state maps keyed by manga.id
+  - The anyComponentStyle budget is a warning at 2kB, error at 4kB — dashboard SCSS is now ~2.25kB (just over the warning threshold, safely under error threshold)
+  - `input.value = String(manga.currentChapter)` in error callbacks resets the DOM input to the previous value (safe even if element is detached from DOM)
+---
+
 ## 2026-03-02 - US-012
 - What was implemented: AddMangaFormComponent with URL input, loading state, success confirmation, and descriptive error messages (400/409/422); integrated into DashboardComponent; loadManga() made public for refresh on add
 - Files changed:

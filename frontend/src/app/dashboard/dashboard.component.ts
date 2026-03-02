@@ -16,6 +16,8 @@ export class DashboardComponent implements OnInit {
   mangaList: Manga[] = [];
   isLoading = false;
   error: string | null = null;
+  savingState: Record<string, boolean> = {};
+  updateError: Record<string, string | null> = {};
 
   ngOnInit(): void {
     this.loadManga();
@@ -38,5 +40,36 @@ export class DashboardComponent implements OnInit {
 
   hasUnreadChapters(manga: Manga): boolean {
     return manga.latestChapter > manga.currentChapter;
+  }
+
+  onChapterChange(manga: Manga, event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const value = parseInt(input.value, 10);
+
+    if (isNaN(value) || value < 0 || value > manga.latestChapter) {
+      this.updateError[manga.id] = `Chapter must be between 0 and ${manga.latestChapter}.`;
+      input.value = String(manga.currentChapter);
+      return;
+    }
+
+    if (value === manga.currentChapter) {
+      this.updateError[manga.id] = null;
+      return;
+    }
+
+    this.updateError[manga.id] = null;
+    this.savingState[manga.id] = true;
+
+    this.mangaService.updateManga(manga.id, { currentChapter: value }).subscribe({
+      next: (updated) => {
+        manga.currentChapter = updated.currentChapter;
+        this.savingState[manga.id] = false;
+      },
+      error: () => {
+        this.updateError[manga.id] = 'Failed to save chapter. Please try again.';
+        this.savingState[manga.id] = false;
+        input.value = String(manga.currentChapter);
+      },
+    });
   }
 }

@@ -125,6 +125,48 @@
   white-space: nowrap;
 }
 
+.chapter-cell {
+  vertical-align: top;
+}
+
+.chapter-control {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.chapter-input {
+  width: 5rem;
+  padding: 0.25rem 0.4rem;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 0.9375rem;
+  color: #2d2d2d;
+  text-align: center;
+
+  &:focus {
+    outline: none;
+    border-color: #6c3fcb;
+    box-shadow: 0 0 0 2px rgba(108, 63, 203, 0.2);
+  }
+
+  &:disabled {
+    background: #f8f9fa;
+    cursor: not-allowed;
+  }
+}
+
+.chapter-saving {
+  font-size: 0.8rem;
+  color: #888;
+}
+
+.chapter-error {
+  margin-top: 0.25rem;
+  font-size: 0.8rem;
+  color: #c0392b;
+}
+
 .source-link {
   color: #6c3fcb;
   text-decoration: none;

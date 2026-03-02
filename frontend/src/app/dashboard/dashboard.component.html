@@ -33,7 +33,25 @@
                 <span class="unread-badge">New chapters!</span>
               }
             </td>
-            <td>{{ manga.currentChapter }}</td>
+            <td class="chapter-cell">
+              <div class="chapter-control">
+                <input
+                  type="number"
+                  class="chapter-input"
+                  [value]="manga.currentChapter"
+                  min="0"
+                  [max]="manga.latestChapter"
+                  [disabled]="savingState[manga.id]"
+                  (change)="onChapterChange(manga, $event)"
+                />
+                @if (savingState[manga.id]) {
+                  <span class="chapter-saving">Saving…</span>
+                }
+              </div>
+              @if (updateError[manga.id]) {
+                <div class="chapter-error">{{ updateError[manga.id] }}</div>
+              }
+            </td>
             <td>{{ manga.latestChapter }}</td>
             <td>
               <a
