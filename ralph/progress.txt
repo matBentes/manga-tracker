@@ -7,6 +7,9 @@
 - Java/JVM is NOT installed in the devcontainer — typecheck verification is by inspection
 - Docker is NOT available — Testcontainers integration tests cannot run locally
 - Checkstyle config: backend/config/checkstyle/checkstyle.xml
+- Scraper layer in package com.mangaTracker.backend.scraper; all scrapers registered as @Component and injected as List<MangaScraper> into ScraperRegistry
+- Jsoup dependency already present in build.gradle (org.jsoup:jsoup:1.18.3); no pom.xml in this project
+- SakuraMangasScraper uses multi-selector fallback pattern (try multiple CSS selectors in order); selectors may need updating if sakuramangas.org HTML changes
 
 ---
 
@@ -22,6 +25,31 @@
   - Docker not available, so Testcontainers-based tests cannot run
   - PostgreSQL allows both a UNIQUE constraint and a separate CREATE UNIQUE INDEX on the same column (redundant but valid)
   - Timestamps: AC says TIMESTAMP, old file used TIMESTAMPTZ — new file uses TIMESTAMP to match AC exactly
+---
+
+## 2026-03-01 - US-003
+- What was implemented: Created the full scraper layer in package com.mangaTracker.backend.scraper
+  - MangaScraper interface: supports(String url) and scrape(String url) throws ScrapingException
+  - ScrapedManga record: title (String), latestChapter (int)
+  - ScrapingException: RuntimeException with message and cause constructors
+  - UnsupportedSourceException: RuntimeException thrown by ScraperRegistry when no scraper found
+  - ScraperRegistry @Component: injects List<MangaScraper> via constructor, resolve(url) returns matching scraper
+  - SakuraMangasScraper @Component: supports sakuramangas.org URLs; Jsoup fetch with 15s timeout; 3 retries with exponential backoff (1s, 2s, 4s); multi-selector fallback for title and chapter extraction; regex CHAPTER_PATTERN extracts integer chapter numbers
+- Files changed:
+  - backend/src/main/java/com/mangaTracker/backend/scraper/MangaScraper.java (created)
+  - backend/src/main/java/com/mangaTracker/backend/scraper/ScrapedManga.java (created)
+  - backend/src/main/java/com/mangaTracker/backend/scraper/ScrapingException.java (created)
+  - backend/src/main/java/com/mangaTracker/backend/scraper/UnsupportedSourceException.java (created)
+  - backend/src/main/java/com/mangaTracker/backend/scraper/ScraperRegistry.java (created)
+  - backend/src/main/java/com/mangaTracker/backend/scraper/SakuraMangasScraper.java (created)
+  - ralph/prd.json (US-003 passes set to true)
+- **Learnings for future iterations:**
+  - Jsoup was already in build.gradle before this story; no build.gradle change needed
+  - Spring automatically collects all @Component beans implementing an interface into a List<InterfaceType> when injected — no manual registration needed
+  - SakuraMangasScraper CSS selectors (TITLE_SELECTORS, CHAPTER_SELECTORS) are best-guess patterns for WordPress manga themes; may need updating for the real sakuramangas.org HTML
+  - Thread.currentThread().interrupt() must be called before re-throwing when catching InterruptedException
+  - Empty catch block (for NumberFormatException fallback) needs a comment to satisfy coding standards
+
 ---
 
 ## 2026-03-01 - US-002
