@@ -154,37 +154,7 @@ jobs:
         working-directory: frontend
         run: npm run e2e
 
-  # ── Stage 3: AI Code Review ────────────────────────────────────────────────
-  # Branch protection setup (one-time, via GitHub UI / API):
-  #   Settings → Branches → main → Require status checks: format-lint, tests
-  #   Settings → Branches → main → Require approvals: 1
-  code-review:
-    name: AI Code Review
-    runs-on: ubuntu-latest
-    needs: tests
-    if: github.event_name == 'pull_request'
-    permissions:
-      contents: read
-      pull-requests: write
-      id-token: write
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: AI-powered PR review (Claude)
-        uses: anthropics/claude-code-action@beta
-        with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          direct_prompt: |
-            Review this pull request and post a concise review comment covering:
-            1. Code correctness and potential logic bugs
-            2. Security vulnerabilities (OWASP Top 10, injection, XSS, etc.)
-            3. Test coverage gaps — are new code paths tested?
-            4. Code quality: naming, readability, over-engineering
-            Keep the review focused and actionable. Highlight only real issues.
-
-  # ── Stage 4: Build & push Docker images ───────────────────────────────────
+  # ── Stage 3: Build & push Docker images ───────────────────────────────────
   build-deploy:
     name: Build & Deploy
     runs-on: ubuntu-latest
