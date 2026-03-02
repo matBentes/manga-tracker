@@ -1,3 +1,19 @@
+## 2026-03-02 - US-024
+- What was implemented: SonarCloud static analysis stage and AI-powered PR code review; Docker build/deploy already existed from US-021/022
+- Files changed:
+  - backend/build.gradle (updated — added `org.sonarqube` plugin v5.1.0.4882; added `sonarqube` config block with jacoco XML report path, `sonar.qualitygate.wait=true`, project key/org from env vars)
+  - .github/workflows/ci.yml (updated — added SonarCloud analysis step in the tests job after JaCoCo coverage; replaced simple PR summary code-review job with `anthropics/claude-code-action@beta` for AI-powered PR reviews; added branch protection comment)
+  - ralph/prd.json (US-024 passes set to true)
+- **Learnings for future iterations:**
+  - SonarCloud Gradle plugin: `id 'org.sonarqube' version '5.1.0.4882'` in plugins block; `sonarqube { properties { ... } }` block sets jacoco XML path and `sonar.qualitygate.wait=true`
+  - `sonar.qualitygate.wait=true` makes `./gradlew sonar` wait for the quality gate result and return non-zero exit code on failure — this is what blocks the CI merge
+  - SonarCloud in CI: set `SONAR_TOKEN` secret + `SONAR_HOST_URL=https://sonarcloud.io`; pass `SONAR_PROJECT_KEY` and `SONAR_ORGANIZATION` as GitHub Variables (not secrets — they're not sensitive)
+  - Running sonar in the same job as tests avoids artifact upload/download complexity; Gradle's incremental build treats `test` as UP-TO-DATE on the second `./gradlew sonar` call (outputs already exist on disk)
+  - AI PR review: `anthropics/claude-code-action@beta` with `direct_prompt` parameter posts automated review comments; requires `ANTHROPIC_API_KEY` secret and `pull-requests: write` permission
+  - Branch protection cannot be configured in YAML — add it via GitHub UI: Settings → Branches → main → Require status checks (format-lint, tests) + Require 1 approval
+  - Docker build/deploy (ghcr.io) was already present from US-021/022; US-024 only added SonarCloud and AI review
+---
+
 ## 2026-03-02 - US-023
 - What was implemented: Enabled Playwright E2E tests in the existing GitHub Actions CI workflow (.github/workflows/ci.yml); the file already had Stage 1 (format/lint) and Stage 2 (backend tests) implemented but Playwright E2E was commented out
 - Files changed:
