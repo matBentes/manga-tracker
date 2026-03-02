@@ -1,3 +1,18 @@
+## 2026-03-02 - US-018
+- What was implemented: Integration tests for REST API endpoints using @WebMvcTest test slices with mocked services
+- Files changed:
+  - backend/src/test/java/com/mangaTracker/backend/controller/MangaControllerTest.java (created — 9 tests: GET 200, POST 201/400/409, PATCH 200/400/404, DELETE 204/404)
+  - backend/src/test/java/com/mangaTracker/backend/controller/SettingsControllerTest.java (created — 3 tests: GET 200, PUT 200/400)
+  - ralph/prd.json (US-018 passes set to true)
+- **Learnings for future iterations:**
+  - Use `@WebMvcTest(ControllerClass.class)` for controller integration tests — loads only web layer (controllers + @RestControllerAdvice), no DB or full context needed
+  - `@MockBean` (spring-boot-test) injects mocks into Spring context; different from Mockito `@Mock` — use `@MockBean` for services in `@WebMvcTest` tests
+  - `GlobalExceptionHandler` (@RestControllerAdvice) is auto-included by @WebMvcTest — no extra configuration needed
+  - Mix `eq(id)` with `any()` matchers freely in Mockito stubs — just ensure all args use matchers when mixing
+  - `when(service.voidReturningMethod(id, literal, null))` — Mockito matches null with equals(); works without explicit `isNull()` matcher
+  - `doNothing().when(mockBean).voidMethod(arg)` pattern for void methods; technically not needed (default) but improves test clarity
+---
+
 ## 2026-03-02 - US-017
 - What was implemented: Unit tests for service layer — tests were already written alongside implementation of US-004 (MangaServiceTest), US-006/US-007 (NotificationServiceTest), and US-005 (SettingsServiceTest); this story marks them as complete
 - Files verified (no changes needed):
