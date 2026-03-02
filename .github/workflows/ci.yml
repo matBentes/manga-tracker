@@ -128,7 +128,7 @@ jobs:
       - name: SonarCloud analysis
         continue-on-error: true
         working-directory: backend
-        run: ./gradlew sonar --no-daemon
+        run: ./gradlew sonar --no-daemon --info
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: https://sonarcloud.io
