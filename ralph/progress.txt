@@ -1,3 +1,18 @@
+## 2026-03-01 - US-008
+- What was implemented: MangaController @RestController with GET/POST/PATCH/DELETE endpoints for /api/manga; GlobalExceptionHandler @RestControllerAdvice mapping domain exceptions to HTTP status codes
+- Files changed:
+  - backend/src/main/java/com/mangaTracker/backend/controller/MangaController.java (created)
+  - backend/src/main/java/com/mangaTracker/backend/controller/GlobalExceptionHandler.java (created)
+  - ralph/prd.json (US-008 passes set to true)
+  - ralph/progress.txt (updated)
+- **Learnings for future iterations:**
+  - MangaController uses inner record types for request bodies (AddMangaRequest, PatchMangaRequest) — no separate DTO files needed; Jackson handles record deserialization in Spring Boot 3
+  - Exception → HTTP status mappings: MangaNotFoundException→404, DuplicateMangaException→409, UnsupportedSourceException→400, ScrapingException→422, IllegalArgumentException→400
+  - @RestControllerAdvice in the same `controller` package is auto-detected by Spring; no registration needed
+  - GET and PATCH return entity directly (Spring infers 200); POST wraps in ResponseEntity.status(CREATED).body(); DELETE returns ResponseEntity.noContent().build() for 204
+  - No explicit `produces = "application/json"` needed — @RestController defaults to JSON for all endpoints
+---
+
 ## 2026-03-01 - US-007
 - What was implemented: ScrapingJob @Component in new `job` package — @Scheduled method polls all manga on a configurable interval, scrapes each URL, updates latestChapter + lastCheckedAt in DB, calls NotificationService.notify() on new chapters, catches and logs per-manga failures while continuing
 - Files changed:
