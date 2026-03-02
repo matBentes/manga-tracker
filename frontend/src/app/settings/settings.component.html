@@ -1,0 +1,66 @@
+<div class="settings">
+  <h1 class="settings-title">Notification Settings</h1>
+
+  @if (isLoading) {
+    <div class="loading-state">
+      <span class="loading-spinner"></span>
+      <span>Loading settings...</span>
+    </div>
+  } @else if (loadError) {
+    <div class="error-state">{{ loadError }}</div>
+  } @else {
+    <form class="settings-form" (ngSubmit)="onSave()">
+      <div class="form-group toggle-group">
+        <label class="toggle-label" for="emailNotificationsEnabled">
+          <span class="label-text">Email Notifications</span>
+          <span class="label-desc">Enable email alerts when new chapters are available</span>
+        </label>
+        <input
+          type="checkbox"
+          id="emailNotificationsEnabled"
+          name="emailNotificationsEnabled"
+          [(ngModel)]="emailNotificationsEnabled"
+          class="toggle-checkbox"
+        />
+      </div>
+
+      <div class="form-group">
+        <label class="field-label" for="notificationEmail">Notification Email</label>
+        <input
+          type="email"
+          id="notificationEmail"
+          name="notificationEmail"
+          [(ngModel)]="notificationEmail"
+          class="field-input"
+          placeholder="you@example.com"
+          required
+        />
+      </div>
+
+      <div class="form-group">
+        <label class="field-label" for="pollIntervalMinutes">Poll Interval (minutes)</label>
+        <input
+          type="number"
+          id="pollIntervalMinutes"
+          name="pollIntervalMinutes"
+          [(ngModel)]="pollIntervalMinutes"
+          class="field-input poll-input"
+          min="1"
+          required
+        />
+        <span class="field-hint">How often the app checks for new chapters</span>
+      </div>
+
+      @if (saveError) {
+        <div class="save-error">{{ saveError }}</div>
+      }
+      @if (saveSuccess) {
+        <div class="save-success">Settings saved successfully!</div>
+      }
+
+      <button type="submit" class="save-btn" [disabled]="isSaving">
+        {{ isSaving ? 'Saving…' : 'Save Settings' }}
+      </button>
+    </form>
+  }
+</div>

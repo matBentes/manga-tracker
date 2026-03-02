@@ -8,6 +8,7 @@ set -euo pipefail
 
 TOOL="claude"
 MAX_ITERATIONS=10
+MAX_FIX_ATTEMPTS=3  # max CI self-heal attempts per story
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -52,16 +53,38 @@ spinner() {
   printf "\r\033[K"  # clear spinner line
 }
 
-# Count remaining stories
+# Count remaining stories (jq-based, safe)
 count_remaining() {
-  grep -c '"passes": false' "$PRD_FILE" 2>/dev/null || echo 0
+  jq '[.userStories[] | select(.passes == false)] | length' "$PRD_FILE" 2>/dev/null || echo 0
 }
 
-# Get current story ID from prd.json
+# Get current story ID — lowest priority number among passing:false (jq-based, safe)
 current_story() {
-  grep -B5 '"passes": false' "$PRD_FILE" 2>/dev/null \
-    | grep '"id"' | tail -1 \
-    | sed 's/.*"id": *"\([^"]*\)".*/\1/' || echo "unknown"
+  jq -r '[.userStories[] | select(.passes == false)] | sort_by(.priority) | .[0].id' "$PRD_FILE" 2>/dev/null || echo "unknown"
+}
+
+# Run claude and stream output indented under the pipe
+run_claude() {
+  local prompt="$1"
+  local OUTPUT_FILE
+  OUTPUT_FILE=$(mktemp)
+
+  CLAUDECODE= claude --dangerously-skip-permissions --print "$prompt" \
+    > "$OUTPUT_FILE" 2>&1 &
+  local CLAUDE_PID=$!
+
+  spinner "$CLAUDE_PID" "Claude is working..."
+  wait "$CLAUDE_PID"
+  local EXIT_CODE=$?
+
+  if [[ -s "$OUTPUT_FILE" ]]; then
+    printf "│\n"
+    while IFS= read -r line; do
+      printf "│  ${DIM}%s${RESET}\n" "$line"
+    done < "$OUTPUT_FILE"
+  fi
+  rm -f "$OUTPUT_FILE"
+  return $EXIT_CODE
 }
 
 printf "\n${BOLD}╔══════════════════════════════════╗${RESET}\n"
@@ -74,6 +97,12 @@ printf "  Max iterations: ${YELLOW}%s${RESET}\n\n" "$MAX_ITERATIONS"
 # Check prd.json exists
 if [[ ! -f "$PRD_FILE" ]]; then
   printf "${RED}ERROR: prd.json not found at %s${RESET}\n" "$PRD_FILE"
+  exit 1
+fi
+
+# Check jq is available
+if ! command -v jq &>/dev/null; then
+  printf "${RED}ERROR: jq is required but not installed. Run: apt-get install jq${RESET}\n"
   exit 1
 fi
 
@@ -95,37 +124,19 @@ for i in $(seq 1 "$MAX_ITERATIONS"); do
   printf "│  Story: ${YELLOW}%s${RESET}\n" "$STORY"
   printf "│\n"
 
-  # Run the AI tool
   case $TOOL in
     claude)
-      OUTPUT_FILE=$(mktemp)
-      claude --dangerously-skip-permissions --print \
-        "Read CLAUDE.md, prd.json, and progress.txt. Then execute your task as described in CLAUDE.md. Work on the highest priority story where passes is false." \
-        > "$OUTPUT_FILE" 2>&1 &
-      CLAUDE_PID=$!
-
-      spinner "$CLAUDE_PID" "Claude is working..."
-      wait "$CLAUDE_PID"
-      EXIT_CODE=$?
-
-      # Print claude's output indented
-      if [[ -s "$OUTPUT_FILE" ]]; then
-        printf "│\n"
-        while IFS= read -r line; do
-          printf "│  ${DIM}%s${RESET}\n" "$line"
-        done < "$OUTPUT_FILE"
-      fi
-      rm -f "$OUTPUT_FILE"
-
-      if [[ $EXIT_CODE -ne 0 ]]; then
-        printf "│\n${RED}└─ Claude exited with code %d${RESET}\n" "$EXIT_CODE"
-        exit "$EXIT_CODE"
+      # ── Implement the story ─────────────────────────────────────────────
+      if ! run_claude "Read CLAUDE.md, prd.json, and progress.txt. Then execute your task as described in CLAUDE.md. Work on the highest priority story where passes is false."; then
+        printf "│\n${RED}└─ Claude exited with non-zero code — stopping${RESET}\n"
+        exit 1
       fi
 
-      # Push after each story
+      # ── Push (pull first to pick up any CI auto-commits) ────────────────
       printf "│\n"
       printf "│  ${DIM}Pushing to origin...${RESET}\n"
       BRANCH=$(git -C "$PROJECT_DIR/.." rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")
+      git -C "$PROJECT_DIR/.." pull --rebase origin "$BRANCH" 2>&1 | while IFS= read -r line; do printf "│  ${DIM}%s${RESET}\n" "$line"; done
       if git -C "$PROJECT_DIR/.." push origin "$BRANCH" 2>&1 | while IFS= read -r line; do printf "│  ${DIM}%s${RESET}\n" "$line"; done; then
         printf "│  ${GREEN}✔ Pushed to origin/%s${RESET}\n" "$BRANCH"
       else
@@ -133,24 +144,68 @@ for i in $(seq 1 "$MAX_ITERATIONS"); do
         exit 1
       fi
 
-      # Wait for CI to pass
-      printf "│\n"
-      printf "│  ${DIM}Waiting for CI...${RESET}\n"
-      sleep 5  # give GitHub a moment to register the run
-      RUN_ID=$(gh run list --branch "$BRANCH" --limit 1 --json databaseId --jq '.[0].databaseId' 2>/dev/null || echo "")
-      if [[ -z "$RUN_ID" ]]; then
-        printf "│  ${YELLOW}⚠ Could not find CI run — skipping CI check${RESET}\n"
-      else
+      # ── CI loop with self-healing ────────────────────────────────────────
+      CI_FIX_ATTEMPT=0
+      while true; do
+        printf "│\n"
+        printf "│  ${DIM}Waiting for CI...${RESET}\n"
+        sleep 5  # give GitHub a moment to register the run
+        RUN_ID=$(gh run list --branch "$BRANCH" --limit 1 --json databaseId --jq '.[0].databaseId' 2>/dev/null || echo "")
+
+        if [[ -z "$RUN_ID" ]]; then
+          printf "│  ${YELLOW}⚠ Could not find CI run — skipping CI check${RESET}\n"
+          break
+        fi
+
         printf "│  ${DIM}CI run #%s — watching...${RESET}\n" "$RUN_ID"
+
         if gh run watch "$RUN_ID" --exit-status 2>&1 | while IFS= read -r line; do printf "│  ${DIM}%s${RESET}\n" "$line"; done; then
           printf "│  ${GREEN}✔ CI passed${RESET}\n"
-        else
-          printf "│  ${RED}✘ CI failed — stopping to avoid stacking broken stories${RESET}\n"
+          break
+        fi
+
+        # ── CI failed — try to self-heal ──────────────────────────────────
+        CI_FIX_ATTEMPT=$(( CI_FIX_ATTEMPT + 1 ))
+        if [[ $CI_FIX_ATTEMPT -gt $MAX_FIX_ATTEMPTS ]]; then
+          printf "│  ${RED}✘ CI still failing after %d fix attempt(s) — stopping${RESET}\n" "$MAX_FIX_ATTEMPTS"
           printf "│  ${DIM}View details: gh run view %s${RESET}\n" "$RUN_ID"
           exit 1
         fi
-      fi
+
+        printf "│  ${YELLOW}⚠ CI failed — self-heal attempt %d/%d${RESET}\n" "$CI_FIX_ATTEMPT" "$MAX_FIX_ATTEMPTS"
+
+        # Fetch the failed logs (cap at 200 lines to stay within context)
+        CI_LOGS=$(gh run view "$RUN_ID" --log-failed 2>/dev/null | head -50)
+
+        # Ask Claude to fix
+        FIX_PROMPT="CI failed for story ${STORY} (fix attempt ${CI_FIX_ATTEMPT}/${MAX_FIX_ATTEMPTS}).
+
+Here are the failing CI logs:
+---
+${CI_LOGS}
+---
+
+Diagnose and fix the CI failure above. Do NOT start a new story — only fix this failure. Commit your fix with message: 'fix: ci failure for ${STORY}'."
+
+        printf "│\n"
+        if ! run_claude "$FIX_PROMPT"; then
+          printf "│  ${RED}✘ Claude fix attempt failed — stopping${RESET}\n"
+          exit 1
+        fi
+
+        # Push the fix and loop back to watch CI
+        printf "│\n"
+        printf "│  ${DIM}Pushing fix attempt %d...${RESET}\n" "$CI_FIX_ATTEMPT"
+        git -C "$PROJECT_DIR/.." pull --rebase origin "$BRANCH" 2>&1 | while IFS= read -r line; do printf "│  ${DIM}%s${RESET}\n" "$line"; done
+        if git -C "$PROJECT_DIR/.." push origin "$BRANCH" 2>&1 | while IFS= read -r line; do printf "│  ${DIM}%s${RESET}\n" "$line"; done; then
+          printf "│  ${GREEN}✔ Fix pushed — re-watching CI${RESET}\n"
+        else
+          printf "│  ${RED}✘ Push failed — stopping${RESET}\n"
+          exit 1
+        fi
+      done
       ;;
+
     *)
       printf "${RED}ERROR: Unknown tool '%s'. Supported: claude${RESET}\n" "$TOOL"
       exit 1

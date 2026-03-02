@@ -1,0 +1,91 @@
+<div class="dashboard">
+  <h1 class="dashboard-title">Manga Reading List</h1>
+
+  <app-add-manga-form (mangaAdded)="loadManga()" />
+
+  @if (isLoading) {
+    <div class="loading-state">
+      <span class="loading-spinner"></span>
+      <span>Loading your manga list...</span>
+    </div>
+  } @else if (error) {
+    <div class="error-state">{{ error }}</div>
+  } @else if (mangaList.length === 0) {
+    <div class="empty-state">
+      <p>No manga tracked yet. Add your first manga to get started!</p>
+    </div>
+  } @else {
+    <table class="manga-table">
+      <thead>
+        <tr>
+          <th>Title</th>
+          <th>Current Chapter</th>
+          <th>Latest Chapter</th>
+          <th>Source</th>
+          <th>Notify</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (manga of mangaList; track manga.id) {
+          <tr [class.has-unread]="hasUnreadChapters(manga)">
+            <td class="title-cell">
+              <span class="manga-title">{{ manga.title }}</span>
+              @if (hasUnreadChapters(manga)) {
+                <span class="unread-badge">New chapters!</span>
+              }
+            </td>
+            <td class="chapter-cell">
+              <div class="chapter-control">
+                <input
+                  type="number"
+                  class="chapter-input"
+                  [value]="manga.currentChapter"
+                  min="0"
+                  [max]="manga.latestChapter"
+                  [disabled]="savingState[manga.id]"
+                  (change)="onChapterChange(manga, $event)"
+                />
+                @if (savingState[manga.id]) {
+                  <span class="chapter-saving">Saving…</span>
+                }
+              </div>
+              @if (updateError[manga.id]) {
+                <div class="chapter-error">{{ updateError[manga.id] }}</div>
+              }
+            </td>
+            <td>{{ manga.latestChapter }}</td>
+            <td>
+              <a
+                [href]="manga.sourceUrl"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="source-link"
+                >View</a
+              >
+            </td>
+            <td class="notify-cell">
+              <input
+                type="checkbox"
+                class="notify-checkbox"
+                [checked]="manga.notificationsEnabled"
+                [disabled]="togglingNotifications[manga.id]"
+                (change)="onNotificationsToggle(manga, $event)"
+                title="Toggle email notifications for this manga"
+              />
+            </td>
+            <td class="actions-cell">
+              <button
+                class="delete-btn"
+                [disabled]="deletingState[manga.id]"
+                (click)="onDelete(manga)"
+              >
+                {{ deletingState[manga.id] ? 'Deleting…' : 'Delete' }}
+              </button>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+</div>

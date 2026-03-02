@@ -23,6 +23,14 @@ WORKDIR /app
 
 COPY --from=builder /app/build/libs/*.jar app.jar
 
+# Runtime environment variables — override at container start via -e or docker-compose environment:
+ENV DB_URL=jdbc:postgresql://localhost:5432/manga_tracker \
+    DB_USERNAME=manga_tracker \
+    DB_PASSWORD=manga_tracker \
+    MAIL_HOST=localhost \
+    MAIL_PORT=1025 \
+    NOTIFICATION_FROM_EMAIL=tracker@localhost
+
 USER app
 
 EXPOSE 8080

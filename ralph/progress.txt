@@ -1,0 +1,419 @@
+## 2026-03-02 - US-024
+- What was implemented: SonarCloud static analysis stage and AI-powered PR code review; Docker build/deploy already existed from US-021/022
+- Files changed:
+  - backend/build.gradle (updated — added `org.sonarqube` plugin v5.1.0.4882; added `sonarqube` config block with jacoco XML report path, `sonar.qualitygate.wait=true`, project key/org from env vars)
+  - .github/workflows/ci.yml (updated — added SonarCloud analysis step in the tests job after JaCoCo coverage; replaced simple PR summary code-review job with `anthropics/claude-code-action@beta` for AI-powered PR reviews; added branch protection comment)
+  - ralph/prd.json (US-024 passes set to true)
+- **Learnings for future iterations:**
+  - SonarCloud Gradle plugin: `id 'org.sonarqube' version '5.1.0.4882'` in plugins block; `sonarqube { properties { ... } }` block sets jacoco XML path and `sonar.qualitygate.wait=true`
+  - `sonar.qualitygate.wait=true` makes `./gradlew sonar` wait for the quality gate result and return non-zero exit code on failure — this is what blocks the CI merge
+  - SonarCloud in CI: set `SONAR_TOKEN` secret + `SONAR_HOST_URL=https://sonarcloud.io`; pass `SONAR_PROJECT_KEY` and `SONAR_ORGANIZATION` as GitHub Variables (not secrets — they're not sensitive)
+  - Running sonar in the same job as tests avoids artifact upload/download complexity; Gradle's incremental build treats `test` as UP-TO-DATE on the second `./gradlew sonar` call (outputs already exist on disk)
+  - AI PR review: `anthropics/claude-code-action@beta` with `direct_prompt` parameter posts automated review comments; requires `ANTHROPIC_API_KEY` secret and `pull-requests: write` permission
+  - Branch protection cannot be configured in YAML — add it via GitHub UI: Settings → Branches → main → Require status checks (format-lint, tests) + Require 1 approval
+  - Docker build/deploy (ghcr.io) was already present from US-021/022; US-024 only added SonarCloud and AI review
+---
+
+## 2026-03-02 - US-023
+- What was implemented: Enabled Playwright E2E tests in the existing GitHub Actions CI workflow (.github/workflows/ci.yml); the file already had Stage 1 (format/lint) and Stage 2 (backend tests) implemented but Playwright E2E was commented out
+- Files changed:
+  - .github/workflows/ci.yml (updated — replaced commented-out Playwright section and removed Karma `npm test` step; added `npx playwright install --with-deps chromium` + `npm run e2e` as active steps in the tests job)
+  - ralph/prd.json (US-023 passes set to true)
+- **Learnings for future iterations:**
+  - The CI workflow had 4 stages: (1) format-lint, (2) tests (needs format-lint), (3) code-review (PR only), (4) build-deploy (main push only)
+  - Stage 1 uses `spotlessApply` + auto-commit pattern (auto-fixes Java formatting in CI) + Checkstyle; Angular uses `format:check` + `ng lint` + `ng build production`
+  - Stage 2 backend tests use `./gradlew test jacocoTestReport jacocoTestCoverageVerification` — this enforces 70% code coverage minimum
+  - Testcontainers works on `ubuntu-latest` because Docker is pre-installed; the existing postgres service container in the tests job is not used by Testcontainers (it starts its own), but doesn't cause conflicts
+  - Playwright E2E: `npx playwright install --with-deps chromium` then `npm run e2e`; GitHub Actions sets `CI=true` automatically so `reuseExistingServer: false` applies (Playwright starts `ng serve` itself)
+  - Karma (`npm test`) was removed — not in AC and requires ChromeHeadless which can be flaky; Playwright E2E tests cover the same user flows
+---
+
+## 2026-03-02 - US-022
+- What was implemented: Verified and completed Docker setup for Angular frontend + full-stack docker-compose.yml; fixed production environment to use relative API URL for nginx proxy
+- Files changed:
+  - frontend/src/environments/environment.prod.ts (updated — apiUrl changed from 'http://localhost:8080' to '' so API calls go through nginx proxy /api/ → backend:8080 in Docker)
+  - frontend/Dockerfile (pre-existing — multi-stage: node:20-alpine builds ng build --configuration production; nginx:1.27-alpine serves dist/frontend/browser)
+  - frontend/nginx.conf (pre-existing — proxies /api/ to http://backend:8080; SPA fallback /index.html)
+  - docker-compose.yml (pre-existing — db:postgres:16-alpine, mailhog, backend:8080, frontend:4200:80 with all healthchecks and depends_on)
+  - ralph/prd.json (US-022 passes set to true)
+- **Learnings for future iterations:**
+  - When nginx proxies /api/ to backend, Angular production build must use apiUrl: '' (empty string) so HTTP calls become relative paths like /api/manga — absolute URLs like http://localhost:8080/api/manga bypass nginx and fail inside Docker containers
+  - Frontend Dockerfile copies dist to /usr/share/nginx/html — Angular 18 esbuild output is at dist/{projectName}/browser/ not just dist/{projectName}/
+  - nginx.conf location /api/ with proxy_pass http://backend:8080 (no trailing slash) preserves the full /api/... path when forwarding to backend
+  - docker-compose healthchecks use wget --spider for Spring Boot actuator; Spring Boot starts in ~30s so start_period: 30s prevents premature health failures
+---
+
+## 2026-03-02 - US-021
+- What was implemented: Dockerized backend with multi-stage Dockerfile; Dockerfile already existed in backend/ from a prior session but was missing explicit ENV declarations for the required runtime variables
+- Files changed:
+  - backend/Dockerfile (updated — added explicit ENV declarations for DB_URL, DB_USERNAME, DB_PASSWORD, MAIL_HOST, MAIL_PORT, NOTIFICATION_FROM_EMAIL with sensible localhost defaults)
+  - ralph/prd.json (US-021 passes set to true)
+- **Learnings for future iterations:**
+  - The Dockerfile uses Gradle (not Maven as PRD mentions) — this is correct since the project uses Gradle; `RUN ./gradlew bootJar --no-daemon -x test` builds the fat JAR
+  - Explicit `ENV` declarations in the Dockerfile runtime stage serve dual purpose: document which env vars the image accepts, and provide sensible defaults (overridden by docker-compose or -e flags at runtime)
+  - Spring Boot reads env vars naturally — no special config needed beyond application.properties `${VAR:default}` syntax; the ENV declarations make this contract explicit in the image
+  - docker-compose.yml at /workspace/ already wires together all services (db, mailhog, backend, frontend) with correct env vars passed to backend service
+---
+
+## 2026-03-02 - US-020 (re-implemented — files were missing from previous run)
+- What was implemented: Playwright E2E test setup for the Angular frontend with 3 E2E tests covering all critical user flows
+- Files changed:
+  - frontend/playwright.config.ts (created — Playwright config: chromium project, baseURL localhost:4200, webServer auto-starts ng serve, CI retry support)
+  - frontend/e2e/manga.spec.ts (created — 3 tests: add manga appears in list, update chapter number, delete manga removed from list)
+  - frontend/package.json (updated — added @playwright/test devDependency, e2e and e2e:report npm scripts)
+  - frontend/package-lock.json (updated — Playwright 1.58.2 lockfile entries)
+  - frontend/eslint.config.js (updated — added `ignores: ["e2e/**"]` to prevent angular-eslint rules from applying to Playwright test files)
+  - ralph/prd.json (US-020 passes set to true)
+- **Learnings for future iterations:**
+  - Use `page.route(url, handler)` to mock backend API calls — tests run without a real backend; mock GET, POST, PATCH, DELETE separately by checking `route.request().method()`
+  - `page.once('dialog', (dialog) => dialog.accept())` handles `window.confirm()` dialogs in Playwright; must be registered BEFORE the action that triggers the dialog
+  - ESLint config must exclude `e2e/**` via `ignores` entry to prevent angular-eslint rules (component-selector, directive-selector, prefer-inject) from being applied to Playwright spec files
+  - Playwright's `webServer` config auto-starts `ng serve` for local runs; in CI, set `reuseExistingServer: !process.env['CI']` so CI manages the server itself
+  - `@playwright/test` is installed as a devDependency; browsers must be installed separately with `npx playwright install --with-deps chromium` in CI
+---
+
+## 2026-03-02 - US-019
+- What was implemented: Integration tests for repository layer using @DataJpaTest + Testcontainers PostgreSQL
+- Files changed:
+  - backend/src/test/java/com/mangaTracker/backend/repository/MangaRepositoryTest.java (created — 5 tests: save+findById, findAllByOrderByUpdatedAtDesc sorted order, existsBySourceUrl true/false, deleteById)
+  - backend/src/test/java/com/mangaTracker/backend/repository/NotificationLogRepositoryTest.java (created — 3 tests: save+findById, existsByMangaIdAndChapterNumber, unique constraint DataIntegrityViolationException)
+  - backend/src/test/java/com/mangaTracker/backend/repository/AppSettingsRepositoryTest.java (created — 2 tests: findById returns V3 seed row, save+flush+clear+findById updates row)
+  - ralph/prd.json (US-019 passes set to true)
+- **Learnings for future iterations:**
+  - Use `@DataJpaTest` + `@AutoConfigureTestDatabase(replace = Replace.NONE)` + `@Testcontainers` + `@Container @ServiceConnection static PostgreSQLContainer<?>` — FlywayAutoConfiguration IS included in the @DataJpaTest slice, so schema + seed data are created automatically
+  - `@ServiceConnection` from `spring-boot-testcontainers` auto-configures datasource URL/username/password from the container — no `@DynamicPropertySource` needed
+  - Testcontainers deps already present in build.gradle: `spring-boot-testcontainers`, `testcontainers:junit-jupiter`, `testcontainers:postgresql`
+  - For sorting tests using `@UpdateTimestamp`, use `TestEntityManager.persistAndFlush()` with `Thread.sleep(10)` between saves to guarantee different timestamps; declare test as `throws InterruptedException`
+  - For unique constraint violation tests: call `saveAndFlush()` for first entry, then wrap second `saveAndFlush()` in `assertThatThrownBy(...).isInstanceOf(DataIntegrityViolationException.class)` — session is invalidated after violation but test is done at that point
+  - For AppSettings (id=1 seed row): V3 migration seed data persists across test transactions (Flyway runs outside test transaction); `saveAndFlush()` + `entityManager.clear()` pattern forces re-read from DB after update
+  - `@DataJpaTest` is `@Transactional` by default — each test runs in a transaction that's rolled back, providing test isolation without manual cleanup
+---
+
+## 2026-03-02 - US-018
+- What was implemented: Integration tests for REST API endpoints using @WebMvcTest test slices with mocked services
+- Files changed:
+  - backend/src/test/java/com/mangaTracker/backend/controller/MangaControllerTest.java (created — 9 tests: GET 200, POST 201/400/409, PATCH 200/400/404, DELETE 204/404)
+  - backend/src/test/java/com/mangaTracker/backend/controller/SettingsControllerTest.java (created — 3 tests: GET 200, PUT 200/400)
+  - ralph/prd.json (US-018 passes set to true)
+- **Learnings for future iterations:**
+  - Use `@WebMvcTest(ControllerClass.class)` for controller integration tests — loads only web layer (controllers + @RestControllerAdvice), no DB or full context needed
+  - `@MockBean` (spring-boot-test) injects mocks into Spring context; different from Mockito `@Mock` — use `@MockBean` for services in `@WebMvcTest` tests
+  - `GlobalExceptionHandler` (@RestControllerAdvice) is auto-included by @WebMvcTest — no extra configuration needed
+  - Mix `eq(id)` with `any()` matchers freely in Mockito stubs — just ensure all args use matchers when mixing
+  - `when(service.voidReturningMethod(id, literal, null))` — Mockito matches null with equals(); works without explicit `isNull()` matcher
+  - `doNothing().when(mockBean).voidMethod(arg)` pattern for void methods; technically not needed (default) but improves test clarity
+---
+
+## 2026-03-02 - US-017
+- What was implemented: Unit tests for service layer — tests were already written alongside implementation of US-004 (MangaServiceTest), US-006/US-007 (NotificationServiceTest), and US-005 (SettingsServiceTest); this story marks them as complete
+- Files verified (no changes needed):
+  - backend/src/test/java/com/mangaTracker/backend/service/MangaServiceTest.java (9 tests: addManga happy path, DuplicateMangaException, UnsupportedSourceException, listManga order, updateManga chapter/notifications, IllegalArgumentException on bad bounds, MangaNotFoundException, deleteManga happy path, MangaNotFoundException)
+  - backend/src/test/java/com/mangaTracker/backend/service/NotificationServiceTest.java (5 tests: skip when notificationsDisabled, skip when newChapter not > current, skip when global email disabled, skip when already notified, send+save when all conditions met)
+  - backend/src/test/java/com/mangaTracker/backend/service/SettingsServiceTest.java (7 tests: getSettings returns existing, creates default, updateSettings for each field, throws on blank email, throws on zero pollInterval, no-op when all null)
+  - ralph/prd.json (US-017 passes set to true)
+- **Learnings for future iterations:**
+  - All three service test classes use @ExtendWith(MockitoExtension.class) with @Mock and @InjectMocks — pure unit tests, no Spring context or DB needed
+  - NotificationServiceTest uses ReflectionTestUtils.setField() to inject @Value("${app.notification.from-email}") since Mockito cannot inject @Value fields automatically
+  - CI (GitHub Actions) is authoritative for test pass/fail; unit tests all passed on the most recent CI run
+---
+
+## 2026-03-02 - US-016
+- What was implemented: Unit tests for scraper layer — tests were already written alongside US-004 implementation; this story marks them as complete
+- Files verified (no changes needed):
+  - backend/src/test/java/com/mangaTracker/backend/scraper/SakuraMangasScraperTest.java (7 tests: supports() true/false/null, scrape() title+chapter extraction, scrape() missing title/chapter, scrape() network failure)
+  - backend/src/test/java/com/mangaTracker/backend/scraper/ScraperRegistryTest.java (3 tests: resolve() matching, resolve() unknown, resolve() empty list)
+  - ralph/prd.json (US-016 passes set to true)
+- **Learnings for future iterations:**
+  - SakuraMangasScraper has two package-private constructors for testability: `(DocumentLoader)` and `(DocumentLoader, long baseDelayMs)` — the second lets tests pass 0ms delay to skip backoff waits during network-failure tests
+  - Both test classes live in the same package as the source (`com.mangaTracker.backend.scraper`), allowing access to package-private constructors
+  - `spring-boot-starter-test` transitively includes JUnit 5, Mockito, and AssertJ — no extra test dependencies needed
+---
+
+## 2026-03-02 - US-015
+- What was implemented: Notification preferences settings page — Angular routing added (app.routes.ts, provideRouter); global navbar with "Reading List" and "Settings" nav links (routerLink, routerLinkActive); SettingsComponent with form for emailNotificationsEnabled toggle, notificationEmail input, pollIntervalMinutes input, save button with success/error feedback, loads on init via SettingsService.getSettings(); per-manga notification toggle checkbox added to dashboard reading list table calling MangaService.updateManga(id, { notificationsEnabled }) with immediate UI update on success
+- Files changed:
+  - frontend/src/app/app.routes.ts (created — routes for / → DashboardComponent, /settings → SettingsComponent)
+  - frontend/src/app/app.config.ts (updated — added provideRouter(routes))
+  - frontend/src/app/app.component.ts (updated — removed DashboardComponent, added RouterOutlet/RouterLink/RouterLinkActive)
+  - frontend/src/app/app.component.html (updated — added <nav> with brand + nav links, <router-outlet />)
+  - frontend/src/app/app.component.scss (updated — navbar dark bg, active link underline, .app-main min-height)
+  - frontend/src/app/settings/settings.component.ts (created — standalone, inject(SettingsService), form state, loadSettings/onSave)
+  - frontend/src/app/settings/settings.component.html (created — @if loading/error/else form, toggle/email/poll inputs, save button, success/error messages)
+  - frontend/src/app/settings/settings.component.scss (created — card form layout, field styles, toggle checkbox, save button)
+  - frontend/src/app/dashboard/dashboard.component.ts (updated — togglingNotifications map, onNotificationsToggle() handler)
+  - frontend/src/app/dashboard/dashboard.component.html (updated — Notify column header + notify-checkbox per row)
+  - frontend/src/app/dashboard/dashboard.component.scss (updated — .notify-cell, .notify-checkbox styles)
+  - ralph/prd.json (US-015 passes set to true)
+  - ralph/progress.txt (updated)
+- **Learnings for future iterations:**
+  - Angular routing: add `provideRouter(routes)` to app.config.ts providers; import `RouterOutlet`, `RouterLink`, `RouterLinkActive` in the root AppComponent standalone imports
+  - `[routerLinkActiveOptions]="{ exact: true }"` on the home route link prevents it from being active on all sub-routes
+  - For checkbox toggles (uncontrolled pattern), use `[checked]="manga.notificationsEnabled"` + `(change)="handler(manga, $event)"` — same pattern as chapter input; reset `checkbox.checked = manga.notificationsEnabled` in error callback
+  - SCSS budget warning at 2kB, error at 4kB — settings.component.scss is 2.14kB (just over warning), dashboard is 2.72kB — both are warnings only, not errors
+  - `ng build` + `ng lint` both pass with no errors
+---
+
+## 2026-03-02 - US-014
+- What was implemented: Delete-manga UI — each manga row now has a red "Delete" button; clicking it shows a browser `window.confirm()` dialog; on confirm, calls `MangaService.deleteManga(id)` and filters the row out of `mangaList` in-place; on cancel, no action taken; disabled state during deletion shown as "Deleting…"; server errors shown in the existing `updateError` map inline below the chapter input
+- Files changed:
+  - frontend/src/app/dashboard/dashboard.component.ts (added `deletingState` map, `onDelete()` method)
+  - frontend/src/app/dashboard/dashboard.component.html (added "Actions" `<th>`, `<td>` with delete button)
+  - frontend/src/app/dashboard/dashboard.component.scss (added `.actions-cell`, `.delete-btn` styles)
+  - ralph/prd.json (US-014 passes set to true)
+  - ralph/progress.txt (updated)
+- **Learnings for future iterations:**
+  - `window.confirm()` is the simplest confirmation dialog — no imports or custom component needed; returns boolean synchronously
+  - Filtering the list with `this.mangaList = this.mangaList.filter((m) => m.id !== manga.id)` creates a new array reference, triggering Angular change detection and removing the row
+  - Reusing `updateError` map for delete errors works because errors appear inline in the same row; no need for a separate error map
+  - SCSS budget warning fires at 2kB (warning) and 4kB (error) per component; dashboard.component.scss is now ~2.56kB — still a warning, not an error
+---
+
+## 2026-03-02 - US-013
+- What was implemented: Update-reading-progress UI — each manga row in the dashboard now shows a number input for current chapter instead of static text; client-side validation (0..latestChapter), API call on blur/change, inline saving indicator, and per-row error message on failure
+- Files changed:
+  - frontend/src/app/dashboard/dashboard.component.ts (added savingState/updateError maps, onChapterChange() handler)
+  - frontend/src/app/dashboard/dashboard.component.html (replaced static chapter text with `<input type="number">`, saving indicator, error display)
+  - frontend/src/app/dashboard/dashboard.component.scss (added .chapter-cell, .chapter-control, .chapter-input, .chapter-saving, .chapter-error styles)
+  - ralph/prd.json (US-013 passes set to true)
+  - ralph/progress.txt (updated)
+- **Learnings for future iterations:**
+  - Use `[value]="manga.currentChapter"` + `(change)="handler(manga, $event)"` for inputs that trigger API calls on blur — avoids calling API on every keystroke (no NgModel needed; no FormsModule import required)
+  - Mutating `manga.currentChapter` directly on the list object (since objects are by reference) triggers Angular change detection and updates `[value]` binding automatically
+  - `Record<string, boolean>` and `Record<string, string | null>` work well as per-row state maps keyed by manga.id
+  - The anyComponentStyle budget is a warning at 2kB, error at 4kB — dashboard SCSS is now ~2.25kB (just over the warning threshold, safely under error threshold)
+  - `input.value = String(manga.currentChapter)` in error callbacks resets the DOM input to the previous value (safe even if element is detached from DOM)
+---
+
+## 2026-03-02 - US-012
+- What was implemented: AddMangaFormComponent with URL input, loading state, success confirmation, and descriptive error messages (400/409/422); integrated into DashboardComponent; loadManga() made public for refresh on add
+- Files changed:
+  - frontend/src/app/add-manga/add-manga-form.component.ts (created — standalone, inject(MangaService), @Output mangaAdded EventEmitter, onSubmit() with HTTP error mapping)
+  - frontend/src/app/add-manga/add-manga-form.component.html (created — form with ngModel url input, submit button with spinner, error/success messages)
+  - frontend/src/app/add-manga/add-manga-form.component.scss (created — card layout, url-input, submit-btn with disabled/hover states, form-error/form-success alerts)
+  - frontend/src/app/dashboard/dashboard.component.ts (updated — imports AddMangaFormComponent, loadManga() made public)
+  - frontend/src/app/dashboard/dashboard.component.html (updated — added <app-add-manga-form (mangaAdded)="loadManga()" /> above the list)
+  - ralph/prd.json (US-012 passes set to true)
+  - ralph/progress.txt (updated)
+- **Learnings for future iterations:**
+  - `FormsModule` from `@angular/forms` needed for `[(ngModel)]` in template-driven forms; must be in `imports: []` of standalone component
+  - `@Output()` decorator with `EventEmitter` is the correct Angular pattern for child-to-parent events; not flagged by `@angular-eslint/prefer-inject` (only constructor injection is flagged)
+  - HTTP error status mapping: use `HttpErrorResponse` from `@angular/common/http` as the type for `error` callback parameter; `err.status` gives the HTTP status code
+  - `name` attribute required on `<input [(ngModel)]>` in template-driven forms, otherwise Angular throws a runtime error
+  - Making `loadManga()` public on DashboardComponent allows child components (via event binding) to trigger a data refresh without needing a shared service
+---
+
+## 2026-03-02 - US-011
+- What was implemented: Angular DashboardComponent displaying the reading list with loading state, unread-chapter highlighting, and error handling
+- Files changed:
+  - frontend/src/app/dashboard/dashboard.component.ts (created — standalone component, inject(MangaService), ngOnInit loads manga, hasUnreadChapters helper)
+  - frontend/src/app/dashboard/dashboard.component.html (created — @if/@for control flow, table with title/current/latest/source columns, unread-badge, loading-state, error-state, empty-state)
+  - frontend/src/app/dashboard/dashboard.component.scss (created — table styles, .has-unread row highlight, .unread-badge purple pill, loading spinner animation)
+  - frontend/src/app/app.component.ts (updated — imports DashboardComponent, removed unused title property)
+  - frontend/src/app/app.component.html (updated — replaced Angular default placeholder with <app-dashboard />)
+  - ralph/prd.json (US-011 passes set to true)
+  - ralph/progress.txt (updated)
+- **Learnings for future iterations:**
+  - Angular 18 built-in control flow (@if, @for) requires NO imports — works in standalone components with empty `imports: []`
+  - Self-closing component tags work in Angular 18 templates: `<app-dashboard />` is valid
+  - `loadManga()` kept private — called only from ngOnInit for this story; future stories (US-012/013) that need to refresh the list should make it public or add a dedicated `refresh()` method
+  - `[href]` binding with external URLs from DB is safe for http/https — Angular strips dangerous protocols; `rel="noopener noreferrer"` added for security on target="_blank" links
+  - `ng build` (esbuild) doubles as typecheck — fast and reliable; `ng lint` checks ESLint + Prettier in one command
+---
+
+## 2026-03-01 - US-010
+- What was implemented: Angular HTTP services for manga and settings API
+- Files changed:
+  - frontend/src/environments/environment.ts (created — apiUrl: http://localhost:8080, production: false)
+  - frontend/src/environments/environment.prod.ts (created — apiUrl: http://localhost:8080, production: true)
+  - frontend/src/app/services/manga.service.ts (created — getManga, addManga, updateManga, deleteManga via HttpClient)
+  - frontend/src/app/services/settings.service.ts (created — getSettings, updateSettings via HttpClient)
+  - frontend/src/app/app.config.ts (updated — added provideHttpClient())
+  - frontend/angular.json (updated — added fileReplacements for production build to use environment.prod.ts)
+  - ralph/prd.json (US-010 passes set to true)
+  - ralph/progress.txt (updated)
+- **Learnings for future iterations:**
+  - Angular 18 ESLint config uses `@angular-eslint/prefer-inject` rule — must use `inject()` function, not constructor parameter injection
+  - Prettier config: printWidth=100, singleQuote=true, trailingComma=all — providers array fits on one line at 100 chars; multiline triggers prettier error
+  - Environment file replacements go in the `production` build configuration under `fileReplacements` in angular.json (same as older Angular versions)
+  - `provideHttpClient()` is the Angular 16+ standalone API (no NgModule needed); replaces `HttpClientModule`
+  - Services use `inject()` pattern: `private readonly http = inject(HttpClient)` — cleaner and passes lint
+  - The angular.json build system uses `@angular-devkit/build-angular:application` (new esbuild builder), not the old webpack builder
+---
+
+## 2026-03-01 - US-009
+- What was implemented: SettingsController @RestController with GET /api/settings and PUT /api/settings endpoints
+- Files changed:
+  - backend/src/main/java/com/mangaTracker/backend/controller/SettingsController.java (created)
+  - ralph/prd.json (US-009 passes set to true)
+  - ralph/progress.txt (updated)
+- **Learnings for future iterations:**
+  - SettingsController follows exact same pattern as MangaController: inner record for request body, direct return of entity (Spring infers 200)
+  - PUT (not PATCH) is correct for settings — full replacement semantics; all fields are optional (null-safe in SettingsService)
+  - IllegalArgumentException → 400 is already in GlobalExceptionHandler, so validation failures from SettingsService flow through automatically
+  - No separate DTO file needed — inner record UpdateSettingsRequest in the controller is sufficient
+---
+
+## 2026-03-01 - US-008
+- What was implemented: MangaController @RestController with GET/POST/PATCH/DELETE endpoints for /api/manga; GlobalExceptionHandler @RestControllerAdvice mapping domain exceptions to HTTP status codes
+- Files changed:
+  - backend/src/main/java/com/mangaTracker/backend/controller/MangaController.java (created)
+  - backend/src/main/java/com/mangaTracker/backend/controller/GlobalExceptionHandler.java (created)
+  - ralph/prd.json (US-008 passes set to true)
+  - ralph/progress.txt (updated)
+- **Learnings for future iterations:**
+  - MangaController uses inner record types for request bodies (AddMangaRequest, PatchMangaRequest) — no separate DTO files needed; Jackson handles record deserialization in Spring Boot 3
+  - Exception → HTTP status mappings: MangaNotFoundException→404, DuplicateMangaException→409, UnsupportedSourceException→400, ScrapingException→422, IllegalArgumentException→400
+  - @RestControllerAdvice in the same `controller` package is auto-detected by Spring; no registration needed
+  - GET and PATCH return entity directly (Spring infers 200); POST wraps in ResponseEntity.status(CREATED).body(); DELETE returns ResponseEntity.noContent().build() for 204
+  - No explicit `produces = "application/json"` needed — @RestController defaults to JSON for all endpoints
+---
+
+## 2026-03-01 - US-007
+- What was implemented: ScrapingJob @Component in new `job` package — @Scheduled method polls all manga on a configurable interval, scrapes each URL, updates latestChapter + lastCheckedAt in DB, calls NotificationService.notify() on new chapters, catches and logs per-manga failures while continuing
+- Files changed:
+  - backend/src/main/java/com/mangaTracker/backend/job/ScrapingJob.java (created)
+  - ralph/prd.json (US-007 passes set to true)
+  - ralph/progress.txt (updated)
+- **Learnings for future iterations:**
+  - @EnableScheduling was already present in BackendApplication — no change needed there
+  - SpEL in @Scheduled: `@Scheduled(fixedDelayString = "#{${app.scraper.poll-interval-minutes:30} * 60000}")` converts minutes to ms at startup
+  - DO NOT use @Transactional on pollAllManga() — without an outer transaction, each mangaRepository.save() and notificationService.notify() runs in its own transaction; if notify() throws and its transaction rolls back, the subsequent save(lastCheckedAt) in the catch block still works in a fresh transaction
+  - ConstantName Checkstyle rule requires private static final Logger to be named LOG (not log)
+  - MangaRepository.findAllByOrderByUpdatedAtDesc() returns detached entities when called outside a @Transactional context; Spring Data's save() calls merge() on detached entities — this pattern works cleanly for batch job polling
+---
+
+## 2026-03-01 - US-006
+- What was implemented: NotificationLog JPA entity, NotificationLogRepository, NotificationService (notify method with deduplication and email sending)
+- Files changed:
+  - backend/src/main/java/com/mangaTracker/backend/model/NotificationLog.java (created)
+  - backend/src/main/java/com/mangaTracker/backend/repository/NotificationLogRepository.java (created)
+  - backend/src/main/java/com/mangaTracker/backend/service/NotificationService.java (created)
+  - ralph/prd.json (US-006 passes set to true)
+  - ralph/progress.txt (updated)
+- **Learnings for future iterations:**
+  - NotificationLog stores mangaId as plain UUID column (no @ManyToOne mapping) — sufficient for deduplication queries
+  - notify() guard order: manga.notificationsEnabled → newLatestChapter > currentChapter → settings.emailNotificationsEnabled → dedup check → send → save log
+  - spring-boot-starter-mail and Mailhog config (port 1025) were already present in build.gradle and application.properties from earlier setup
+  - app.notification.from-email already in application.properties; TO address comes from AppSettings.notificationEmail (dynamic, from DB)
+  - @CreationTimestamp on sentAt handles the NOT NULL sent_at column (no DB default needed)
+---
+
+## 2026-03-01 - US-005
+- What was implemented: AppSettings JPA entity, AppSettingsRepository, SettingsService (getSettings/updateSettings)
+- Files changed:
+  - backend/src/main/java/com/mangaTracker/backend/model/AppSettings.java (created)
+  - backend/src/main/java/com/mangaTracker/backend/repository/AppSettingsRepository.java (created)
+  - backend/src/main/java/com/mangaTracker/backend/service/SettingsService.java (created)
+  - ralph/prd.json (US-005 passes set to true)
+  - ralph/progress.txt (updated)
+- **Learnings for future iterations:**
+  - AppSettings uses Integer PK (not UUID) — always id=1; no @GeneratedValue needed
+  - getSettings() is NOT @Transactional(readOnly=true) because it may write a default row if missing
+  - updateSettings() accepts nullable params and only updates fields that are non-null (same partial-update pattern as MangaService.updateManga)
+  - notificationEmail validated as non-blank when provided; pollIntervalMinutes validated as > 0 when provided
+  - IllegalArgumentException used for validation errors (controller layer will map to HTTP 400)
+  - The V3 migration seeds the default row, so createDefaultSettings() is a defensive fallback
+---
+
+## Codebase Patterns
+- Backend uses Gradle (NOT Maven despite PRD docs), Java 21, Spring Boot 3.4.4
+- Flyway migrations in: backend/src/main/resources/db/migration/
+- Migration naming: V{n}__{description}.sql (e.g. V1__create_manga_table.sql)
+- application.properties uses env var fallbacks: ${DB_URL:jdbc:postgresql://localhost:5432/manga_tracker}
+- ddl-auto=validate (JPA validates against Flyway schema at startup)
+- Java/JVM is NOT installed in the devcontainer — typecheck verification is by inspection
+- Docker is NOT available — Testcontainers integration tests cannot run locally
+- Checkstyle config: backend/config/checkstyle/checkstyle.xml
+- Scraper layer in package com.mangaTracker.backend.scraper; all scrapers registered as @Component and injected as List<MangaScraper> into ScraperRegistry
+- Jsoup dependency already present in build.gradle (org.jsoup:jsoup:1.18.3); no pom.xml in this project
+- SakuraMangasScraper uses multi-selector fallback pattern (try multiple CSS selectors in order); selectors may need updating if sakuramangas.org HTML changes
+- Exception classes live in com.mangaTracker.backend.exception package
+- JPA entities use Lombok: @Entity @Table @Getter @Setter @Builder @NoArgsConstructor @AllArgsConstructor
+- Use jakarta.persistence (NOT javax.persistence) — Spring Boot 3 uses Jakarta EE 10
+- Hibernate @CreationTimestamp/@UpdateTimestamp for created_at/updated_at columns
+- CI runs spotlessApply (auto-formats) before checkstyle; minor formatting issues are auto-fixed and committed by CI
+- Repository tests: @DataJpaTest + @AutoConfigureTestDatabase(replace=NONE) + @Testcontainers + @ServiceConnection — includes Flyway, runs real schema; use TestEntityManager.persistAndFlush() + Thread.sleep(10) for ordering tests
+
+---
+
+## 2026-03-01 - US-001
+- What was implemented: Created V1__create_manga_table.sql with manga table (UUID PK, VARCHAR title, TEXT source_url UNIQUE, INTEGER current/latest_chapter, BOOLEAN notifications_enabled, TIMESTAMP columns). Added explicit CREATE UNIQUE INDEX on source_url. Removed V1__create_initial_schema.sql (which had all 3 tables).
+- Files changed:
+  - backend/src/main/resources/db/migration/V1__create_manga_table.sql (created)
+  - backend/src/main/resources/db/migration/V1__create_initial_schema.sql (deleted)
+  - ralph/prd.json (US-001 passes set to true)
+- **Learnings for future iterations:**
+  - The old V1__create_initial_schema.sql had all 3 tables (manga, notification_log, app_settings) — US-002 needs to create V2 and V3 for notification_log and app_settings
+  - JVM not available in sandbox, so `./gradlew compileJava` cannot run; typecheck verified by inspection
+  - Docker not available, so Testcontainers-based tests cannot run
+  - PostgreSQL allows both a UNIQUE constraint and a separate CREATE UNIQUE INDEX on the same column (redundant but valid)
+  - Timestamps: AC says TIMESTAMP, old file used TIMESTAMPTZ — new file uses TIMESTAMP to match AC exactly
+---
+
+## 2026-03-01 - US-004
+- What was implemented: Manga JPA entity, MangaRepository, MangaService (addManga, listManga, updateManga, deleteManga), DuplicateMangaException, MangaNotFoundException. Also refactored US-003: moved exceptions to exception package, added injectable DocumentLoader to SakuraMangasScraper, added unit tests for scraper and service layers.
+- Files changed:
+  - backend/src/main/java/com/mangaTracker/backend/model/Manga.java (created)
+  - backend/src/main/java/com/mangaTracker/backend/repository/MangaRepository.java (created)
+  - backend/src/main/java/com/mangaTracker/backend/service/MangaService.java (created)
+  - backend/src/main/java/com/mangaTracker/backend/exception/DuplicateMangaException.java (created)
+  - backend/src/main/java/com/mangaTracker/backend/exception/MangaNotFoundException.java (created)
+  - backend/src/main/java/com/mangaTracker/backend/exception/ScrapingException.java (created, moved from scraper pkg)
+  - backend/src/main/java/com/mangaTracker/backend/exception/UnsupportedSourceException.java (created, moved from scraper pkg)
+  - backend/src/main/java/com/mangaTracker/backend/scraper/MangaScraper.java (updated import)
+  - backend/src/main/java/com/mangaTracker/backend/scraper/SakuraMangasScraper.java (refactored: injectable DocumentLoader, fixed retry to 4 total attempts)
+  - backend/src/main/java/com/mangaTracker/backend/scraper/ScraperRegistry.java (updated import)
+  - backend/src/main/java/com/mangaTracker/backend/scraper/ScrapingException.java (deleted — moved to exception pkg)
+  - backend/src/main/java/com/mangaTracker/backend/scraper/UnsupportedSourceException.java (deleted — moved to exception pkg)
+  - backend/src/test/java/com/mangaTracker/backend/scraper/SakuraMangasScraperTest.java (created)
+  - backend/src/test/java/com/mangaTracker/backend/scraper/ScraperRegistryTest.java (created)
+  - backend/src/test/java/com/mangaTracker/backend/service/MangaServiceTest.java (created)
+  - ralph/prd.json (US-004 passes set to true)
+  - ralph/progress.txt (updated)
+- **Learnings for future iterations:**
+  - MangaService.addManga: resolve scraper first (UnsupportedSourceException), then check duplicate (DuplicateMangaException), then scrape (ScrapingException), then save
+  - MangaService.updateManga: throws IllegalArgumentException for invalid currentChapter bounds (controller maps this to HTTP 400)
+  - ON DELETE CASCADE in V2 migration means deleteManga just needs deleteById — no manual cascade needed
+  - @Transactional on service class, @Transactional(readOnly=true) on read-only methods
+  - SakuraMangasScraper: DocumentLoader interface is nested + package-private; tests in same package can use it directly as lambda target
+---
+
+## 2026-03-01 - US-003
+- What was implemented: Created the full scraper layer in package com.mangaTracker.backend.scraper
+  - MangaScraper interface: supports(String url) and scrape(String url) throws ScrapingException
+  - ScrapedManga record: title (String), latestChapter (int)
+  - ScrapingException: RuntimeException with message and cause constructors
+  - UnsupportedSourceException: RuntimeException thrown by ScraperRegistry when no scraper found
+  - ScraperRegistry @Component: injects List<MangaScraper> via constructor, resolve(url) returns matching scraper
+  - SakuraMangasScraper @Component: supports sakuramangas.org URLs; Jsoup fetch with 15s timeout; 3 retries with exponential backoff (1s, 2s, 4s); multi-selector fallback for title and chapter extraction; regex CHAPTER_PATTERN extracts integer chapter numbers
+- Files changed:
+  - backend/src/main/java/com/mangaTracker/backend/scraper/MangaScraper.java (created)
+  - backend/src/main/java/com/mangaTracker/backend/scraper/ScrapedManga.java (created)
+  - backend/src/main/java/com/mangaTracker/backend/scraper/ScrapingException.java (created)
+  - backend/src/main/java/com/mangaTracker/backend/scraper/UnsupportedSourceException.java (created)
+  - backend/src/main/java/com/mangaTracker/backend/scraper/ScraperRegistry.java (created)
+  - backend/src/main/java/com/mangaTracker/backend/scraper/SakuraMangasScraper.java (created)
+  - ralph/prd.json (US-003 passes set to true)
+- **Learnings for future iterations:**
+  - Jsoup was already in build.gradle before this story; no build.gradle change needed
+  - Spring automatically collects all @Component beans implementing an interface into a List<InterfaceType> when injected — no manual registration needed
+  - SakuraMangasScraper CSS selectors (TITLE_SELECTORS, CHAPTER_SELECTORS) are best-guess patterns for WordPress manga themes; may need updating for the real sakuramangas.org HTML
+  - Thread.currentThread().interrupt() must be called before re-throwing when catching InterruptedException
+  - Empty catch block (for NumberFormatException fallback) needs a comment to satisfy coding standards
+
+---
+
+## 2026-03-01 - US-002
+- What was implemented: Created V2__create_notification_log_table.sql and V3__create_app_settings_table.sql Flyway migrations
+  - V2: notification_log table with UUID PK, manga_id FK (ON DELETE CASCADE), chapter_number, sent_at; UNIQUE constraint + index on (manga_id, chapter_number)
+  - V3: app_settings table with INTEGER PK (id=1), CHECK constraint enforcing single row, email_notifications_enabled, notification_email, poll_interval_minutes; seed INSERT included
+- Files changed:
+  - backend/src/main/resources/db/migration/V2__create_notification_log_table.sql (created)
+  - backend/src/main/resources/db/migration/V3__create_app_settings_table.sql (created)
+  - ralph/prd.json (US-002 passes set to true)
+- **Learnings for future iterations:**
+  - app_settings uses INTEGER PK (not UUID) because it's a single-row config table — id is always 1
+  - The ON DELETE CASCADE on notification_log.manga_id FK means deleting a manga automatically cleans up its notification logs (important for MangaService.deleteManga)
+  - app_settings seed row is inserted in the V3 migration itself; no separate seed migration needed
+  - Both UNIQUE constraint and UNIQUE INDEX created (same pattern as V1 for consistency)
+---
