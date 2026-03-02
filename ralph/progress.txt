@@ -1,3 +1,27 @@
+## 2026-03-02 - US-015
+- What was implemented: Notification preferences settings page — Angular routing added (app.routes.ts, provideRouter); global navbar with "Reading List" and "Settings" nav links (routerLink, routerLinkActive); SettingsComponent with form for emailNotificationsEnabled toggle, notificationEmail input, pollIntervalMinutes input, save button with success/error feedback, loads on init via SettingsService.getSettings(); per-manga notification toggle checkbox added to dashboard reading list table calling MangaService.updateManga(id, { notificationsEnabled }) with immediate UI update on success
+- Files changed:
+  - frontend/src/app/app.routes.ts (created — routes for / → DashboardComponent, /settings → SettingsComponent)
+  - frontend/src/app/app.config.ts (updated — added provideRouter(routes))
+  - frontend/src/app/app.component.ts (updated — removed DashboardComponent, added RouterOutlet/RouterLink/RouterLinkActive)
+  - frontend/src/app/app.component.html (updated — added <nav> with brand + nav links, <router-outlet />)
+  - frontend/src/app/app.component.scss (updated — navbar dark bg, active link underline, .app-main min-height)
+  - frontend/src/app/settings/settings.component.ts (created — standalone, inject(SettingsService), form state, loadSettings/onSave)
+  - frontend/src/app/settings/settings.component.html (created — @if loading/error/else form, toggle/email/poll inputs, save button, success/error messages)
+  - frontend/src/app/settings/settings.component.scss (created — card form layout, field styles, toggle checkbox, save button)
+  - frontend/src/app/dashboard/dashboard.component.ts (updated — togglingNotifications map, onNotificationsToggle() handler)
+  - frontend/src/app/dashboard/dashboard.component.html (updated — Notify column header + notify-checkbox per row)
+  - frontend/src/app/dashboard/dashboard.component.scss (updated — .notify-cell, .notify-checkbox styles)
+  - ralph/prd.json (US-015 passes set to true)
+  - ralph/progress.txt (updated)
+- **Learnings for future iterations:**
+  - Angular routing: add `provideRouter(routes)` to app.config.ts providers; import `RouterOutlet`, `RouterLink`, `RouterLinkActive` in the root AppComponent standalone imports
+  - `[routerLinkActiveOptions]="{ exact: true }"` on the home route link prevents it from being active on all sub-routes
+  - For checkbox toggles (uncontrolled pattern), use `[checked]="manga.notificationsEnabled"` + `(change)="handler(manga, $event)"` — same pattern as chapter input; reset `checkbox.checked = manga.notificationsEnabled` in error callback
+  - SCSS budget warning at 2kB, error at 4kB — settings.component.scss is 2.14kB (just over warning), dashboard is 2.72kB — both are warnings only, not errors
+  - `ng build` + `ng lint` both pass with no errors
+---
+
 ## 2026-03-02 - US-014
 - What was implemented: Delete-manga UI — each manga row now has a red "Delete" button; clicking it shows a browser `window.confirm()` dialog; on confirm, calls `MangaService.deleteManga(id)` and filters the row out of `mangaList` in-place; on cancel, no action taken; disabled state during deletion shown as "Deleting…"; server errors shown in the existing `updateError` map inline below the chapter input
 - Files changed:
