@@ -1,3 +1,19 @@
+## 2026-03-01 - US-006
+- What was implemented: NotificationLog JPA entity, NotificationLogRepository, NotificationService (notify method with deduplication and email sending)
+- Files changed:
+  - backend/src/main/java/com/mangaTracker/backend/model/NotificationLog.java (created)
+  - backend/src/main/java/com/mangaTracker/backend/repository/NotificationLogRepository.java (created)
+  - backend/src/main/java/com/mangaTracker/backend/service/NotificationService.java (created)
+  - ralph/prd.json (US-006 passes set to true)
+  - ralph/progress.txt (updated)
+- **Learnings for future iterations:**
+  - NotificationLog stores mangaId as plain UUID column (no @ManyToOne mapping) — sufficient for deduplication queries
+  - notify() guard order: manga.notificationsEnabled → newLatestChapter > currentChapter → settings.emailNotificationsEnabled → dedup check → send → save log
+  - spring-boot-starter-mail and Mailhog config (port 1025) were already present in build.gradle and application.properties from earlier setup
+  - app.notification.from-email already in application.properties; TO address comes from AppSettings.notificationEmail (dynamic, from DB)
+  - @CreationTimestamp on sentAt handles the NOT NULL sent_at column (no DB default needed)
+---
+
 ## 2026-03-01 - US-005
 - What was implemented: AppSettings JPA entity, AppSettingsRepository, SettingsService (getSettings/updateSettings)
 - Files changed:
