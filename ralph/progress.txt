@@ -1,3 +1,18 @@
+## 2026-03-02 - US-022
+- What was implemented: Verified and completed Docker setup for Angular frontend + full-stack docker-compose.yml; fixed production environment to use relative API URL for nginx proxy
+- Files changed:
+  - frontend/src/environments/environment.prod.ts (updated — apiUrl changed from 'http://localhost:8080' to '' so API calls go through nginx proxy /api/ → backend:8080 in Docker)
+  - frontend/Dockerfile (pre-existing — multi-stage: node:20-alpine builds ng build --configuration production; nginx:1.27-alpine serves dist/frontend/browser)
+  - frontend/nginx.conf (pre-existing — proxies /api/ to http://backend:8080; SPA fallback /index.html)
+  - docker-compose.yml (pre-existing — db:postgres:16-alpine, mailhog, backend:8080, frontend:4200:80 with all healthchecks and depends_on)
+  - ralph/prd.json (US-022 passes set to true)
+- **Learnings for future iterations:**
+  - When nginx proxies /api/ to backend, Angular production build must use apiUrl: '' (empty string) so HTTP calls become relative paths like /api/manga — absolute URLs like http://localhost:8080/api/manga bypass nginx and fail inside Docker containers
+  - Frontend Dockerfile copies dist to /usr/share/nginx/html — Angular 18 esbuild output is at dist/{projectName}/browser/ not just dist/{projectName}/
+  - nginx.conf location /api/ with proxy_pass http://backend:8080 (no trailing slash) preserves the full /api/... path when forwarding to backend
+  - docker-compose healthchecks use wget --spider for Spring Boot actuator; Spring Boot starts in ~30s so start_period: 30s prevents premature health failures
+---
+
 ## 2026-03-02 - US-021
 - What was implemented: Dockerized backend with multi-stage Dockerfile; Dockerfile already existed in backend/ from a prior session but was missing explicit ENV declarations for the required runtime variables
 - Files changed:
