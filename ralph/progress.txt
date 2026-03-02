@@ -1,3 +1,16 @@
+## 2026-03-02 - US-017
+- What was implemented: Unit tests for service layer — tests were already written alongside implementation of US-004 (MangaServiceTest), US-006/US-007 (NotificationServiceTest), and US-005 (SettingsServiceTest); this story marks them as complete
+- Files verified (no changes needed):
+  - backend/src/test/java/com/mangaTracker/backend/service/MangaServiceTest.java (9 tests: addManga happy path, DuplicateMangaException, UnsupportedSourceException, listManga order, updateManga chapter/notifications, IllegalArgumentException on bad bounds, MangaNotFoundException, deleteManga happy path, MangaNotFoundException)
+  - backend/src/test/java/com/mangaTracker/backend/service/NotificationServiceTest.java (5 tests: skip when notificationsDisabled, skip when newChapter not > current, skip when global email disabled, skip when already notified, send+save when all conditions met)
+  - backend/src/test/java/com/mangaTracker/backend/service/SettingsServiceTest.java (7 tests: getSettings returns existing, creates default, updateSettings for each field, throws on blank email, throws on zero pollInterval, no-op when all null)
+  - ralph/prd.json (US-017 passes set to true)
+- **Learnings for future iterations:**
+  - All three service test classes use @ExtendWith(MockitoExtension.class) with @Mock and @InjectMocks — pure unit tests, no Spring context or DB needed
+  - NotificationServiceTest uses ReflectionTestUtils.setField() to inject @Value("${app.notification.from-email}") since Mockito cannot inject @Value fields automatically
+  - CI (GitHub Actions) is authoritative for test pass/fail; unit tests all passed on the most recent CI run
+---
+
 ## 2026-03-02 - US-016
 - What was implemented: Unit tests for scraper layer — tests were already written alongside US-004 implementation; this story marks them as complete
 - Files verified (no changes needed):
