@@ -61,10 +61,7 @@ public class NotificationService {
     mailSender.send(message);
 
     NotificationLog log =
-        NotificationLog.builder()
-            .mangaId(manga.getId())
-            .chapterNumber(newLatestChapter)
-            .build();
+        NotificationLog.builder().mangaId(manga.getId()).chapterNumber(newLatestChapter).build();
     notificationLogRepository.save(log);
   }
 }
