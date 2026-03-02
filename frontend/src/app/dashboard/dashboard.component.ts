@@ -30,16 +30,19 @@ export class DashboardComponent implements OnInit {
   loadManga(): void {
     this.isLoading = true;
     this.error = null;
-    this.mangaService.getManga().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (manga) => {
-        this.mangaList = manga;
-        this.isLoading = false;
-      },
-      error: () => {
-        this.error = 'Failed to load manga list. Please try again.';
-        this.isLoading = false;
-      },
-    });
+    this.mangaService
+      .getManga()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (manga) => {
+          this.mangaList = manga;
+          this.isLoading = false;
+        },
+        error: () => {
+          this.error = 'Failed to load manga list. Please try again.';
+          this.isLoading = false;
+        },
+      });
   }
 
   hasUnreadChapters(manga: Manga): boolean {
