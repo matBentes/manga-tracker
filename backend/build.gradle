@@ -71,6 +71,18 @@ jacocoTestReport {
     }
 }
 
+jacocoTestCoverageVerification {
+    dependsOn jacocoTestReport
+    violationRules {
+        rule {
+            excludes = ['com.mangaTracker.backend.BackendApplication']
+            limit {
+                minimum = 0.70
+            }
+        }
+    }
+}
+
 checkstyle {
     toolVersion = '10.21.4'
     configFile = file('config/checkstyle/checkstyle.xml')

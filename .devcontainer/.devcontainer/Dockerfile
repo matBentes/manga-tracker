@@ -25,7 +25,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   jq \
   nano \
   vim \
-  && apt-get clean && rm -rf /var/lib/apt/lists/*
+  openjdk-21-jdk \
+  && apt-get clean && rm -rf /var/lib/apt/lists/* \
+  && ln -s "$(dirname "$(dirname "$(readlink -f "$(which java)")")")" /usr/lib/jvm/java-21-current
+
+ENV JAVA_HOME=/usr/lib/jvm/java-21-current
+ENV PATH=$PATH:$JAVA_HOME/bin
 
 # Ensure default node user has access to /usr/local/share
 RUN mkdir -p /usr/local/share/npm-global && \
