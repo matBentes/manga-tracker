@@ -1,3 +1,23 @@
+## 2026-03-01 - US-010
+- What was implemented: Angular HTTP services for manga and settings API
+- Files changed:
+  - frontend/src/environments/environment.ts (created — apiUrl: http://localhost:8080, production: false)
+  - frontend/src/environments/environment.prod.ts (created — apiUrl: http://localhost:8080, production: true)
+  - frontend/src/app/services/manga.service.ts (created — getManga, addManga, updateManga, deleteManga via HttpClient)
+  - frontend/src/app/services/settings.service.ts (created — getSettings, updateSettings via HttpClient)
+  - frontend/src/app/app.config.ts (updated — added provideHttpClient())
+  - frontend/angular.json (updated — added fileReplacements for production build to use environment.prod.ts)
+  - ralph/prd.json (US-010 passes set to true)
+  - ralph/progress.txt (updated)
+- **Learnings for future iterations:**
+  - Angular 18 ESLint config uses `@angular-eslint/prefer-inject` rule — must use `inject()` function, not constructor parameter injection
+  - Prettier config: printWidth=100, singleQuote=true, trailingComma=all — providers array fits on one line at 100 chars; multiline triggers prettier error
+  - Environment file replacements go in the `production` build configuration under `fileReplacements` in angular.json (same as older Angular versions)
+  - `provideHttpClient()` is the Angular 16+ standalone API (no NgModule needed); replaces `HttpClientModule`
+  - Services use `inject()` pattern: `private readonly http = inject(HttpClient)` — cleaner and passes lint
+  - The angular.json build system uses `@angular-devkit/build-angular:application` (new esbuild builder), not the old webpack builder
+---
+
 ## 2026-03-01 - US-009
 - What was implemented: SettingsController @RestController with GET /api/settings and PUT /api/settings endpoints
 - Files changed:
