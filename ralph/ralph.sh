@@ -174,7 +174,7 @@ for i in $(seq 1 "$MAX_ITERATIONS"); do
         printf "│  ${YELLOW}⚠ CI failed — self-heal attempt %d/%d${RESET}\n" "$CI_FIX_ATTEMPT" "$MAX_FIX_ATTEMPTS"
 
         # Fetch the failed logs (cap at 200 lines to stay within context)
-        CI_LOGS=$(gh run view "$RUN_ID" --log-failed 2>/dev/null | head -200)
+        CI_LOGS=$(gh run view "$RUN_ID" --log-failed 2>/dev/null | head -50)
 
         # Ask Claude to fix
         FIX_PROMPT="CI failed for story ${STORY} (fix attempt ${CI_FIX_ATTEMPT}/${MAX_FIX_ATTEMPTS}).
