@@ -1,3 +1,17 @@
+## 2026-03-02 - US-023
+- What was implemented: Enabled Playwright E2E tests in the existing GitHub Actions CI workflow (.github/workflows/ci.yml); the file already had Stage 1 (format/lint) and Stage 2 (backend tests) implemented but Playwright E2E was commented out
+- Files changed:
+  - .github/workflows/ci.yml (updated — replaced commented-out Playwright section and removed Karma `npm test` step; added `npx playwright install --with-deps chromium` + `npm run e2e` as active steps in the tests job)
+  - ralph/prd.json (US-023 passes set to true)
+- **Learnings for future iterations:**
+  - The CI workflow had 4 stages: (1) format-lint, (2) tests (needs format-lint), (3) code-review (PR only), (4) build-deploy (main push only)
+  - Stage 1 uses `spotlessApply` + auto-commit pattern (auto-fixes Java formatting in CI) + Checkstyle; Angular uses `format:check` + `ng lint` + `ng build production`
+  - Stage 2 backend tests use `./gradlew test jacocoTestReport jacocoTestCoverageVerification` — this enforces 70% code coverage minimum
+  - Testcontainers works on `ubuntu-latest` because Docker is pre-installed; the existing postgres service container in the tests job is not used by Testcontainers (it starts its own), but doesn't cause conflicts
+  - Playwright E2E: `npx playwright install --with-deps chromium` then `npm run e2e`; GitHub Actions sets `CI=true` automatically so `reuseExistingServer: false` applies (Playwright starts `ng serve` itself)
+  - Karma (`npm test`) was removed — not in AC and requires ChromeHeadless which can be flaky; Playwright E2E tests cover the same user flows
+---
+
 ## 2026-03-02 - US-022
 - What was implemented: Verified and completed Docker setup for Angular frontend + full-stack docker-compose.yml; fixed production environment to use relative API URL for nginx proxy
 - Files changed:

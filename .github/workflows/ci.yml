@@ -134,17 +134,13 @@ jobs:
         working-directory: frontend
         run: npm ci
 
-      - name: Run frontend unit tests
+      - name: Install Playwright browsers
         working-directory: frontend
-        run: npm test -- --watch=false --browsers=ChromeHeadless
+        run: npx playwright install --with-deps chromium
 
-      # Playwright E2E (added in US-009)
-      # - name: Install Playwright browsers
-      #   working-directory: frontend
-      #   run: npx playwright install --with-deps chromium
-      # - name: Run E2E tests
-      #   working-directory: frontend
-      #   run: npx playwright test
+      - name: Run Playwright E2E tests
+        working-directory: frontend
+        run: npm run e2e
 
   # ── Stage 3: PR Summary ────────────────────────────────────────────────────
   code-review:
