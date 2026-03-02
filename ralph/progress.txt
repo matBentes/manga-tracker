@@ -1,3 +1,15 @@
+## 2026-03-02 - US-016
+- What was implemented: Unit tests for scraper layer — tests were already written alongside US-004 implementation; this story marks them as complete
+- Files verified (no changes needed):
+  - backend/src/test/java/com/mangaTracker/backend/scraper/SakuraMangasScraperTest.java (7 tests: supports() true/false/null, scrape() title+chapter extraction, scrape() missing title/chapter, scrape() network failure)
+  - backend/src/test/java/com/mangaTracker/backend/scraper/ScraperRegistryTest.java (3 tests: resolve() matching, resolve() unknown, resolve() empty list)
+  - ralph/prd.json (US-016 passes set to true)
+- **Learnings for future iterations:**
+  - SakuraMangasScraper has two package-private constructors for testability: `(DocumentLoader)` and `(DocumentLoader, long baseDelayMs)` — the second lets tests pass 0ms delay to skip backoff waits during network-failure tests
+  - Both test classes live in the same package as the source (`com.mangaTracker.backend.scraper`), allowing access to package-private constructors
+  - `spring-boot-starter-test` transitively includes JUnit 5, Mockito, and AssertJ — no extra test dependencies needed
+---
+
 ## 2026-03-02 - US-015
 - What was implemented: Notification preferences settings page — Angular routing added (app.routes.ts, provideRouter); global navbar with "Reading List" and "Settings" nav links (routerLink, routerLinkActive); SettingsComponent with form for emailNotificationsEnabled toggle, notificationEmail input, pollIntervalMinutes input, save button with success/error feedback, loads on init via SettingsService.getSettings(); per-manga notification toggle checkbox added to dashboard reading list table calling MangaService.updateManga(id, { notificationsEnabled }) with immediate UI update on success
 - Files changed:
