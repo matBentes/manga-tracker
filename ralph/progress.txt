@@ -23,3 +23,18 @@
   - PostgreSQL allows both a UNIQUE constraint and a separate CREATE UNIQUE INDEX on the same column (redundant but valid)
   - Timestamps: AC says TIMESTAMP, old file used TIMESTAMPTZ — new file uses TIMESTAMP to match AC exactly
 ---
+
+## 2026-03-01 - US-002
+- What was implemented: Created V2__create_notification_log_table.sql and V3__create_app_settings_table.sql Flyway migrations
+  - V2: notification_log table with UUID PK, manga_id FK (ON DELETE CASCADE), chapter_number, sent_at; UNIQUE constraint + index on (manga_id, chapter_number)
+  - V3: app_settings table with INTEGER PK (id=1), CHECK constraint enforcing single row, email_notifications_enabled, notification_email, poll_interval_minutes; seed INSERT included
+- Files changed:
+  - backend/src/main/resources/db/migration/V2__create_notification_log_table.sql (created)
+  - backend/src/main/resources/db/migration/V3__create_app_settings_table.sql (created)
+  - ralph/prd.json (US-002 passes set to true)
+- **Learnings for future iterations:**
+  - app_settings uses INTEGER PK (not UUID) because it's a single-row config table — id is always 1
+  - The ON DELETE CASCADE on notification_log.manga_id FK means deleting a manga automatically cleans up its notification logs (important for MangaService.deleteManga)
+  - app_settings seed row is inserted in the V3 migration itself; no separate seed migration needed
+  - Both UNIQUE constraint and UNIQUE INDEX created (same pattern as V1 for consistency)
+---
