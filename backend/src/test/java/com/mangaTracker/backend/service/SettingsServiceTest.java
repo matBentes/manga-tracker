@@ -109,8 +109,7 @@ class SettingsServiceTest {
     assertThat(result).isSameAs(settings);
   }
 
-  private static AppSettings buildSettings(
-      boolean emailEnabled, String email, int pollInterval) {
+  private static AppSettings buildSettings(boolean emailEnabled, String email, int pollInterval) {
     return AppSettings.builder()
         .id(1)
         .emailNotificationsEnabled(emailEnabled)
