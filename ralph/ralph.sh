@@ -69,7 +69,7 @@ run_claude() {
   local OUTPUT_FILE
   OUTPUT_FILE=$(mktemp)
 
-  claude --dangerously-skip-permissions --print "$prompt" \
+  CLAUDECODE= claude --dangerously-skip-permissions --print "$prompt" \
     > "$OUTPUT_FILE" 2>&1 &
   local CLAUDE_PID=$!
 
