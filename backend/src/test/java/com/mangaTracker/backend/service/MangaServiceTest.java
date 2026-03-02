@@ -23,6 +23,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 
 @ExtendWith(MockitoExtension.class)
 class MangaServiceTest {
@@ -54,9 +55,20 @@ class MangaServiceTest {
   @Test
   void addManga_throwsDuplicateMangaException_whenUrlAlreadyExists() {
     String url = "https://sakuramangas.org/manga/one-piece/";
-    MangaScraper scraper = mock(MangaScraper.class);
-    when(scraperRegistry.resolve(url)).thenReturn(scraper);
     when(mangaRepository.existsBySourceUrl(url)).thenReturn(true);
+
+    assertThatThrownBy(() -> mangaService.addManga(url))
+        .isInstanceOf(DuplicateMangaException.class);
+  }
+
+  @Test
+  void addManga_throwsDuplicateMangaException_onConcurrentInsert() {
+    String url = "https://sakuramangas.org/manga/one-piece/";
+    MangaScraper scraper = mock(MangaScraper.class);
+    when(mangaRepository.existsBySourceUrl(url)).thenReturn(false);
+    when(scraperRegistry.resolve(url)).thenReturn(scraper);
+    when(scraper.scrape(url)).thenReturn(new ScrapedManga("One Piece", 1000));
+    when(mangaRepository.save(any())).thenThrow(new DataIntegrityViolationException("duplicate"));
 
     assertThatThrownBy(() -> mangaService.addManga(url))
         .isInstanceOf(DuplicateMangaException.class);
@@ -138,17 +150,18 @@ class MangaServiceTest {
   @Test
   void deleteManga_deletesById() {
     UUID id = UUID.randomUUID();
-    when(mangaRepository.existsById(id)).thenReturn(true);
+    Manga manga = buildManga(id, 100);
+    when(mangaRepository.findById(id)).thenReturn(Optional.of(manga));
 
     mangaService.deleteManga(id);
 
-    verify(mangaRepository).deleteById(id);
+    verify(mangaRepository).delete(manga);
   }
 
   @Test
   void deleteManga_throwsMangaNotFoundException_forUnknownId() {
     UUID id = UUID.randomUUID();
-    when(mangaRepository.existsById(id)).thenReturn(false);
+    when(mangaRepository.findById(id)).thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> mangaService.deleteManga(id))
         .isInstanceOf(MangaNotFoundException.class);

@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-const API_BASE = 'http://localhost:8080';
+const API_BASE = process.env['PLAYWRIGHT_API_BASE'] ?? 'http://localhost:8080';
 
 const sampleManga = {
   id: '11111111-1111-1111-1111-111111111111',

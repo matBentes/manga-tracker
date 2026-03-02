@@ -60,6 +60,9 @@ export class SettingsComponent implements OnInit {
       next: () => {
         this.isSaving = false;
         this.saveSuccess = true;
+        setTimeout(() => {
+          this.saveSuccess = false;
+        }, 3000);
       },
       error: (err: HttpErrorResponse) => {
         this.isSaving = false;

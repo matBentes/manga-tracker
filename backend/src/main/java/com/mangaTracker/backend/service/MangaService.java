@@ -9,6 +9,7 @@ import com.mangaTracker.backend.scraper.ScrapedManga;
 import com.mangaTracker.backend.scraper.ScraperRegistry;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,10 +26,11 @@ public class MangaService {
   }
 
   public Manga addManga(String sourceUrl) {
-    MangaScraper scraper = scraperRegistry.resolve(sourceUrl);
+    // Check duplicate before resolving scraper to give accurate error
     if (mangaRepository.existsBySourceUrl(sourceUrl)) {
       throw new DuplicateMangaException("Manga already tracked: " + sourceUrl);
     }
+    MangaScraper scraper = scraperRegistry.resolve(sourceUrl);
     ScrapedManga scraped = scraper.scrape(sourceUrl);
     Manga manga =
         Manga.builder()
@@ -38,7 +40,12 @@ public class MangaService {
             .latestChapter(scraped.latestChapter())
             .notificationsEnabled(true)
             .build();
-    return mangaRepository.save(manga);
+    try {
+      return mangaRepository.save(manga);
+    } catch (DataIntegrityViolationException e) {
+      // Handles race condition where two concurrent requests pass the duplicate check
+      throw new DuplicateMangaException("Manga already tracked: " + sourceUrl);
+    }
   }
 
   @Transactional(readOnly = true)
@@ -65,9 +72,10 @@ public class MangaService {
   }
 
   public void deleteManga(UUID id) {
-    if (!mangaRepository.existsById(id)) {
-      throw new MangaNotFoundException("Manga not found: " + id);
-    }
-    mangaRepository.deleteById(id);
+    Manga manga =
+        mangaRepository
+            .findById(id)
+            .orElseThrow(() -> new MangaNotFoundException("Manga not found: " + id));
+    mangaRepository.delete(manga);
   }
 }

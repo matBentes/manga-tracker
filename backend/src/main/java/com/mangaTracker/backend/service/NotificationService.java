@@ -4,6 +4,9 @@ import com.mangaTracker.backend.model.AppSettings;
 import com.mangaTracker.backend.model.Manga;
 import com.mangaTracker.backend.model.NotificationLog;
 import com.mangaTracker.backend.repository.NotificationLogRepository;
+import java.util.regex.Pattern;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -13,6 +16,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Transactional
 public class NotificationService {
+
+  private static final Logger LOG = LoggerFactory.getLogger(NotificationService.class);
+  private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^@]+@[^@]+\\.[^@]+$");
 
   private final NotificationLogRepository notificationLogRepository;
   private final SettingsService settingsService;
@@ -41,14 +47,25 @@ public class NotificationService {
     if (!settings.isEmailNotificationsEnabled()) {
       return;
     }
+    String recipientEmail = settings.getNotificationEmail();
+    if (recipientEmail == null || !EMAIL_PATTERN.matcher(recipientEmail).matches()) {
+      LOG.warn("Invalid notification email '{}', skipping notification", recipientEmail);
+      return;
+    }
     if (notificationLogRepository.existsByMangaIdAndChapterNumber(
         manga.getId(), newLatestChapter)) {
       return;
     }
 
+    // Save log BEFORE sending email: if the DB write fails, no email is sent.
+    // This prevents duplicate notifications on the next scraping poll.
+    NotificationLog log =
+        NotificationLog.builder().mangaId(manga.getId()).chapterNumber(newLatestChapter).build();
+    notificationLogRepository.save(log);
+
     SimpleMailMessage message = new SimpleMailMessage();
     message.setFrom(fromEmail);
-    message.setTo(settings.getNotificationEmail());
+    message.setTo(recipientEmail);
     message.setSubject("New chapter available: " + manga.getTitle());
     message.setText(
         "Chapter "
@@ -59,9 +76,5 @@ public class NotificationService {
             + "Read it here: "
             + manga.getSourceUrl());
     mailSender.send(message);
-
-    NotificationLog log =
-        NotificationLog.builder().mangaId(manga.getId()).chapterNumber(newLatestChapter).build();
-    notificationLogRepository.save(log);
   }
 }

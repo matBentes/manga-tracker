@@ -30,6 +30,8 @@ public class ScrapingJob {
     this.notificationService = notificationService;
   }
 
+  // NOTE: This interval is resolved from application properties at startup.
+  // Changes to AppSettings.pollIntervalMinutes at runtime do NOT affect this schedule.
   @Scheduled(fixedDelayString = "#{${app.scraper.poll-interval-minutes:30} * 60000}")
   public void pollAllManga() {
     List<Manga> mangaList = mangaRepository.findAllByOrderByUpdatedAtDesc();

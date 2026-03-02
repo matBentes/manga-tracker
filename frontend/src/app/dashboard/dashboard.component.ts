@@ -1,4 +1,5 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, DestroyRef, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { AddMangaFormComponent } from '../add-manga/add-manga-form.component';
 import { Manga, MangaService } from '../services/manga.service';
@@ -12,6 +13,7 @@ import { Manga, MangaService } from '../services/manga.service';
 })
 export class DashboardComponent implements OnInit {
   private readonly mangaService = inject(MangaService);
+  private readonly destroyRef = inject(DestroyRef);
 
   mangaList: Manga[] = [];
   isLoading = false;
@@ -28,7 +30,7 @@ export class DashboardComponent implements OnInit {
   loadManga(): void {
     this.isLoading = true;
     this.error = null;
-    this.mangaService.getManga().subscribe({
+    this.mangaService.getManga().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (manga) => {
         this.mangaList = manga;
         this.isLoading = false;

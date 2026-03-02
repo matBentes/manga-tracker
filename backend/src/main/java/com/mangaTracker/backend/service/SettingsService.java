@@ -23,8 +23,7 @@ public class SettingsService {
 
   public AppSettings updateSettings(
       Boolean emailNotificationsEnabled, String notificationEmail, Integer pollIntervalMinutes) {
-    AppSettings settings =
-        appSettingsRepository.findById(SETTINGS_ID).orElseGet(this::createDefaultSettings);
+    AppSettings settings = getSettings();
     if (emailNotificationsEnabled != null) {
       settings.setEmailNotificationsEnabled(emailNotificationsEnabled);
     }
