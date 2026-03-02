@@ -10,6 +10,11 @@
 - Scraper layer in package com.mangaTracker.backend.scraper; all scrapers registered as @Component and injected as List<MangaScraper> into ScraperRegistry
 - Jsoup dependency already present in build.gradle (org.jsoup:jsoup:1.18.3); no pom.xml in this project
 - SakuraMangasScraper uses multi-selector fallback pattern (try multiple CSS selectors in order); selectors may need updating if sakuramangas.org HTML changes
+- Exception classes live in com.mangaTracker.backend.exception package
+- JPA entities use Lombok: @Entity @Table @Getter @Setter @Builder @NoArgsConstructor @AllArgsConstructor
+- Use jakarta.persistence (NOT javax.persistence) — Spring Boot 3 uses Jakarta EE 10
+- Hibernate @CreationTimestamp/@UpdateTimestamp for created_at/updated_at columns
+- CI runs spotlessApply (auto-formats) before checkstyle; minor formatting issues are auto-fixed and committed by CI
 
 ---
 
@@ -25,6 +30,34 @@
   - Docker not available, so Testcontainers-based tests cannot run
   - PostgreSQL allows both a UNIQUE constraint and a separate CREATE UNIQUE INDEX on the same column (redundant but valid)
   - Timestamps: AC says TIMESTAMP, old file used TIMESTAMPTZ — new file uses TIMESTAMP to match AC exactly
+---
+
+## 2026-03-01 - US-004
+- What was implemented: Manga JPA entity, MangaRepository, MangaService (addManga, listManga, updateManga, deleteManga), DuplicateMangaException, MangaNotFoundException. Also refactored US-003: moved exceptions to exception package, added injectable DocumentLoader to SakuraMangasScraper, added unit tests for scraper and service layers.
+- Files changed:
+  - backend/src/main/java/com/mangaTracker/backend/model/Manga.java (created)
+  - backend/src/main/java/com/mangaTracker/backend/repository/MangaRepository.java (created)
+  - backend/src/main/java/com/mangaTracker/backend/service/MangaService.java (created)
+  - backend/src/main/java/com/mangaTracker/backend/exception/DuplicateMangaException.java (created)
+  - backend/src/main/java/com/mangaTracker/backend/exception/MangaNotFoundException.java (created)
+  - backend/src/main/java/com/mangaTracker/backend/exception/ScrapingException.java (created, moved from scraper pkg)
+  - backend/src/main/java/com/mangaTracker/backend/exception/UnsupportedSourceException.java (created, moved from scraper pkg)
+  - backend/src/main/java/com/mangaTracker/backend/scraper/MangaScraper.java (updated import)
+  - backend/src/main/java/com/mangaTracker/backend/scraper/SakuraMangasScraper.java (refactored: injectable DocumentLoader, fixed retry to 4 total attempts)
+  - backend/src/main/java/com/mangaTracker/backend/scraper/ScraperRegistry.java (updated import)
+  - backend/src/main/java/com/mangaTracker/backend/scraper/ScrapingException.java (deleted — moved to exception pkg)
+  - backend/src/main/java/com/mangaTracker/backend/scraper/UnsupportedSourceException.java (deleted — moved to exception pkg)
+  - backend/src/test/java/com/mangaTracker/backend/scraper/SakuraMangasScraperTest.java (created)
+  - backend/src/test/java/com/mangaTracker/backend/scraper/ScraperRegistryTest.java (created)
+  - backend/src/test/java/com/mangaTracker/backend/service/MangaServiceTest.java (created)
+  - ralph/prd.json (US-004 passes set to true)
+  - ralph/progress.txt (updated)
+- **Learnings for future iterations:**
+  - MangaService.addManga: resolve scraper first (UnsupportedSourceException), then check duplicate (DuplicateMangaException), then scrape (ScrapingException), then save
+  - MangaService.updateManga: throws IllegalArgumentException for invalid currentChapter bounds (controller maps this to HTTP 400)
+  - ON DELETE CASCADE in V2 migration means deleteManga just needs deleteById — no manual cascade needed
+  - @Transactional on service class, @Transactional(readOnly=true) on read-only methods
+  - SakuraMangasScraper: DocumentLoader interface is nested + package-private; tests in same package can use it directly as lambda target
 ---
 
 ## 2026-03-01 - US-003

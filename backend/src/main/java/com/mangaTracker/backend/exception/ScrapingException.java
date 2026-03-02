@@ -1,4 +1,4 @@
-package com.mangaTracker.backend.scraper;
+package com.mangaTracker.backend.exception;
 
 public class ScrapingException extends RuntimeException {
 

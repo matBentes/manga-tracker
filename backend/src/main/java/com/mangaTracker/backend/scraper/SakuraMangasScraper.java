@@ -1,5 +1,6 @@
 package com.mangaTracker.backend.scraper;
 
+import com.mangaTracker.backend.exception.ScrapingException;
 import java.io.IOException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -12,8 +13,8 @@ import org.springframework.stereotype.Component;
 public class SakuraMangasScraper implements MangaScraper {
 
   private static final String SUPPORTED_HOST = "sakuramangas.org";
-  private static final int MAX_RETRIES = 3;
-  private static final int BASE_DELAY_MS = 1000;
+  private static final int MAX_ATTEMPTS = 4;
+  private static final long DEFAULT_BASE_DELAY_MS = 1000L;
   private static final int TIMEOUT_MS = 15000;
   private static final Pattern CHAPTER_PATTERN = Pattern.compile("(\\d+)(\\.\\d+)?");
 
@@ -27,6 +28,29 @@ public class SakuraMangasScraper implements MangaScraper {
     ".chapter-list li:first-child a",
     "ul.row-content-chapter li:first-child a"
   };
+
+  @FunctionalInterface
+  interface DocumentLoader {
+    Document load(String url) throws IOException;
+  }
+
+  private final DocumentLoader loader;
+  private final long baseDelayMs;
+
+  public SakuraMangasScraper() {
+    this(
+        url -> Jsoup.connect(url).timeout(TIMEOUT_MS).userAgent("Mozilla/5.0").get(),
+        DEFAULT_BASE_DELAY_MS);
+  }
+
+  SakuraMangasScraper(DocumentLoader loader) {
+    this(loader, DEFAULT_BASE_DELAY_MS);
+  }
+
+  SakuraMangasScraper(DocumentLoader loader, long baseDelayMs) {
+    this.loader = loader;
+    this.baseDelayMs = baseDelayMs;
+  }
 
   @Override
   public boolean supports(String url) {
@@ -43,26 +67,23 @@ public class SakuraMangasScraper implements MangaScraper {
 
   private Document fetchWithRetry(String url) {
     IOException lastException = null;
-    for (int attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    for (int attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+      if (attempt > 0) {
+        sleepWithBackoff(attempt - 1);
+      }
       try {
-        return Jsoup.connect(url)
-            .timeout(TIMEOUT_MS)
-            .userAgent("Mozilla/5.0 (compatible; MangaTracker/1.0)")
-            .get();
+        return loader.load(url);
       } catch (IOException e) {
         lastException = e;
-        if (attempt < MAX_RETRIES - 1) {
-          sleepWithBackoff(attempt);
-        }
       }
     }
     throw new ScrapingException(
-        "Failed to fetch URL after " + MAX_RETRIES + " attempts: " + url, lastException);
+        "Failed to fetch URL after " + MAX_ATTEMPTS + " attempts: " + url, lastException);
   }
 
-  private void sleepWithBackoff(int attempt) {
+  private void sleepWithBackoff(int retryIndex) {
     try {
-      Thread.sleep(BASE_DELAY_MS * (long) Math.pow(2, attempt));
+      Thread.sleep(baseDelayMs * (1L << retryIndex));
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       throw new ScrapingException("Interrupted during retry backoff", e);

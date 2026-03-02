@@ -1,5 +1,6 @@
 package com.mangaTracker.backend.scraper;
 
+import com.mangaTracker.backend.exception.UnsupportedSourceException;
 import java.util.List;
 import org.springframework.stereotype.Component;
 
@@ -16,6 +17,6 @@ public class ScraperRegistry {
     return scrapers.stream()
         .filter(s -> s.supports(url))
         .findFirst()
-        .orElseThrow(() -> new UnsupportedSourceException(url));
+        .orElseThrow(() -> new UnsupportedSourceException("No scraper found for URL: " + url));
   }
 }
