@@ -1,3 +1,17 @@
+## 2026-03-01 - US-007
+- What was implemented: ScrapingJob @Component in new `job` package — @Scheduled method polls all manga on a configurable interval, scrapes each URL, updates latestChapter + lastCheckedAt in DB, calls NotificationService.notify() on new chapters, catches and logs per-manga failures while continuing
+- Files changed:
+  - backend/src/main/java/com/mangaTracker/backend/job/ScrapingJob.java (created)
+  - ralph/prd.json (US-007 passes set to true)
+  - ralph/progress.txt (updated)
+- **Learnings for future iterations:**
+  - @EnableScheduling was already present in BackendApplication — no change needed there
+  - SpEL in @Scheduled: `@Scheduled(fixedDelayString = "#{${app.scraper.poll-interval-minutes:30} * 60000}")` converts minutes to ms at startup
+  - DO NOT use @Transactional on pollAllManga() — without an outer transaction, each mangaRepository.save() and notificationService.notify() runs in its own transaction; if notify() throws and its transaction rolls back, the subsequent save(lastCheckedAt) in the catch block still works in a fresh transaction
+  - ConstantName Checkstyle rule requires private static final Logger to be named LOG (not log)
+  - MangaRepository.findAllByOrderByUpdatedAtDesc() returns detached entities when called outside a @Transactional context; Spring Data's save() calls merge() on detached entities — this pattern works cleanly for batch job polling
+---
+
 ## 2026-03-01 - US-006
 - What was implemented: NotificationLog JPA entity, NotificationLogRepository, NotificationService (notify method with deduplication and email sending)
 - Files changed:
