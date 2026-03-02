@@ -1,3 +1,20 @@
+## 2026-03-02 - US-019
+- What was implemented: Integration tests for repository layer using @DataJpaTest + Testcontainers PostgreSQL
+- Files changed:
+  - backend/src/test/java/com/mangaTracker/backend/repository/MangaRepositoryTest.java (created — 5 tests: save+findById, findAllByOrderByUpdatedAtDesc sorted order, existsBySourceUrl true/false, deleteById)
+  - backend/src/test/java/com/mangaTracker/backend/repository/NotificationLogRepositoryTest.java (created — 3 tests: save+findById, existsByMangaIdAndChapterNumber, unique constraint DataIntegrityViolationException)
+  - backend/src/test/java/com/mangaTracker/backend/repository/AppSettingsRepositoryTest.java (created — 2 tests: findById returns V3 seed row, save+flush+clear+findById updates row)
+  - ralph/prd.json (US-019 passes set to true)
+- **Learnings for future iterations:**
+  - Use `@DataJpaTest` + `@AutoConfigureTestDatabase(replace = Replace.NONE)` + `@Testcontainers` + `@Container @ServiceConnection static PostgreSQLContainer<?>` — FlywayAutoConfiguration IS included in the @DataJpaTest slice, so schema + seed data are created automatically
+  - `@ServiceConnection` from `spring-boot-testcontainers` auto-configures datasource URL/username/password from the container — no `@DynamicPropertySource` needed
+  - Testcontainers deps already present in build.gradle: `spring-boot-testcontainers`, `testcontainers:junit-jupiter`, `testcontainers:postgresql`
+  - For sorting tests using `@UpdateTimestamp`, use `TestEntityManager.persistAndFlush()` with `Thread.sleep(10)` between saves to guarantee different timestamps; declare test as `throws InterruptedException`
+  - For unique constraint violation tests: call `saveAndFlush()` for first entry, then wrap second `saveAndFlush()` in `assertThatThrownBy(...).isInstanceOf(DataIntegrityViolationException.class)` — session is invalidated after violation but test is done at that point
+  - For AppSettings (id=1 seed row): V3 migration seed data persists across test transactions (Flyway runs outside test transaction); `saveAndFlush()` + `entityManager.clear()` pattern forces re-read from DB after update
+  - `@DataJpaTest` is `@Transactional` by default — each test runs in a transaction that's rolled back, providing test isolation without manual cleanup
+---
+
 ## 2026-03-02 - US-018
 - What was implemented: Integration tests for REST API endpoints using @WebMvcTest test slices with mocked services
 - Files changed:
@@ -241,6 +258,7 @@
 - Use jakarta.persistence (NOT javax.persistence) — Spring Boot 3 uses Jakarta EE 10
 - Hibernate @CreationTimestamp/@UpdateTimestamp for created_at/updated_at columns
 - CI runs spotlessApply (auto-formats) before checkstyle; minor formatting issues are auto-fixed and committed by CI
+- Repository tests: @DataJpaTest + @AutoConfigureTestDatabase(replace=NONE) + @Testcontainers + @ServiceConnection — includes Flyway, runs real schema; use TestEntityManager.persistAndFlush() + Thread.sleep(10) for ordering tests
 
 ---
 
