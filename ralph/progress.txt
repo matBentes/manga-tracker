@@ -1,3 +1,20 @@
+## 2026-03-02 - US-020
+- What was implemented: Playwright E2E test setup for the Angular frontend with 3 E2E tests covering all critical user flows
+- Files changed:
+  - frontend/playwright.config.ts (created — Playwright config: chromium project, baseURL localhost:4200, webServer auto-starts ng serve, CI retry support)
+  - frontend/e2e/manga.spec.ts (created — 3 tests: add manga appears in list, update chapter number, delete manga removed from list)
+  - frontend/package.json (updated — added @playwright/test devDependency, e2e and e2e:report npm scripts)
+  - frontend/package-lock.json (updated — Playwright 1.58.2 lockfile entries)
+  - frontend/eslint.config.js (updated — added `ignores: ["e2e/**"]` to prevent angular-eslint rules from applying to Playwright test files)
+  - ralph/prd.json (US-020 passes set to true)
+- **Learnings for future iterations:**
+  - Use `page.route(url, handler)` to mock backend API calls — tests run without a real backend; mock GET, POST, PATCH, DELETE separately by checking `route.request().method()`
+  - `page.once('dialog', (dialog) => dialog.accept())` handles `window.confirm()` dialogs in Playwright; must be registered BEFORE the action that triggers the dialog
+  - ESLint config must exclude `e2e/**` via `ignores` entry to prevent angular-eslint rules (component-selector, directive-selector, prefer-inject) from being applied to Playwright spec files
+  - Playwright's `webServer` config auto-starts `ng serve` for local runs; in CI, set `reuseExistingServer: !process.env['CI']` so CI manages the server itself
+  - `@playwright/test` is installed as a devDependency; browsers must be installed separately with `npx playwright install --with-deps chromium` in CI
+---
+
 ## 2026-03-02 - US-019
 - What was implemented: Integration tests for repository layer using @DataJpaTest + Testcontainers PostgreSQL
 - Files changed:
