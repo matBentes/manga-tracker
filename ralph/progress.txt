@@ -1,3 +1,20 @@
+## 2026-03-01 - US-005
+- What was implemented: AppSettings JPA entity, AppSettingsRepository, SettingsService (getSettings/updateSettings)
+- Files changed:
+  - backend/src/main/java/com/mangaTracker/backend/model/AppSettings.java (created)
+  - backend/src/main/java/com/mangaTracker/backend/repository/AppSettingsRepository.java (created)
+  - backend/src/main/java/com/mangaTracker/backend/service/SettingsService.java (created)
+  - ralph/prd.json (US-005 passes set to true)
+  - ralph/progress.txt (updated)
+- **Learnings for future iterations:**
+  - AppSettings uses Integer PK (not UUID) — always id=1; no @GeneratedValue needed
+  - getSettings() is NOT @Transactional(readOnly=true) because it may write a default row if missing
+  - updateSettings() accepts nullable params and only updates fields that are non-null (same partial-update pattern as MangaService.updateManga)
+  - notificationEmail validated as non-blank when provided; pollIntervalMinutes validated as > 0 when provided
+  - IllegalArgumentException used for validation errors (controller layer will map to HTTP 400)
+  - The V3 migration seeds the default row, so createDefaultSettings() is a defensive fallback
+---
+
 ## Codebase Patterns
 - Backend uses Gradle (NOT Maven despite PRD docs), Java 21, Spring Boot 3.4.4
 - Flyway migrations in: backend/src/main/resources/db/migration/
