@@ -1,4 +1,4 @@
-## 2026-03-02 - US-020
+## 2026-03-02 - US-020 (re-implemented — files were missing from previous run)
 - What was implemented: Playwright E2E test setup for the Angular frontend with 3 E2E tests covering all critical user flows
 - Files changed:
   - frontend/playwright.config.ts (created — Playwright config: chromium project, baseURL localhost:4200, webServer auto-starts ng serve, CI retry support)
