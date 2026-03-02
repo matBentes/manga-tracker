@@ -132,10 +132,11 @@ for i in $(seq 1 "$MAX_ITERATIONS"); do
         exit 1
       fi
 
-      # ── Push ────────────────────────────────────────────────────────────
+      # ── Push (pull first to pick up any CI auto-commits) ────────────────
       printf "│\n"
       printf "│  ${DIM}Pushing to origin...${RESET}\n"
       BRANCH=$(git -C "$PROJECT_DIR/.." rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")
+      git -C "$PROJECT_DIR/.." pull --rebase origin "$BRANCH" 2>&1 | while IFS= read -r line; do printf "│  ${DIM}%s${RESET}\n" "$line"; done
       if git -C "$PROJECT_DIR/.." push origin "$BRANCH" 2>&1 | while IFS= read -r line; do printf "│  ${DIM}%s${RESET}\n" "$line"; done; then
         printf "│  ${GREEN}✔ Pushed to origin/%s${RESET}\n" "$BRANCH"
       else
@@ -195,6 +196,7 @@ Diagnose and fix the CI failure above. Do NOT start a new story — only fix thi
         # Push the fix and loop back to watch CI
         printf "│\n"
         printf "│  ${DIM}Pushing fix attempt %d...${RESET}\n" "$CI_FIX_ATTEMPT"
+        git -C "$PROJECT_DIR/.." pull --rebase origin "$BRANCH" 2>&1 | while IFS= read -r line; do printf "│  ${DIM}%s${RESET}\n" "$line"; done
         if git -C "$PROJECT_DIR/.." push origin "$BRANCH" 2>&1 | while IFS= read -r line; do printf "│  ${DIM}%s${RESET}\n" "$line"; done; then
           printf "│  ${GREEN}✔ Fix pushed — re-watching CI${RESET}\n"
         else
