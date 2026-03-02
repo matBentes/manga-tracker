@@ -22,6 +22,7 @@
           <th>Current Chapter</th>
           <th>Latest Chapter</th>
           <th>Source</th>
+          <th>Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -61,6 +62,15 @@
                 class="source-link"
                 >View</a
               >
+            </td>
+            <td class="actions-cell">
+              <button
+                class="delete-btn"
+                [disabled]="deletingState[manga.id]"
+                (click)="onDelete(manga)"
+              >
+                {{ deletingState[manga.id] ? 'Deleting…' : 'Delete' }}
+              </button>
             </td>
           </tr>
         }

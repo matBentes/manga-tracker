@@ -176,3 +176,28 @@
     text-decoration: underline;
   }
 }
+
+.actions-cell {
+  white-space: nowrap;
+}
+
+.delete-btn {
+  padding: 0.3rem 0.75rem;
+  background: #c0392b;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+
+  &:hover:not(:disabled) {
+    background: #a93226;
+  }
+
+  &:disabled {
+    background: #e0a09a;
+    cursor: not-allowed;
+  }
+}

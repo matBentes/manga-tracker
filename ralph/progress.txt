@@ -1,3 +1,18 @@
+## 2026-03-02 - US-014
+- What was implemented: Delete-manga UI — each manga row now has a red "Delete" button; clicking it shows a browser `window.confirm()` dialog; on confirm, calls `MangaService.deleteManga(id)` and filters the row out of `mangaList` in-place; on cancel, no action taken; disabled state during deletion shown as "Deleting…"; server errors shown in the existing `updateError` map inline below the chapter input
+- Files changed:
+  - frontend/src/app/dashboard/dashboard.component.ts (added `deletingState` map, `onDelete()` method)
+  - frontend/src/app/dashboard/dashboard.component.html (added "Actions" `<th>`, `<td>` with delete button)
+  - frontend/src/app/dashboard/dashboard.component.scss (added `.actions-cell`, `.delete-btn` styles)
+  - ralph/prd.json (US-014 passes set to true)
+  - ralph/progress.txt (updated)
+- **Learnings for future iterations:**
+  - `window.confirm()` is the simplest confirmation dialog — no imports or custom component needed; returns boolean synchronously
+  - Filtering the list with `this.mangaList = this.mangaList.filter((m) => m.id !== manga.id)` creates a new array reference, triggering Angular change detection and removing the row
+  - Reusing `updateError` map for delete errors works because errors appear inline in the same row; no need for a separate error map
+  - SCSS budget warning fires at 2kB (warning) and 4kB (error) per component; dashboard.component.scss is now ~2.56kB — still a warning, not an error
+---
+
 ## 2026-03-02 - US-013
 - What was implemented: Update-reading-progress UI — each manga row in the dashboard now shows a number input for current chapter instead of static text; client-side validation (0..latestChapter), API call on blur/change, inline saving indicator, and per-row error message on failure
 - Files changed:

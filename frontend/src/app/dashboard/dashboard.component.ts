@@ -18,6 +18,7 @@ export class DashboardComponent implements OnInit {
   error: string | null = null;
   savingState: Record<string, boolean> = {};
   updateError: Record<string, string | null> = {};
+  deletingState: Record<string, boolean> = {};
 
   ngOnInit(): void {
     this.loadManga();
@@ -69,6 +70,24 @@ export class DashboardComponent implements OnInit {
         this.updateError[manga.id] = 'Failed to save chapter. Please try again.';
         this.savingState[manga.id] = false;
         input.value = String(manga.currentChapter);
+      },
+    });
+  }
+
+  onDelete(manga: Manga): void {
+    const confirmed = window.confirm(`Remove "${manga.title}" from your reading list?`);
+    if (!confirmed) return;
+
+    this.deletingState[manga.id] = true;
+
+    this.mangaService.deleteManga(manga.id).subscribe({
+      next: () => {
+        this.mangaList = this.mangaList.filter((m) => m.id !== manga.id);
+        this.deletingState[manga.id] = false;
+      },
+      error: () => {
+        this.updateError[manga.id] = 'Failed to delete. Please try again.';
+        this.deletingState[manga.id] = false;
       },
     });
   }
