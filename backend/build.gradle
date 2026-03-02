@@ -5,6 +5,7 @@ plugins {
     id 'checkstyle'
     id 'jacoco'
     id 'com.diffplug.spotless' version '6.25.0'
+    id 'org.sonarqube' version '5.1.0.4882'
 }
 
 group = 'com.mangaTracker'
@@ -95,5 +96,15 @@ spotless {
         removeUnusedImports()
         trimTrailingWhitespace()
         endWithNewline()
+    }
+}
+
+sonarqube {
+    properties {
+        property 'sonar.projectKey', System.getenv('SONAR_PROJECT_KEY') ?: 'manga-tracker'
+        property 'sonar.organization', System.getenv('SONAR_ORGANIZATION') ?: ''
+        property 'sonar.java.coveragePlugin', 'jacoco'
+        property 'sonar.coverage.jacoco.xmlReportPaths', 'build/reports/jacoco/test/jacocoTestReport.xml'
+        property 'sonar.qualitygate.wait', 'true'
     }
 }
