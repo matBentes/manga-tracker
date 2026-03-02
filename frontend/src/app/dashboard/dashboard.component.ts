@@ -1,11 +1,12 @@
 import { Component, OnInit, inject } from '@angular/core';
 
+import { AddMangaFormComponent } from '../add-manga/add-manga-form.component';
 import { Manga, MangaService } from '../services/manga.service';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [],
+  imports: [AddMangaFormComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss',
 })
@@ -20,7 +21,7 @@ export class DashboardComponent implements OnInit {
     this.loadManga();
   }
 
-  private loadManga(): void {
+  loadManga(): void {
     this.isLoading = true;
     this.error = null;
     this.mangaService.getManga().subscribe({

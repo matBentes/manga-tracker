@@ -1,3 +1,21 @@
+## 2026-03-02 - US-012
+- What was implemented: AddMangaFormComponent with URL input, loading state, success confirmation, and descriptive error messages (400/409/422); integrated into DashboardComponent; loadManga() made public for refresh on add
+- Files changed:
+  - frontend/src/app/add-manga/add-manga-form.component.ts (created — standalone, inject(MangaService), @Output mangaAdded EventEmitter, onSubmit() with HTTP error mapping)
+  - frontend/src/app/add-manga/add-manga-form.component.html (created — form with ngModel url input, submit button with spinner, error/success messages)
+  - frontend/src/app/add-manga/add-manga-form.component.scss (created — card layout, url-input, submit-btn with disabled/hover states, form-error/form-success alerts)
+  - frontend/src/app/dashboard/dashboard.component.ts (updated — imports AddMangaFormComponent, loadManga() made public)
+  - frontend/src/app/dashboard/dashboard.component.html (updated — added <app-add-manga-form (mangaAdded)="loadManga()" /> above the list)
+  - ralph/prd.json (US-012 passes set to true)
+  - ralph/progress.txt (updated)
+- **Learnings for future iterations:**
+  - `FormsModule` from `@angular/forms` needed for `[(ngModel)]` in template-driven forms; must be in `imports: []` of standalone component
+  - `@Output()` decorator with `EventEmitter` is the correct Angular pattern for child-to-parent events; not flagged by `@angular-eslint/prefer-inject` (only constructor injection is flagged)
+  - HTTP error status mapping: use `HttpErrorResponse` from `@angular/common/http` as the type for `error` callback parameter; `err.status` gives the HTTP status code
+  - `name` attribute required on `<input [(ngModel)]>` in template-driven forms, otherwise Angular throws a runtime error
+  - Making `loadManga()` public on DashboardComponent allows child components (via event binding) to trigger a data refresh without needing a shared service
+---
+
 ## 2026-03-02 - US-011
 - What was implemented: Angular DashboardComponent displaying the reading list with loading state, unread-chapter highlighting, and error handling
 - Files changed:

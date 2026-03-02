@@ -1,0 +1,28 @@
+<form class="add-form" (ngSubmit)="onSubmit()">
+  <h2 class="add-form-title">Add Manga</h2>
+  <div class="add-form-row">
+    <input
+      class="url-input"
+      type="text"
+      [(ngModel)]="url"
+      name="url"
+      placeholder="Paste a manga URL (e.g. https://sakuramangas.org/manga/...)"
+      [disabled]="isSubmitting"
+      autocomplete="off"
+    />
+    <button class="submit-btn" type="submit" [disabled]="isSubmitting || !url.trim()">
+      @if (isSubmitting) {
+        <span class="btn-spinner"></span>
+        Adding...
+      } @else {
+        Add Manga
+      }
+    </button>
+  </div>
+  @if (error) {
+    <div class="form-error">{{ error }}</div>
+  }
+  @if (successMessage) {
+    <div class="form-success">{{ successMessage }}</div>
+  }
+</form>

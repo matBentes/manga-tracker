@@ -1,6 +1,8 @@
 <div class="dashboard">
   <h1 class="dashboard-title">Manga Reading List</h1>
 
+  <app-add-manga-form (mangaAdded)="loadManga()" />
+
   @if (isLoading) {
     <div class="loading-state">
       <span class="loading-spinner"></span>
@@ -34,7 +36,11 @@
             <td>{{ manga.currentChapter }}</td>
             <td>{{ manga.latestChapter }}</td>
             <td>
-              <a [href]="manga.sourceUrl" target="_blank" rel="noopener noreferrer" class="source-link"
+              <a
+                [href]="manga.sourceUrl"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="source-link"
                 >View</a
               >
             </td>
