@@ -22,8 +22,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @Testcontainers
 class NotificationLogRepositoryTest {
 
-  @Container
-  @ServiceConnection
+  @Container @ServiceConnection
   static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16");
 
   @Autowired private NotificationLogRepository notificationLogRepository;
@@ -33,8 +32,7 @@ class NotificationLogRepositoryTest {
   @Test
   void save_persistsNotificationLogEntry() {
     UUID mangaId = saveMangaAndGetId();
-    NotificationLog log =
-        NotificationLog.builder().mangaId(mangaId).chapterNumber(5).build();
+    NotificationLog log = NotificationLog.builder().mangaId(mangaId).chapterNumber(5).build();
 
     NotificationLog saved = notificationLogRepository.save(log);
 

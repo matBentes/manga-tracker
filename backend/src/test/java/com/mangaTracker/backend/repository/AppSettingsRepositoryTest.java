@@ -19,8 +19,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @Testcontainers
 class AppSettingsRepositoryTest {
 
-  @Container
-  @ServiceConnection
+  @Container @ServiceConnection
   static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16");
 
   @Autowired private AppSettingsRepository appSettingsRepository;

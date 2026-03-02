@@ -20,8 +20,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @Testcontainers
 class MangaRepositoryTest {
 
-  @Container
-  @ServiceConnection
+  @Container @ServiceConnection
   static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16");
 
   @Autowired private MangaRepository mangaRepository;
@@ -46,12 +45,10 @@ class MangaRepositoryTest {
   void findAllByOrderByUpdatedAtDesc_returnsMangaSortedByUpdatedAtDesc()
       throws InterruptedException {
     Manga first =
-        entityManager.persistAndFlush(
-            buildManga("https://sakuramangas.org/manga/first/"));
+        entityManager.persistAndFlush(buildManga("https://sakuramangas.org/manga/first/"));
     Thread.sleep(10);
     Manga second =
-        entityManager.persistAndFlush(
-            buildManga("https://sakuramangas.org/manga/second/"));
+        entityManager.persistAndFlush(buildManga("https://sakuramangas.org/manga/second/"));
 
     List<Manga> result = mangaRepository.findAllByOrderByUpdatedAtDesc();
 
@@ -64,15 +61,13 @@ class MangaRepositoryTest {
   void existsBySourceUrl_returnsTrue_whenUrlExists() {
     mangaRepository.save(buildManga("https://sakuramangas.org/manga/one-piece/"));
 
-    assertThat(
-            mangaRepository.existsBySourceUrl("https://sakuramangas.org/manga/one-piece/"))
+    assertThat(mangaRepository.existsBySourceUrl("https://sakuramangas.org/manga/one-piece/"))
         .isTrue();
   }
 
   @Test
   void existsBySourceUrl_returnsFalse_whenUrlDoesNotExist() {
-    assertThat(
-            mangaRepository.existsBySourceUrl("https://sakuramangas.org/manga/not-found/"))
+    assertThat(mangaRepository.existsBySourceUrl("https://sakuramangas.org/manga/not-found/"))
         .isFalse();
   }
 
