@@ -80,10 +80,7 @@ class SakuraMangasScraperTest {
 
   @Test
   void scrape_throwsScrapingException_whenChapterNotFound() {
-    String html =
-        "<html><body>"
-            + "<h1 class=\"post-title\">Some Manga</h1>"
-            + "</body></html>";
+    String html = "<html><body>" + "<h1 class=\"post-title\">Some Manga</h1>" + "</body></html>";
     SakuraMangasScraper scraper = new SakuraMangasScraper(url -> parse(html));
     assertThatThrownBy(() -> scraper.scrape(MANGA_URL))
         .isInstanceOf(ScrapingException.class)
