@@ -32,7 +32,9 @@
         <module name="MethodParamPad"/>
         <module name="NoWhitespaceBefore"/>
         <module name="WhitespaceAfter"/>
-        <module name="WhitespaceAround"/>
+        <module name="WhitespaceAround">
+            <property name="allowEmptyTypes" value="true"/>
+        </module>
 
         <!-- Braces -->
         <module name="LeftCurly"/>
