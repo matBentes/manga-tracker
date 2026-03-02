@@ -19,6 +19,7 @@ export class DashboardComponent implements OnInit {
   savingState: Record<string, boolean> = {};
   updateError: Record<string, string | null> = {};
   deletingState: Record<string, boolean> = {};
+  togglingNotifications: Record<string, boolean> = {};
 
   ngOnInit(): void {
     this.loadManga();
@@ -70,6 +71,24 @@ export class DashboardComponent implements OnInit {
         this.updateError[manga.id] = 'Failed to save chapter. Please try again.';
         this.savingState[manga.id] = false;
         input.value = String(manga.currentChapter);
+      },
+    });
+  }
+
+  onNotificationsToggle(manga: Manga, event: Event): void {
+    const checkbox = event.target as HTMLInputElement;
+    const newValue = checkbox.checked;
+
+    this.togglingNotifications[manga.id] = true;
+    this.mangaService.updateManga(manga.id, { notificationsEnabled: newValue }).subscribe({
+      next: (updated) => {
+        manga.notificationsEnabled = updated.notificationsEnabled;
+        this.togglingNotifications[manga.id] = false;
+      },
+      error: () => {
+        checkbox.checked = manga.notificationsEnabled;
+        this.updateError[manga.id] = 'Failed to update notification setting.';
+        this.togglingNotifications[manga.id] = false;
       },
     });
   }

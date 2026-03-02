@@ -1,1 +1,17 @@
-<app-dashboard />
+<nav class="app-nav">
+  <span class="app-brand">MangaTracker</span>
+  <ul class="nav-links">
+    <li>
+      <a
+        routerLink="/"
+        routerLinkActive="active"
+        [routerLinkActiveOptions]="{ exact: true }"
+        >Reading List</a
+      >
+    </li>
+    <li><a routerLink="/settings" routerLinkActive="active">Settings</a></li>
+  </ul>
+</nav>
+<main class="app-main">
+  <router-outlet />
+</main>

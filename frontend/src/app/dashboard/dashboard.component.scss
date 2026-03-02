@@ -177,6 +177,22 @@
   }
 }
 
+.notify-cell {
+  text-align: center;
+}
+
+.notify-checkbox {
+  width: 1rem;
+  height: 1rem;
+  accent-color: #6c3fcb;
+  cursor: pointer;
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+}
+
 .actions-cell {
   white-space: nowrap;
 }

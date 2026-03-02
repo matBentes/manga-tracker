@@ -22,6 +22,7 @@
           <th>Current Chapter</th>
           <th>Latest Chapter</th>
           <th>Source</th>
+          <th>Notify</th>
           <th>Actions</th>
         </tr>
       </thead>
@@ -62,6 +63,16 @@
                 class="source-link"
                 >View</a
               >
+            </td>
+            <td class="notify-cell">
+              <input
+                type="checkbox"
+                class="notify-checkbox"
+                [checked]="manga.notificationsEnabled"
+                [disabled]="togglingNotifications[manga.id]"
+                (change)="onNotificationsToggle(manga, $event)"
+                title="Toggle email notifications for this manga"
+              />
             </td>
             <td class="actions-cell">
               <button
