@@ -18,11 +18,7 @@ public class SakuraMangasScraper implements MangaScraper {
   private static final Pattern CHAPTER_PATTERN = Pattern.compile("(\\d+)(\\.\\d+)?");
 
   private static final String[] TITLE_SELECTORS = {
-    "h1.post-title",
-    "div.post-title h1",
-    "h1.manga-title",
-    ".manga-title",
-    "h1"
+    "h1.post-title", "div.post-title h1", "h1.manga-title", ".manga-title", "h1"
   };
 
   private static final String[] CHAPTER_SELECTORS = {
