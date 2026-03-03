@@ -7,11 +7,14 @@ import java.util.regex.Pattern;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 @Component
 public class SakuraMangasScraper implements MangaScraper {
 
+  private static final Logger log = LoggerFactory.getLogger(SakuraMangasScraper.class);
   private static final String SUPPORTED_HOST = "sakuramangas.org";
   private static final int MAX_ATTEMPTS = 4;
   private static final long DEFAULT_BASE_DELAY_MS = 1000L;
@@ -25,14 +28,28 @@ public class SakuraMangasScraper implements MangaScraper {
   private static final Pattern CHAPTER_PATTERN = Pattern.compile("(\\d+)(\\.\\d+)?");
 
   private static final String[] TITLE_SELECTORS = {
-    "h1.post-title", "div.post-title h1", "h1.manga-title", ".manga-title", "h1"
+    "h1.post-title",
+    "div.post-title h1",
+    "h1.manga-title",
+    ".manga-title",
+    "h1.titulo",
+    "h1.entry-title",
+    ".obra-titulo h1",
+    ".obra-info h1",
+    "h1"
   };
 
   private static final String[] CHAPTER_SELECTORS = {
     "ul.wp-manga-chapter a",
     "ul.version-chap li:first-child a",
     ".chapter-list li:first-child a",
-    "ul.row-content-chapter li:first-child a"
+    "ul.row-content-chapter li:first-child a",
+    ".capitulos li:first-child a",
+    ".lista-capitulos li:first-child a",
+    "ul.capitulos li:first-child a",
+    ".chapter-item:first-child a",
+    ".eps-item:first-child a",
+    ".epzlist li:first-child a"
   };
 
   @FunctionalInterface
@@ -100,10 +117,13 @@ public class SakuraMangasScraper implements MangaScraper {
     for (String selector : TITLE_SELECTORS) {
       Element el = doc.selectFirst(selector);
       if (el != null && !el.text().isBlank()) {
+        log.debug("Title found via selector '{}': {}", selector, el.text().trim());
         return el.text().trim();
       }
     }
-    throw new ScrapingException("Could not extract title from: " + url);
+    log.warn("No title selector matched for URL: {}. Page <body> snippet: {}", url,
+        doc.body() != null ? doc.body().html().substring(0, Math.min(500, doc.body().html().length())) : "empty");
+    throw new ScrapingException("Could not extract manga title from: " + url);
   }
 
   private int extractLatestChapter(Document doc, String url) {
@@ -111,6 +131,7 @@ public class SakuraMangasScraper implements MangaScraper {
       Element el = doc.selectFirst(selector);
       if (el != null) {
         String text = el.text();
+        log.debug("Chapter selector '{}' matched text: '{}'", selector, text);
         // Try keyword-anchored pattern first to avoid matching unrelated numbers (e.g. dates)
         Matcher km = CHAPTER_KEYWORD_PATTERN.matcher(text);
         if (km.find()) {
@@ -130,6 +151,8 @@ public class SakuraMangasScraper implements MangaScraper {
         }
       }
     }
+    log.warn("No chapter selector matched for URL: {}. Tried: {}", url,
+        String.join(", ", CHAPTER_SELECTORS));
     throw new ScrapingException("Could not extract latest chapter from: " + url);
   }
 }
