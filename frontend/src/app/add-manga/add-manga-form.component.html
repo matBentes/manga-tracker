@@ -5,12 +5,13 @@
       class="url-input"
       type="text"
       [(ngModel)]="url"
+      (ngModelChange)="onUrlChange()"
       name="url"
       placeholder="Paste a manga URL (e.g. https://sakuramangas.org/manga/...)"
       [disabled]="isSubmitting"
       autocomplete="off"
     />
-    <button class="submit-btn" type="submit" [disabled]="isSubmitting || !url.trim()">
+    <button class="submit-btn" type="submit" [disabled]="isSubmitting || !isUrlValid">
       @if (isSubmitting) {
         <span class="btn-spinner"></span>
         Adding...
@@ -19,6 +20,9 @@
       }
     </button>
   </div>
+  @if (urlValidationError) {
+    <div class="form-error">{{ urlValidationError }}</div>
+  }
   @if (error) {
     <div class="form-error">{{ error }}</div>
   }

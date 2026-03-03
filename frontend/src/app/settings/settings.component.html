@@ -31,10 +31,14 @@
           id="notificationEmail"
           name="notificationEmail"
           [(ngModel)]="notificationEmail"
+          (ngModelChange)="onEmailChange()"
           class="field-input"
           placeholder="you@example.com"
           required
         />
+        @if (emailValidationError) {
+          <span class="field-error">{{ emailValidationError }}</span>
+        }
       </div>
 
       <div class="form-group">
@@ -58,7 +62,7 @@
         <div class="save-success">Settings saved successfully!</div>
       }
 
-      <button type="submit" class="save-btn" [disabled]="isSaving">
+      <button type="submit" class="save-btn" [disabled]="isSaving || !isEmailValid">
         {{ isSaving ? 'Saving…' : 'Save Settings' }}
       </button>
     </form>

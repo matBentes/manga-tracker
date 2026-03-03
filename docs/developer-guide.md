@@ -47,6 +47,8 @@ manga-tracker/
     │   │   └── services/        MangaService, SettingsService (HttpClient)
     │   └── environments/        environment.ts / environment.prod.ts
     └── e2e/                     Playwright E2E tests
+        ├── manga.spec.ts        Mocked unit-style E2E tests
+        └── integration.spec.ts  Integration tests (requires real backend)
 ```
 
 ---
@@ -93,6 +95,30 @@ Install Playwright browsers on first run:
 
 ```bash
 npx playwright install --with-deps chromium
+```
+
+### Frontend — Integration E2E (real backend)
+
+These tests hit the real backend and database via `docker compose`. Use the runner script from the project root:
+
+```bash
+# Run integration tests (services stay up after)
+./run-e2e-integration.sh
+
+# Run integration tests then tear down services
+./run-e2e-integration.sh --down
+```
+
+The script will:
+1. Start all services via `docker compose up -d`
+2. Wait for the backend health check and frontend readiness
+3. Run `npx playwright test e2e/integration.spec.ts`
+
+You can also run them manually if services are already up:
+
+```bash
+cd frontend
+npx playwright test e2e/integration.spec.ts
 ```
 
 ---

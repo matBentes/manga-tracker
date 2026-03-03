@@ -23,6 +23,26 @@ export class SettingsComponent implements OnInit {
   emailNotificationsEnabled = false;
   notificationEmail = '';
   pollIntervalMinutes = 30;
+  emailValidationError: string | null = null;
+
+  private static readonly EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  get isEmailValid(): boolean {
+    return SettingsComponent.EMAIL_PATTERN.test(this.notificationEmail.trim());
+  }
+
+  onEmailChange(): void {
+    this.saveError = null;
+    this.saveSuccess = false;
+    const trimmed = this.notificationEmail.trim();
+    if (trimmed.length === 0) {
+      this.emailValidationError = 'Email is required.';
+    } else if (!SettingsComponent.EMAIL_PATTERN.test(trimmed)) {
+      this.emailValidationError = 'Please enter a valid email address.';
+    } else {
+      this.emailValidationError = null;
+    }
+  }
 
   ngOnInit(): void {
     this.loadSettings();
@@ -46,6 +66,7 @@ export class SettingsComponent implements OnInit {
   }
 
   onSave(): void {
+    if (!this.isEmailValid) return;
     this.isSaving = true;
     this.saveError = null;
     this.saveSuccess = false;

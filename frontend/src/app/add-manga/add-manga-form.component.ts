@@ -20,10 +20,31 @@ export class AddMangaFormComponent {
   isSubmitting = false;
   error: string | null = null;
   successMessage: string | null = null;
+  urlValidationError: string | null = null;
+
+  private static readonly URL_PATTERN = /^https?:\/\/.+/i;
+
+  get isUrlValid(): boolean {
+    const trimmed = this.url.trim();
+    return trimmed.length > 0 && AddMangaFormComponent.URL_PATTERN.test(trimmed);
+  }
+
+  onUrlChange(): void {
+    this.error = null;
+    this.successMessage = null;
+    const trimmed = this.url.trim();
+    if (trimmed.length === 0) {
+      this.urlValidationError = null;
+    } else if (!AddMangaFormComponent.URL_PATTERN.test(trimmed)) {
+      this.urlValidationError = 'Please enter a valid URL starting with http:// or https://';
+    } else {
+      this.urlValidationError = null;
+    }
+  }
 
   onSubmit(): void {
     const trimmedUrl = this.url.trim();
-    if (!trimmedUrl) return;
+    if (!trimmedUrl || !this.isUrlValid) return;
 
     this.isSubmitting = true;
     this.error = null;
