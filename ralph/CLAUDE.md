@@ -80,15 +80,24 @@ Only update CLAUDE.md if you have **genuinely reusable knowledge** that would he
 - Keep changes focused and minimal
 - Follow existing code patterns
 
-## Browser Testing (If Available)
+## Browser Testing (Required for UI Stories)
 
-For any story that changes UI, verify it works in the browser if you have browser testing tools configured (e.g., via MCP):
+For **any story that changes UI**, you MUST verify it in the browser using the Playwright MCP tools.
 
-1. Navigate to the relevant page
-2. Verify the UI changes work as expected
-3. Take a screenshot if helpful for the progress log
+**Steps:**
 
-If no browser tools are available, note in your progress report that manual browser verification is needed.
+1. Ensure the app is running (`dev.sh` or manually start frontend + backend)
+2. Use the Playwright MCP to navigate to the affected page
+3. Interact with the feature (click buttons, fill forms, verify state changes)
+4. Take a screenshot and save it to `/tmp/<story-id>-<description>.png`
+5. Reference the screenshot path in your progress report entry
+
+**Minimum verification checklist per UI story:**
+- Happy path works as designed
+- Error/empty states render correctly
+- No console errors visible
+
+**If the Playwright MCP is not available:** note "Browser verification skipped — Playwright MCP not configured" in the progress report. Do NOT skip silently.
 
 ## Stop Condition
 

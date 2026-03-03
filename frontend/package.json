@@ -10,7 +10,8 @@
     "lint": "ng lint",
     "format": "prettier --write \"src/**/*.{ts,html,scss,json}\"",
     "format:check": "prettier --check \"src/**/*.{ts,html,scss,json}\"",
-    "e2e": "playwright test",
+    "e2e": "playwright test manga.spec.ts",
+    "e2e:integration": "playwright test integration.spec.ts",
     "e2e:report": "playwright show-report"
   },
   "private": true,
