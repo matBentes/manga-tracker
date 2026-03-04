@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends wget apt-transp
   echo "deb https://packages.adoptium.net/artifactory/deb bookworm main" > /etc/apt/sources.list.d/adoptium.list && \
   apt-get update
 
-# Install basic development tools and iptables/ipset
+# Install basic development tools, iptables/ipset, and Playwright Chromium system deps
 RUN apt-get update && apt-get install -y --no-install-recommends \
   less \
   git \
@@ -32,6 +32,27 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   nano \
   vim \
   temurin-21-jdk \
+  # Playwright / Chromium system dependencies
+  libnss3 \
+  libnspr4 \
+  libdbus-1-3 \
+  libatk1.0-0 \
+  libatk-bridge2.0-0 \
+  libcups2 \
+  libdrm2 \
+  libxkbcommon0 \
+  libxcomposite1 \
+  libxdamage1 \
+  libxfixes3 \
+  libxrandr2 \
+  libgbm1 \
+  libasound2 \
+  libpango-1.0-0 \
+  libcairo2 \
+  libx11-6 \
+  libxcb1 \
+  libxext6 \
+  fonts-liberation \
   && apt-get clean && rm -rf /var/lib/apt/lists/* \
   && ln -s "$(dirname "$(dirname "$(readlink -f "$(which java)")")")" /usr/lib/jvm/java-21-current
 
@@ -91,6 +112,10 @@ RUN sh -c "$(wget -O- https://github.com/deluan/zsh-in-docker/releases/download/
 
 # Install Claude
 RUN npm install -g @anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}
+
+# Pre-install Playwright Chromium so it's available inside the devcontainer
+# (system deps were installed above as root)
+RUN npx playwright install chromium
 
 
 # Copy and set up firewall script
