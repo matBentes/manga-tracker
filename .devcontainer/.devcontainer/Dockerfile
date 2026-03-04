@@ -5,6 +5,12 @@ ENV TZ="$TZ"
 
 ARG CLAUDE_CODE_VERSION=latest
 
+# Add Adoptium (Eclipse Temurin) repository for Java 21
+RUN apt-get update && apt-get install -y --no-install-recommends wget apt-transport-https gpg && \
+  wget -qO - https://packages.adoptium.net/artifactory/api/gpg/key/public | gpg --dearmor -o /etc/apt/trusted.gpg.d/adoptium.gpg && \
+  echo "deb https://packages.adoptium.net/artifactory/deb bookworm main" > /etc/apt/sources.list.d/adoptium.list && \
+  apt-get update
+
 # Install basic development tools and iptables/ipset
 RUN apt-get update && apt-get install -y --no-install-recommends \
   less \
@@ -25,7 +31,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   jq \
   nano \
   vim \
-  openjdk-21-jdk \
+  temurin-21-jdk \
   && apt-get clean && rm -rf /var/lib/apt/lists/* \
   && ln -s "$(dirname "$(dirname "$(readlink -f "$(which java)")")")" /usr/lib/jvm/java-21-current
 

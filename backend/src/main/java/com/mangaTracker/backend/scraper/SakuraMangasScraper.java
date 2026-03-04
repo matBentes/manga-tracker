@@ -1,9 +1,16 @@
 package com.mangaTracker.backend.scraper;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mangaTracker.backend.exception.ScrapingException;
 import java.io.IOException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.Base64;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.jsoup.Connection;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -11,69 +18,118 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
+/**
+ * Scraper for sakuramangas.org.
+ *
+ * <p>The site uses a custom API with a SHA-256 proof-of-work security challenge. Each manga page
+ * exposes three meta tags (manga-id, header-challenge, csrf-token). The challenge is decoded,
+ * combined with a numeric key extracted from a companion security JS file, and hashed 29 times
+ * with SHA-256 to produce a proof. The proof is then sent to private API endpoints that return
+ * the manga title (JSON) and chapter list (HTML).
+ */
 @Component
 public class SakuraMangasScraper implements MangaScraper {
 
   private static final Logger log = LoggerFactory.getLogger(SakuraMangasScraper.class);
   private static final String SUPPORTED_HOST = "sakuramangas.org";
-  private static final int MAX_ATTEMPTS = 4;
-  private static final long DEFAULT_BASE_DELAY_MS = 1000L;
+  private static final String BASE_URL = "https://sakuramangas.org";
+  private static final String SECURITY_JS_URL =
+      BASE_URL + "/dist/sakura/global/security.oby.js";
+  private static final String MANGA_INFO_URL =
+      BASE_URL + "/dist/sakura/models/manga/__obf__manga_info.php";
+  private static final String MANGA_CHAPTERS_URL =
+      BASE_URL + "/dist/sakura/models/manga/__obf__manga_capitulos.php";
+  private static final String USER_AGENT =
+      "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"
+          + " (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
   private static final int TIMEOUT_MS = 15000;
-  // Keyword-anchored pattern tried first (e.g. "Capítulo 180", "Chapter 180")
-  private static final Pattern CHAPTER_KEYWORD_PATTERN =
-      Pattern.compile(
-          "(?:chapter|cap[ií]tulo|cap\\.?|ch\\.?)\\s*(\\d+)",
-          Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
-  // Fallback: first standalone number in the text
-  private static final Pattern CHAPTER_PATTERN = Pattern.compile("(\\d+)(\\.\\d+)?");
+  private static final long KEYS_TTL_MS = 3_600_000L;
+  private static final int PROOF_ROUNDS = 29;
 
-  private static final String[] TITLE_SELECTORS = {
-    "h1.post-title",
-    "div.post-title h1",
-    "h1.manga-title",
-    ".manga-title",
-    "h1.titulo",
-    "h1.entry-title",
-    ".obra-titulo h1",
-    ".obra-info h1",
-    "h1"
-  };
+  // Patterns applied to the (possibly deobfuscated) security.oby.js
+  private static final Pattern MANGA_INFO_KEY_PATTERN =
+      Pattern.compile("manga_info[:\\s,]+['\"]?\\s*(\\d{5,})");
+  private static final Pattern VKEY1_PATTERN =
+      Pattern.compile("X-Verification-Key-1['\"].*?['\"]([A-Za-z0-9+/=_\\-]{8,})['\"]");
+  private static final Pattern VKEY2_PATTERN =
+      Pattern.compile("X-Verification-Key-2['\"].*?['\"]([A-Za-z0-9+/=_\\-]{8,})['\"]");
 
-  private static final String[] CHAPTER_SELECTORS = {
-    "ul.wp-manga-chapter a",
-    "ul.version-chap li:first-child a",
-    ".chapter-list li:first-child a",
-    "ul.row-content-chapter li:first-child a",
-    ".capitulos li:first-child a",
-    ".lista-capitulos li:first-child a",
-    "ul.capitulos li:first-child a",
-    ".chapter-item:first-child a",
-    ".eps-item:first-child a",
-    ".epzlist li:first-child a"
-  };
+  // ── Testable HTTP abstractions ──────────────────────────────────────────────
 
   @FunctionalInterface
-  interface DocumentLoader {
-    Document load(String url) throws IOException;
+  interface PageFetcher {
+    Document fetch(String url) throws IOException;
   }
 
-  private final DocumentLoader loader;
-  private final long baseDelayMs;
+  @FunctionalInterface
+  interface ScriptFetcher {
+    String fetch(String url) throws IOException;
+  }
 
+  @FunctionalInterface
+  interface ApiCaller {
+    String call(String url, Map<String, String> data, Map<String, String> headers)
+        throws IOException;
+  }
+
+  // ── Fields ─────────────────────────────────────────────────────────────────
+
+  private final PageFetcher pageFetcher;
+  private final ScriptFetcher scriptFetcher;
+  private final ApiCaller apiCaller;
+  private final ObjectMapper objectMapper;
+
+  private volatile SakuraMangasKeys cachedKeys;
+  private volatile long keysLoadedAt = 0;
+
+  record SakuraMangasKeys(long mangaInfo, String verificationKey1, String verificationKey2) {}
+
+  // ── Constructors ───────────────────────────────────────────────────────────
+
+  /** Production constructor — uses real Jsoup HTTP calls. */
   public SakuraMangasScraper() {
-    this(
-        url -> Jsoup.connect(url).timeout(TIMEOUT_MS).userAgent("Mozilla/5.0").get(),
-        DEFAULT_BASE_DELAY_MS);
+    this.objectMapper = new ObjectMapper();
+    this.pageFetcher =
+        url ->
+            Jsoup.connect(url)
+                .userAgent(USER_AGENT)
+                .header("Referer", BASE_URL + "/")
+                .timeout(TIMEOUT_MS)
+                .get();
+    this.scriptFetcher =
+        url ->
+            Jsoup.connect(url)
+                .userAgent(USER_AGENT)
+                .header("Referer", BASE_URL + "/")
+                .timeout(TIMEOUT_MS)
+                .ignoreContentType(true)
+                .execute()
+                .body();
+    this.apiCaller =
+        (url, data, headers) -> {
+          Connection conn =
+              Jsoup.connect(url)
+                  .userAgent(USER_AGENT)
+                  .header("Referer", BASE_URL + "/")
+                  .header("X-Requested-With", "XMLHttpRequest")
+                  .timeout(TIMEOUT_MS)
+                  .ignoreContentType(true)
+                  .method(Connection.Method.POST);
+          data.forEach((k, v) -> conn.data(k, v));
+          headers.forEach((k, v) -> conn.header(k, v));
+          return conn.execute().body();
+        };
   }
 
-  SakuraMangasScraper(DocumentLoader loader) {
-    this(loader, DEFAULT_BASE_DELAY_MS);
+  /** Test constructor — allows injecting mocked fetchers. */
+  SakuraMangasScraper(PageFetcher pageFetcher, ScriptFetcher scriptFetcher, ApiCaller apiCaller) {
+    this.pageFetcher = pageFetcher;
+    this.scriptFetcher = scriptFetcher;
+    this.apiCaller = apiCaller;
+    this.objectMapper = new ObjectMapper();
   }
 
-  SakuraMangasScraper(DocumentLoader loader, long baseDelayMs) {
-    this.loader = loader;
-    this.baseDelayMs = baseDelayMs;
-  }
+  // ── MangaScraper API ───────────────────────────────────────────────────────
 
   @Override
   public boolean supports(String url) {
@@ -82,77 +138,219 @@ public class SakuraMangasScraper implements MangaScraper {
 
   @Override
   public ScrapedManga scrape(String url) throws ScrapingException {
-    Document doc = fetchWithRetry(url);
-    String title = extractTitle(doc, url);
-    int latestChapter = extractLatestChapter(doc, url);
+    Document doc = fetchPage(url);
+
+    Element mangaIdMeta = doc.selectFirst("meta[manga-id]");
+    Element challengeMeta = doc.selectFirst("meta[name=header-challenge]");
+    Element csrfMeta = doc.selectFirst("meta[name=csrf-token]");
+
+    if (mangaIdMeta == null || challengeMeta == null || csrfMeta == null) {
+      log.warn(
+          "Missing meta tags at {} — manga-id={} header-challenge={} csrf-token={}",
+          url,
+          mangaIdMeta != null,
+          challengeMeta != null,
+          csrfMeta != null);
+      throw new ScrapingException("Could not find security tokens on manga page: " + url);
+    }
+
+    String mangaId = mangaIdMeta.attr("manga-id");
+    String challenge = challengeMeta.attr("content");
+    String csrfToken = csrfMeta.attr("content");
+    log.debug("manga-id={} challenge-length={}", mangaId, challenge.length());
+
+    SakuraMangasKeys keys = getKeys();
+    String proof = generateProof(challenge, keys.mangaInfo());
+
+    String title = fetchTitle(mangaId, challenge, proof, csrfToken, keys);
+    int latestChapter = fetchLatestChapter(mangaId, challenge, proof, csrfToken, keys);
     return new ScrapedManga(title, latestChapter);
   }
 
-  private Document fetchWithRetry(String url) {
-    IOException lastException = null;
-    for (int attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-      if (attempt > 0) {
-        sleepWithBackoff(attempt - 1);
-      }
-      try {
-        return loader.load(url);
-      } catch (IOException e) {
-        lastException = e;
+  // ── Security key loading ───────────────────────────────────────────────────
+
+  private SakuraMangasKeys getKeys() {
+    if (cachedKeys != null && System.currentTimeMillis() - keysLoadedAt < KEYS_TTL_MS) {
+      return cachedKeys;
+    }
+    synchronized (this) {
+      if (cachedKeys == null || System.currentTimeMillis() - keysLoadedAt >= KEYS_TTL_MS) {
+        cachedKeys = loadKeys();
+        keysLoadedAt = System.currentTimeMillis();
       }
     }
-    throw new ScrapingException(
-        "Failed to fetch URL after " + MAX_ATTEMPTS + " attempts: " + url, lastException);
+    return cachedKeys;
   }
 
-  private void sleepWithBackoff(int retryIndex) {
+  private SakuraMangasKeys loadKeys() {
+    String script;
     try {
-      Thread.sleep(baseDelayMs * (1L << retryIndex));
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      throw new ScrapingException("Interrupted during retry backoff", e);
+      script = scriptFetcher.fetch(SECURITY_JS_URL);
+    } catch (IOException e) {
+      throw new ScrapingException("Failed to fetch security JS", e);
+    }
+
+    long mangaInfoKey = extractLong(script, MANGA_INFO_KEY_PATTERN, "manga_info");
+    String vKey1 = extractString(script, VKEY1_PATTERN, "X-Verification-Key-1");
+    String vKey2 = extractString(script, VKEY2_PATTERN, "X-Verification-Key-2");
+
+    log.debug(
+        "Keys loaded — manga_info={} key1-present={} key2-present={}",
+        mangaInfoKey,
+        !vKey1.isBlank(),
+        !vKey2.isBlank());
+    return new SakuraMangasKeys(mangaInfoKey, vKey1, vKey2);
+  }
+
+  private long extractLong(String script, Pattern pattern, String name) {
+    Matcher m = pattern.matcher(script);
+    if (m.find()) {
+      try {
+        return Long.parseLong(m.group(1));
+      } catch (NumberFormatException e) {
+        log.warn("Failed to parse {} value '{}' as long", name, m.group(1));
+      }
+    }
+    log.warn("Pattern for {} not found in security script", name);
+    return 0L;
+  }
+
+  private String extractString(String script, Pattern pattern, String name) {
+    Matcher m = pattern.matcher(script);
+    if (m.find()) {
+      return m.group(1);
+    }
+    log.warn("Pattern for {} not found in security script", name);
+    return "";
+  }
+
+  // ── Proof generation ───────────────────────────────────────────────────────
+
+  /**
+   * Generates the SHA-256 proof-of-work.
+   *
+   * <p>The challenge is a base64 string of the form {@code address/middle/pathSegment}. The seed
+   * is {@code address + USER_AGENT + key + pathSegment}, then SHA-256 is applied 29 times.
+   */
+  String generateProof(String base64Challenge, long key) {
+    try {
+      byte[] decoded = Base64.getDecoder().decode(base64Challenge);
+      String decodedStr = new String(decoded, java.nio.charset.StandardCharsets.UTF_8);
+      String[] parts = decodedStr.split("/");
+      if (parts.length != 3) {
+        throw new ScrapingException(
+            "Invalid challenge format: expected 3 slash-separated parts, got " + parts.length);
+      }
+
+      String address = parts[0];
+      String pathSegment = parts[2];
+      String result = address + USER_AGENT + key + pathSegment;
+
+      MessageDigest digest = MessageDigest.getInstance("SHA-256");
+      for (int i = 0; i < PROOF_ROUNDS; i++) {
+        byte[] hash = digest.digest(result.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        digest.reset();
+        StringBuilder sb = new StringBuilder(64);
+        for (byte b : hash) {
+          sb.append(String.format("%02x", b));
+        }
+        result = sb.toString();
+      }
+      return result;
+    } catch (NoSuchAlgorithmException e) {
+      throw new ScrapingException("SHA-256 not available", e);
     }
   }
 
-  private String extractTitle(Document doc, String url) {
-    for (String selector : TITLE_SELECTORS) {
-      Element el = doc.selectFirst(selector);
-      if (el != null && !el.text().isBlank()) {
-        log.debug("Title found via selector '{}': {}", selector, el.text().trim());
-        return el.text().trim();
-      }
+  // ── API calls ──────────────────────────────────────────────────────────────
+
+  private Document fetchPage(String url) {
+    try {
+      return pageFetcher.fetch(url);
+    } catch (IOException e) {
+      throw new ScrapingException("Failed to fetch manga page: " + url, e);
     }
-    log.warn("No title selector matched for URL: {}. Page <body> snippet: {}", url,
-        doc.body() != null ? doc.body().html().substring(0, Math.min(500, doc.body().html().length())) : "empty");
-    throw new ScrapingException("Could not extract manga title from: " + url);
   }
 
-  private int extractLatestChapter(Document doc, String url) {
-    for (String selector : CHAPTER_SELECTORS) {
-      Element el = doc.selectFirst(selector);
-      if (el != null) {
-        String text = el.text();
-        log.debug("Chapter selector '{}' matched text: '{}'", selector, text);
-        // Try keyword-anchored pattern first to avoid matching unrelated numbers (e.g. dates)
-        Matcher km = CHAPTER_KEYWORD_PATTERN.matcher(text);
-        if (km.find()) {
-          try {
-            return Integer.parseInt(km.group(1));
-          } catch (NumberFormatException e) {
-            // Continue to fallback
-          }
-        }
-        Matcher m = CHAPTER_PATTERN.matcher(text);
-        if (m.find()) {
-          try {
-            return Integer.parseInt(m.group(1));
-          } catch (NumberFormatException e) {
-            // Continue to next selector
-          }
-        }
+  private String fetchTitle(
+      String mangaId, String challenge, String proof, String csrfToken, SakuraMangasKeys keys) {
+    Map<String, String> data =
+        Map.of(
+            "manga_id", mangaId,
+            "dataType", "json",
+            "challenge", challenge,
+            "proof", proof);
+    Map<String, String> headers =
+        Map.of(
+            "X-Verification-Key-1", keys.verificationKey1(),
+            "X-Verification-Key-2", keys.verificationKey2(),
+            "X-CSRF-Token", csrfToken);
+    String body;
+    try {
+      body = apiCaller.call(MANGA_INFO_URL, data, headers);
+    } catch (IOException e) {
+      throw new ScrapingException("Failed to call manga info API", e);
+    }
+    log.debug("Manga info response: {}", body.length() > 200 ? body.substring(0, 200) : body);
+    try {
+      JsonNode json = objectMapper.readTree(body);
+      String title = json.path("titulo").asText();
+      if (title == null || title.isBlank()) {
+        throw new ScrapingException(
+            "Blank title in manga info response — API may have rejected the proof. Body: " + body);
+      }
+      return title;
+    } catch (IOException e) {
+      throw new ScrapingException("Failed to parse manga info response: " + body, e);
+    }
+  }
+
+  private int fetchLatestChapter(
+      String mangaId, String challenge, String proof, String csrfToken, SakuraMangasKeys keys) {
+    Map<String, String> data =
+        Map.of(
+            "manga_id", mangaId,
+            "offset", "0",
+            "order", "desc",
+            "limit", "1",
+            "challenge", challenge,
+            "proof", proof);
+    Map<String, String> headers =
+        Map.of(
+            "X-Verification-Key-1", keys.verificationKey1(),
+            "X-Verification-Key-2", keys.verificationKey2(),
+            "X-CSRF-Token", csrfToken);
+    String body;
+    try {
+      body = apiCaller.call(MANGA_CHAPTERS_URL, data, headers);
+    } catch (IOException e) {
+      throw new ScrapingException("Failed to call chapters API", e);
+    }
+    log.debug("Chapters response: {}", body.length() > 200 ? body.substring(0, 200) : body);
+
+    Document doc = Jsoup.parse(body);
+    Element numCap = doc.selectFirst(".capitulo-item .num-capitulo");
+    if (numCap == null) {
+      log.warn(
+          "No .capitulo-item .num-capitulo in chapters response. Snippet: {}",
+          body.length() > 300 ? body.substring(0, 300) : body);
+      throw new ScrapingException("Could not find chapter list in API response");
+    }
+
+    String dataChapter = numCap.attr("data-chapter");
+    if (!dataChapter.isBlank()) {
+      try {
+        return (int) Float.parseFloat(dataChapter);
+      } catch (NumberFormatException e) {
+        log.warn("Failed to parse data-chapter='{}' as number", dataChapter);
       }
     }
-    log.warn("No chapter selector matched for URL: {}. Tried: {}", url,
-        String.join(", ", CHAPTER_SELECTORS));
-    throw new ScrapingException("Could not extract latest chapter from: " + url);
+
+    // Fallback: parse number from text (e.g. "Capítulo 197")
+    Matcher m = Pattern.compile("(\\d+)").matcher(numCap.text());
+    if (m.find()) {
+      return Integer.parseInt(m.group(1));
+    }
+    throw new ScrapingException("Could not extract chapter number from: " + numCap.text());
   }
 }
