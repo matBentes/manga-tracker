@@ -5,7 +5,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.mangaTracker.backend.exception.ScrapingException;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.util.Base64;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.junit.jupiter.api.Test;
@@ -170,6 +173,71 @@ class SakuraMangasScraperTest {
         .hasMessageContaining("manga info API");
   }
 
+  @Test
+  void scrape_reusesCachedKeysWithinTtl() {
+    AtomicInteger scriptFetches = new AtomicInteger();
+    SakuraMangasScraper scraper =
+        new SakuraMangasScraper(
+            url -> parsePage("123", CHALLENGE, "tok"),
+            url -> {
+              scriptFetches.incrementAndGet();
+              return "manga_info: 99999 \"X-Verification-Key-1\" = 'key1value' "
+                  + "\"X-Verification-Key-2\" = 'key2value'";
+            },
+            (url, data, headers) ->
+                url.contains("manga_info")
+                    ? "{\"titulo\": \"Cached Keys\"}"
+                    : "<div class=\"capitulo-item\">"
+                        + "<span class=\"num-capitulo\" data-chapter=\"2\">Capítulo 2</span>"
+                        + "</div>");
+
+    scraper.scrape(MANGA_URL);
+    scraper.scrape(MANGA_URL);
+
+    assertThat(scriptFetches).hasValue(1);
+  }
+
+  @Test
+  void scrape_refreshesCachedKeysAfterTtlExpires() throws Exception {
+    AtomicInteger scriptFetches = new AtomicInteger();
+    SakuraMangasScraper scraper =
+        new SakuraMangasScraper(
+            url -> parsePage("123", CHALLENGE, "tok"),
+            url -> {
+              scriptFetches.incrementAndGet();
+              return "manga_info: 99999 \"X-Verification-Key-1\" = 'key1value' "
+                  + "\"X-Verification-Key-2\" = 'key2value'";
+            },
+            (url, data, headers) ->
+                url.contains("manga_info")
+                    ? "{\"titulo\": \"Refreshed Keys\"}"
+                    : "<div class=\"capitulo-item\">"
+                        + "<span class=\"num-capitulo\" data-chapter=\"3\">Capítulo 3</span>"
+                        + "</div>");
+
+    scraper.scrape(MANGA_URL);
+    expireKeysCache(scraper);
+    scraper.scrape(MANGA_URL);
+
+    assertThat(scriptFetches).hasValue(2);
+  }
+
+  @Test
+  void productionConstructor_fetchersAreExecutable() throws Exception {
+    SakuraMangasScraper scraper = new SakuraMangasScraper();
+
+    SakuraMangasScraper.PageFetcher pageFetcher = getField(scraper, "pageFetcher");
+    SakuraMangasScraper.ScriptFetcher scriptFetcher = getField(scraper, "scriptFetcher");
+    SakuraMangasScraper.ApiCaller apiCaller = getField(scraper, "apiCaller");
+
+    assertThatThrownBy(() -> pageFetcher.fetch("http://127.0.0.1:1/page"))
+        .isInstanceOf(IOException.class);
+    assertThatThrownBy(() -> scriptFetcher.fetch("http://127.0.0.1:1/script"))
+        .isInstanceOf(IOException.class);
+    assertThatThrownBy(() -> apiCaller.call("http://127.0.0.1:1/api", Map.of("a", "b"), Map.of()))
+        .isInstanceOf(IOException.class);
+  }
+
   // ── generateProof() ───────────────────────────────────────────────────────
 
   @Test
@@ -206,5 +274,22 @@ class SakuraMangasScraperTest {
     assertThatThrownBy(() -> scraper.generateProof(badChallenge, 0L))
         .isInstanceOf(ScrapingException.class)
         .hasMessageContaining("3 slash-separated parts");
+  }
+
+  private static void expireKeysCache(SakuraMangasScraper scraper) throws Exception {
+    Field ttlField = SakuraMangasScraper.class.getDeclaredField("KEYS_TTL_MS");
+    ttlField.setAccessible(true);
+    long ttlMs = ttlField.getLong(null);
+
+    Field keysLoadedAtField = SakuraMangasScraper.class.getDeclaredField("keysLoadedAt");
+    keysLoadedAtField.setAccessible(true);
+    keysLoadedAtField.setLong(scraper, System.currentTimeMillis() - ttlMs - 1);
+  }
+
+  @SuppressWarnings("unchecked")
+  private static <T> T getField(SakuraMangasScraper scraper, String name) throws Exception {
+    Field field = SakuraMangasScraper.class.getDeclaredField(name);
+    field.setAccessible(true);
+    return (T) field.get(scraper);
   }
 }
