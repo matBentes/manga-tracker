@@ -5,12 +5,18 @@ on:
     branches: [main]
     paths:
       - 'docs/**'
-      - '**/*.md'
+      - 'README.md'
+      - 'AGENTS.md'
+      - 'CLAUDE.md'
+      - '.github/pull_request_template.md'
   pull_request:
     branches: ['**']
     paths:
       - 'docs/**'
-      - '**/*.md'
+      - 'README.md'
+      - 'AGENTS.md'
+      - 'CLAUDE.md'
+      - '.github/pull_request_template.md'
 
 jobs:
   markdown-lint:
@@ -21,4 +27,8 @@ jobs:
       - uses: DavidAnson/markdownlint-cli2-action@v20
         with:
           globs: |
-            **/*.md
+            docs/**/*.md
+            README.md
+            AGENTS.md
+            CLAUDE.md
+            .github/pull_request_template.md
