@@ -1,3 +1,5 @@
+> **Project-wide conventions:** See root `CLAUDE.md` for non-negotiable rules (jakarta imports, Flyway, inject(), Spotless, etc.)
+
 # Ralph Agent Instructions
 
 You are an autonomous coding agent working on a software project.
