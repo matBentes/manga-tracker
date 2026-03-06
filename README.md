@@ -69,6 +69,7 @@ npm start
 ```
 
 The dev server starts on **http://localhost:4200** and proxies `/api` requests to `localhost:8080`.
+This same-origin proxy setup is also what the integration E2E workflow relies on in CI.
 
 ## Environment Variables
 
