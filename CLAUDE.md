@@ -2,6 +2,7 @@
 
 > Full details in `docs/developer-guide.md`, `docs/architecture.md`, and `docs/api.md`.
 > Human+Claude workflow guide: `docs/workflow.md`.
+> Shared agent rules for Codex + Claude: `docs/agent-workflow.md`.
 > This file is the compact "fast path" — read it first, reference docs for depth.
 
 ## What This Project Is
@@ -13,7 +14,7 @@ A manga reading tracker: users add manga URLs, the backend scrapes for new chapt
 ```
 backend/        Spring Boot 3 (Gradle, Java 21, Jakarta EE 10)
 frontend/       Angular 18 (standalone components, SCSS, Playwright E2E)
-docs/           API reference, architecture, developer guide, workflow
+docs/           API reference, architecture, developer guide, workflow, change log
 ralph/          Ralph autonomous agent system (PRD-driven iteration)
 skills/         Project-specific skills (/prd, /ralph, /techdebt, /review)
 .agents/skills/ Installed community skills (see Available Skills below)

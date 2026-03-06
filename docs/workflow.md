@@ -1,34 +1,53 @@
-# Good Practices: Human + Claude Workflow
+# Good Practices: Human + AI Agent Workflow
 
-How we use Claude Code effectively on this project.
+How to run this project effectively with either Claude Code or Codex.
 
----
+## Start Here
+
+1. Read the shared rules: `docs/agent-workflow.md`
+2. Use your agent entrypoint:
+   - Codex: `AGENTS.md`
+   - Claude: `CLAUDE.md`
+3. Use `docs/developer-guide.md` for detailed project conventions
 
 ## Session Structure
 
-Every Claude Code session should follow this pattern:
+Every non-trivial session should follow this pattern:
 
-1. **Orient** — Claude auto-reads `CLAUDE.md` on session start. Skim it to confirm project context is loaded. For deeper context, ask Claude to read `docs/developer-guide.md`.
-2. **Plan** — Use plan mode (`/plan` or default) for any non-trivial change. Claude explores the codebase, proposes an approach, and waits for approval before writing code.
-3. **Implement** — Work interactively or delegate to Ralph for multi-story features.
-4. **Challenge** — Before pushing, run `/review` to have Claude critically review its own changes against project conventions.
-5. **Remember** — If Claude discovered a reusable pattern or made a recurring mistake, ask it to save the insight to its memory files.
+1. **Orient**: Load shared conventions from `docs/agent-workflow.md`
+2. **Plan**: Explore code and agree an approach before broad edits
+3. **Implement**: Make targeted changes with tests
+4. **Review**: Run project review checks and quality gates
+5. **Capture**: Record notable process updates in docs when needed
 
----
+### Codex Rule Mapping (Claude-like behavior)
+
+To emulate a Claude-style disciplined loop in Codex, use:
+
+- `plan first`: Codex explores and proposes a plan before editing
+- `implement now`: Codex executes immediately without a separate planning pause
+- `review this`: Codex performs a findings-first review before you push
+- `tech debt scan`: Codex runs the project tech debt workflow
+
+Recommended default for non-trivial tasks: start with `plan first`.
 
 ## Feature Task Flow
 
 For new features:
 
-1. **`/prd`** — Generate a Product Requirements Document with clarifying questions
-2. **Review the PRD** — Refine scope, acceptance criteria, and story ordering
-3. **Choose execution mode:**
-   - **`/ralph`** — Convert to `prd.json` and run autonomously (best for multi-story features)
-   - **Interactive** — Implement stories one at a time with human review between each
-4. **`/review`** — Pre-push review of all changes
-5. **`/techdebt`** — Periodic scan for accumulated inconsistencies
-
----
+1. Generate a PRD
+   - Claude style: `/prd`
+   - Codex style: ask to use the `prd` skill
+2. Refine scope and acceptance criteria
+3. Choose execution mode
+   - Ralph/autonomous flow for multi-story features
+   - Interactive story-by-story implementation
+4. Run review
+   - Claude style: `/review`
+   - Codex style: ask for a project-convention review
+5. Run tech debt scan periodically
+   - Claude style: `/techdebt`
+   - Codex style: ask to use the `techdebt` skill
 
 ## Available Skills
 
@@ -36,89 +55,39 @@ For new features:
 
 | Skill | Purpose | When to use |
 |-------|---------|-------------|
-| `/prd` | Generate a structured PRD | Starting a new feature |
-| `/ralph` | Convert PRD to Ralph JSON format | Preparing for autonomous execution |
-| `/techdebt` | Scan for tech debt and inconsistencies | After a Ralph run, or periodically |
-| `/review` | Pre-push review against project conventions | Before pushing any branch |
+| `prd` | Generate a structured PRD | Starting a new feature |
+| `ralph` | Convert PRD to Ralph JSON format | Preparing autonomous execution |
+| `techdebt` | Scan for tech debt and inconsistencies | After a Ralph run, or periodically |
+| `review` | Pre-push review against project conventions | Before pushing any branch |
 
 ### Installed community skills (`.agents/skills/`)
 
 | Skill | Purpose | When to use |
 |-------|---------|-------------|
-| `/angular-component` | Generate Angular components | Creating new standalone components |
-| `/java-springboot` | Spring Boot patterns | Adding controllers, services, entities |
-| `/playwright-e2e-testing` | Playwright E2E testing | Writing or debugging E2E tests |
-| `/tdd` | Test-driven development | Implementing with red-green-refactor |
-| `/code-review` | General code quality review | Deep review for SOLID, patterns, bugs |
-| `/security-review` | OWASP security vulnerability scan | Pre-merge security audit |
-| `/backend-testing` | Backend test strategies | Writing unit/integration tests for Java |
-| `/docker-expert` | Docker/Compose guidance | Dockerfile or compose changes |
-| `/github-actions-cicd` | CI/CD pipeline help | Modifying GitHub Actions workflows |
+| `angular-component` | Generate Angular components | Creating new standalone components |
+| `java-springboot` | Spring Boot patterns | Adding controllers, services, entities |
+| `playwright-e2e-testing` | Playwright E2E testing | Writing or debugging E2E tests |
+| `tdd` | Test-driven development | Implementing with red-green-refactor |
+| `code-review` | General code quality review | Deep review for SOLID, patterns, bugs |
+| `security-review` | OWASP security vulnerability scan | Pre-merge security audit |
+| `backend-testing` | Backend test strategies | Writing unit/integration tests for Java |
+| `docker-expert` | Docker/Compose guidance | Dockerfile or compose changes |
+| `github-actions-cicd` | CI/CD pipeline help | Modifying GitHub Actions workflows |
+| `find-skills` | Discover installable skills | When you are unsure which skill to use |
+| `skill-creator` | Create or improve skills | Building or refining project skills |
 
-> **`/review` vs `/code-review`:** `/review` checks project-specific conventions (jakarta, Flyway, inject, Spotless). `/code-review` does general quality analysis (SOLID, best practices, bugs). Use both for thorough pre-push review.
+## Claude-only Capabilities
 
----
+The items below are Claude-specific workflow features and should not be treated as shared agent rules:
 
-## Parallel Work with Worktrees
-
-When you need to work on multiple things at once (e.g., a bug fix while a feature is in progress), use **git worktrees** instead of stashing or juggling branches:
-
-```
-/worktree
-```
-
-This creates an isolated copy of the repo in `.claude/worktrees/` with its own branch. You can run a separate Claude session in the worktree without interfering with your main work.
-
-**When to use worktrees:**
-- Bug fix while a Ralph run is in progress on the main checkout
-- Exploring a different approach without losing current state
-- Running two Claude sessions on independent tasks
-
-**Note:** Ralph already handles multi-story parallelism within a feature. Worktrees are for *cross-feature* parallelism.
-
----
-
-## Subagents
-
-Claude can spawn subagents — lightweight background workers that research or explore without polluting the main conversation context. This is useful for:
-
-- **Parallel research** — "Search for how the scraper handles timeouts" while continuing to work on something else
-- **Deep exploration** — Let a subagent thoroughly explore a part of the codebase while you focus on implementation
-- **Independent tasks** — Run tests, check build output, or search documentation in the background
-
-**How to trigger:** Ask Claude to do something "in the background" or "in parallel", or it will use subagents automatically when exploring the codebase.
-
-**Note:** Ralph's iteration model already covers autonomous multi-step execution. Subagents are most useful in interactive sessions for research and exploration.
-
----
-
-## Advanced Prompting Tips
-
-Get better results from Claude by structuring your prompts:
-
-- **Challenge Claude's work** — After implementation, explicitly ask: "Now review what you just wrote. What did you miss? What could break?" This catches issues Claude wouldn't flag unprompted.
-- **Teach Claude to remember** — When Claude discovers a codebase pattern or makes a mistake, say "Remember this for future sessions." It saves to `.claude/` memory files.
-- **Be specific about scope** — "Fix the bug" is vague. "The scraping job fails when the URL returns a 403 — handle that in ScrapingJob.java" gives Claude the right context immediately.
-- **Use plan mode for anything non-trivial** — Even if you think you know the approach, plan mode forces Claude to read the codebase first, which prevents it from writing code based on assumptions.
-- **Reference files by path** — "Update the manga service" is ambiguous. "Update `backend/src/main/java/.../MangaService.java`" is precise.
-
----
-
-## Watch Claude For These
-
-Common mistakes Claude makes on this codebase — catch them early:
-
-- **`javax` imports** — Claude's training data is full of `javax.persistence`. Always needs to be `jakarta.persistence` here.
-- **Editing existing migrations** — Claude may try to "fix" a migration instead of creating a new one. Flyway will reject checksum mismatches.
-- **Constructor injection** — Claude defaults to `constructor(private service: MyService)` instead of `inject()`. ESLint will catch it, but it wastes a cycle.
-- **Missing `spotlessApply`** — Claude forgets to format Java code. Pre-commit hook catches it, but running it proactively avoids noisy diffs.
-- **Overly large stories** — When using Ralph, Claude tends to create stories that are too big for one iteration. Each story should be completable in a single context window.
-
----
+- `/worktree` helper flow in `.claude/worktrees/`
+- Claude subagents for parallel background exploration
+- Claude memory-specific prompts in `.claude/`
 
 ## Pre-Push Checklist
 
 ### Backend
+
 ```bash
 cd backend
 ./gradlew spotlessApply
@@ -127,6 +96,7 @@ cd backend
 ```
 
 ### Frontend
+
 ```bash
 cd frontend
 npm run format
@@ -135,7 +105,8 @@ npm run e2e
 ```
 
 ### Both
+
 - [ ] No `javax.persistence` imports in Java files
 - [ ] No edited/deleted Flyway migrations (only new ones)
-- [ ] All `inject()` — no constructor injection in Angular
-- [ ] UI changes verified in browser
+- [ ] All `inject()` usage, no constructor injection in Angular
+- [ ] UI changes verified in browser/Playwright

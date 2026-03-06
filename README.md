@@ -92,3 +92,4 @@ environment variables or edit `backend/src/main/resources/application.properties
 - [API Reference](docs/api.md)
 - [Architecture Overview](docs/architecture.md)
 - [Developer Guide](docs/developer-guide.md)
+- [Agent Workflow (Codex + Claude)](docs/agent-workflow.md)
