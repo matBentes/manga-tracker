@@ -11,7 +11,8 @@
   },
   "runArgs": [
     "--cap-add=NET_ADMIN",
-    "--cap-add=NET_RAW"
+    "--cap-add=NET_RAW",
+    "--cap-add=SYS_ADMIN"
   ],
   "customizations": {
     "vscode": {
@@ -52,7 +53,7 @@
   },
   "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=delegated",
   "workspaceFolder": "/workspace",
-  "postCreateCommand": "git config core.hooksPath .githooks",
+  "postCreateCommand": "git config core.hooksPath .githooks && node .devcontainer/.devcontainer/setup-mcp.sh",
   "postStartCommand": "sudo /usr/local/bin/init-firewall.sh",
   "waitFor": "postStartCommand"
 }
