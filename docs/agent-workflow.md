@@ -55,6 +55,14 @@ If the change touches cross-service behavior, also run:
 - Community skills: `.agents/skills/`
 - Use the minimum set of skills needed for the task; avoid broad, unfocused runs.
 
+## Planning Artifacts
+
+- Use `/prd` for medium/large features, ambiguous scope, or multi-story work.
+- Use `tasks/plan-template.md` for the implementation handoff that Codex builds and both agents review.
+- Task plans should reference the source PRD and the specific story IDs or requirements in scope.
+- Task plans should also record manual verification and review evidence when the task needs them.
+- Small bug fixes or obvious refactors can skip the PRD if the scope is already clear.
+
 ## Collaboration Rules
 
 - Prefer small, reviewable commits.

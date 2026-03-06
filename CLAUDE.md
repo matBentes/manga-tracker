@@ -66,6 +66,11 @@ Default supervised flow:
 6. If they agree it is blocked, Codex fixes and both re-review
 7. If they disagree, stop and reconcile before fixing or pushing
 
+Planning artifact rule:
+- Use `/prd` for medium/large features or ambiguous scope.
+- Use `tasks/plan-template.md` for the implementation handoff and review contract.
+- Small, clear bug fixes can skip the PRD and go straight to a task plan.
+
 ## Non-Negotiable Conventions
 
 These cause CI failures or runtime errors if violated:

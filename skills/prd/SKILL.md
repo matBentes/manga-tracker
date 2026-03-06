@@ -15,8 +15,9 @@ Create detailed Product Requirements Documents that are clear, actionable, and s
 2. Ask 3-5 essential clarifying questions (with lettered options)
 3. Generate a structured PRD based on answers
 4. Save to `tasks/prd-[feature-name].md`
+5. If the user wants to move into execution planning, derive a separate task plan from `tasks/plan-template.md` that references the PRD and the selected story IDs
 
-**Important:** Do NOT start implementing. The PRD is for alignment — making sure you and the user agree on *what* to build before spending time building it.
+**Important:** Do NOT start implementing. The PRD is for alignment — making sure you and the user agree on *what* to build before spending time building it. If execution planning is requested, create a separate task plan rather than overloading the PRD with file-by-file implementation steps.
 
 
 ## Step 1: Clarifying Questions
@@ -105,6 +106,17 @@ Remaining questions or areas needing clarification.
 - **Format:** Markdown (`.md`)
 - **Location:** `tasks/`
 - **Filename:** `prd-[feature-name].md` (kebab-case)
+
+## Handoff To Execution
+
+Once the PRD is approved:
+
+- Use `tasks/plan-template.md` for the implementation handoff
+- Link the task plan back to the PRD in `## Source`
+- Select the exact story IDs / requirements that belong in the next implementation slice
+- Put verification commands and the two-agent `## Review Gate` in the task plan, not in ad hoc chat instructions
+
+Small bug fixes or obvious refactors can skip the PRD and go straight to a task plan when the scope is already clear.
 
 
 ## Example PRD

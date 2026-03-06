@@ -37,6 +37,8 @@ Use this default behavior in this repository:
 
 1. Plan-first for non-trivial tasks:
    - Before editing multiple files, changing architecture, or touching DB schema/API contracts, first present a short plan.
+   - For medium/large features, use `/prd` to define scope, then use `tasks/plan-template.md` for the implementation handoff and review contract.
+   - For small, clear bug fixes, a task plan is enough; do not force a PRD.
 2. Implementation checkpoints:
    - After exploration, summarize findings before edits.
    - After edits, report exactly what changed and which checks ran.

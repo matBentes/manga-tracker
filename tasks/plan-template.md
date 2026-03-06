@@ -1,9 +1,15 @@
 # Task Plan — <Title>
 
+## Source
+- **PRD:** `tasks/prd-<feature-name>.md` or `none`
+- **Stories / requirements in scope:** `US-001`, `FR-2`, or `none`
+- If there is no PRD, explain why this task can stand alone.
+
 ## Goal
 - Describe the user-visible outcome in one or two lines.
 
 ## Context
+- Reference the source PRD instead of restating it wholesale.
 - Why this work exists now.
 - Current behavior, bug, or gap.
 - Any repo-specific background the implementing agent must know first.
@@ -39,6 +45,12 @@
 - `cd <dir> && <command>`
 - `cd <dir> && <command>`
 
+**Manual verification:**
+- `none` or the exact user-flow / browser checks required
+
+**Evidence:**
+- `none` or the artifact paths / notes reviewers should expect
+
 **Quality gates:**
 - `backend`
 - `frontend`
@@ -58,6 +70,10 @@
 **Independent review:**
 - Claude runs `/supervise`
 
+**Review evidence:**
+- Implementer self-review summary or link
+- Independent review summary or link
+
 **Agreement rule:**
 - `agree-pass` = both reviews say ready
 - `agree-fail` = both reviews say blockers remain
@@ -70,11 +86,15 @@
 - Any fix after review requires both agents to review again
 
 ## Acceptance Checklist
+- [ ] Source PRD and stories / requirements references are accurate
 - [ ] Main functional outcome works
 - [ ] Design decisions above were preserved
 - [ ] Verification commands pass
+- [ ] Manual verification is complete or explicitly not needed
+- [ ] Review evidence is captured
 - [ ] Both reviews reach `agree-pass`
 
 ## Handoff Notes
+- Note which PRD stories or requirements remain for later tasks.
 - Anything the implementer should tell the reviewer explicitly.
 - Assumptions, skipped checks, or environment caveats.

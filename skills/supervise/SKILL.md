@@ -20,11 +20,14 @@ Look for the plan file. Check in order:
 3. Ask the user which plan to supervise against
 
 Read the plan fully. Identify:
+- **Source PRD / stories in scope** — original PRD path and the story IDs or requirements this task claims to implement
 - **Expected changes** — which files should be created/modified/deleted
-- **Verification section** — success commands, quality gates, max fix attempts
-- **Review Gate** — implementer review expectation, agreement rule, fix owner
+- **Verification section** — success commands, manual verification/evidence, quality gates, max fix attempts
+- **Review Gate** — implementer review expectation, review evidence, agreement rule, fix owner
 - If the plan has no `## Verification` section, construct one from CLAUDE.md quality gates + reasonable task-specific checks
 - If the plan has no `## Review Gate` section, continue with an independent review but mark the double-check as incomplete
+
+If the plan references a source PRD, read the relevant PRD sections for the selected story slice before reviewing the implementation.
 
 ## Step 1: Diff check
 
@@ -47,7 +50,7 @@ Report a brief table:
 
 Look for the implementing agent's own review result if it exists. Check in order:
 1. User-provided summary
-2. The plan's `## Review Gate` notes or linked evidence
+2. The plan's `## Review Gate` review evidence / notes
 3. Recent task or terminal summary from the implementing agent
 
 If you cannot find a real self-review, continue with your review anyway, but record that the two-agent double-check is incomplete.
@@ -67,7 +70,8 @@ Be specific: file path, line number, what's wrong, what it should be.
 Run the verification commands in this order:
 
 1. **Task-specific checks** from the plan's `## Verification` section
-2. **Relevant quality gates** from CLAUDE.md:
+2. **Manual verification / evidence requirements** from the plan's `## Verification` section
+3. **Relevant quality gates** from CLAUDE.md:
    - Backend (if changed): `cd backend && ./gradlew spotlessApply && ./gradlew test jacocoTestReport`
    - Frontend (if changed): `cd frontend && npm test && npm run lint`
    - Run broader checks like `npm run e2e` when the plan or change scope requires them

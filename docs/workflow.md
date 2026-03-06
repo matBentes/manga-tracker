@@ -54,12 +54,29 @@ To emulate a Claude-style disciplined loop in Codex, use:
 
 Recommended default for non-trivial tasks: start with `plan first`.
 
+## Planning Artifacts
+
+Use two different planning artifacts, with a clear handoff between them:
+
+1. **PRD** (`/prd`, usually `tasks/prd-*.md`)
+   - Use for medium/large features, ambiguous scope, or multi-story work
+   - Captures goals, user stories, requirements, non-goals, and success criteria
+2. **Task plan** (`tasks/plan-template.md`)
+   - Use for the next implementation slice that an agent will actually build
+   - References the source PRD and selected story IDs in `## Source`
+   - Carries the `## Verification` and `## Review Gate` sections used by both reviewers
+
+Use both for medium/large work.
+Use only a task plan for small bug fixes or straightforward refactors where scope is already clear.
+
 ## Supervised Implementation Flow
 
 When Codex (or another agent) implements a plan that Claude created:
 
 ```
-Claude: /prd or write plan → tasks/*.md (include ## Verification and ## Review Gate)
+Claude: /prd → tasks/prd-*.md (if scope needs product definition)
+                ↓
+Claude or user: create tasks/*.md from tasks/plan-template.md (link PRD + story IDs)
                 ↓
 User: hand plan to Codex → Codex implements
                 ↓
@@ -75,9 +92,9 @@ Agreement?
 
 ### Plan Verification And Review Sections
 
-Every plan in `tasks/` should end with a `## Verification` block and a `## Review Gate` block so the two-agent loop is explicit:
+Every implementation task plan in `tasks/` should end with a `## Verification` block and a `## Review Gate` block so the two-agent loop is explicit. PRDs can stay requirements-focused; task plans are the execution artifact reviewers verify against.
 
-Start from [tasks/plan-template.md](/home/maetsu/Desktop/projects/manga-tracker/tasks/plan-template.md) when writing a new task plan.
+Start from `tasks/plan-template.md` when writing a new task plan.
 
 ```markdown
 ## Verification
@@ -85,6 +102,12 @@ Start from [tasks/plan-template.md](/home/maetsu/Desktop/projects/manga-tracker/
 **Success commands:**
 - `cd frontend && npm test`
 - `cd frontend && npm run test:coverage`
+
+**Manual verification:**
+- Open the affected screen and confirm the feature works end to end
+
+**Evidence:**
+- `/tmp/<feature-check>.png`
 
 **Quality gates:** backend, frontend (references CLAUDE.md commands)
 
@@ -101,6 +124,10 @@ Start from [tasks/plan-template.md](/home/maetsu/Desktop/projects/manga-tracker/
 
 **Independent review:**
 - Claude runs `/supervise`
+
+**Review evidence:**
+- Implementer self-review summary or link
+- Independent review summary or link
 
 **Agreement rule:**
 - `agree-pass` = both reviews say ready
@@ -130,16 +157,19 @@ For new features:
    - Claude style: `/prd`
    - Codex style: ask to use the `prd` skill
 2. Refine scope and acceptance criteria
-3. Choose execution mode
+3. Create the next task plan from `tasks/plan-template.md`
+   - link the PRD in `## Source`
+   - choose the story IDs or requirements for this slice
+4. Choose execution mode
    - Ralph/autonomous flow for multi-story features
    - Interactive story-by-story implementation
-4. Implement with the chosen agent
-5. Run implementer self-review
+5. Implement with the chosen agent
+6. Run implementer self-review
    - Codex style: `review this`
-6. Run the independent second review
+7. Run the independent second review
    - Claude style: `/supervise`
-7. Fix agreed issues and re-review until the verdict is `agree-pass`
-8. Run tech debt scan periodically
+8. Fix agreed issues and re-review until the verdict is `agree-pass`
+9. Run tech debt scan periodically
    - Claude style: `/techdebt`
    - Codex style: ask to use the `techdebt` skill
 
