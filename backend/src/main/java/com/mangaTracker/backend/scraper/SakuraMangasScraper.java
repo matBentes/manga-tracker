@@ -41,17 +41,23 @@ public class SakuraMangasScraper implements MangaScraper {
   private static final String USER_AGENT =
       "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"
           + " (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+  private static final String HEADER_REFERER = "Referer";
+  private static final String HEADER_VKEY1 = "X-Verification-Key-1";
+  private static final String HEADER_VKEY2 = "X-Verification-Key-2";
+  private static final String HEADER_X_REQUESTED_WITH = "X-Requested-With";
+  private static final String HEADER_CSRF_TOKEN = "X-CSRF-Token";
+  private static final String HEADER_XML_HTTP_REQUEST = "XMLHttpRequest";
   private static final int TIMEOUT_MS = 15000;
   private static final long KEYS_TTL_MS = 3_600_000L;
   private static final int PROOF_ROUNDS = 29;
 
   // Patterns applied to the (possibly deobfuscated) security.oby.js
   private static final Pattern MANGA_INFO_KEY_PATTERN =
-      Pattern.compile("manga_info[:\\s,]+['\"]?\\s*(\\d{5,})");
+      Pattern.compile("manga_info[:\\s,]++['\"]?+\\s*+(\\d{5,})");
   private static final Pattern VKEY1_PATTERN =
-      Pattern.compile("X-Verification-Key-1['\"].*?['\"]([A-Za-z0-9+/=_\\-]{8,})['\"]");
+      Pattern.compile(HEADER_VKEY1 + "['\"].*?['\"]([A-Za-z0-9+/=_\\-]{8,})['\"]");
   private static final Pattern VKEY2_PATTERN =
-      Pattern.compile("X-Verification-Key-2['\"].*?['\"]([A-Za-z0-9+/=_\\-]{8,})['\"]");
+      Pattern.compile(HEADER_VKEY2 + "['\"].*?['\"]([A-Za-z0-9+/=_\\-]{8,})['\"]");
 
   // ── Testable HTTP abstractions ──────────────────────────────────────────────
 
@@ -78,8 +84,8 @@ public class SakuraMangasScraper implements MangaScraper {
   private final ApiCaller apiCaller;
   private final ObjectMapper objectMapper;
 
-  private volatile SakuraMangasKeys cachedKeys;
-  private volatile long keysLoadedAt = 0;
+  private SakuraMangasKeys cachedKeys;
+  private long keysLoadedAt = 0;
 
   record SakuraMangasKeys(long mangaInfo, String verificationKey1, String verificationKey2) {}
 
@@ -92,14 +98,14 @@ public class SakuraMangasScraper implements MangaScraper {
         url ->
             Jsoup.connect(url)
                 .userAgent(USER_AGENT)
-                .header("Referer", BASE_URL + "/")
+                .header(HEADER_REFERER, BASE_URL + "/")
                 .timeout(TIMEOUT_MS)
                 .get();
     this.scriptFetcher =
         url ->
             Jsoup.connect(url)
                 .userAgent(USER_AGENT)
-                .header("Referer", BASE_URL + "/")
+                .header(HEADER_REFERER, BASE_URL + "/")
                 .timeout(TIMEOUT_MS)
                 .ignoreContentType(true)
                 .execute()
@@ -107,17 +113,17 @@ public class SakuraMangasScraper implements MangaScraper {
     this.apiCaller =
         (url, data, headers) -> {
           Connection conn =
-              Jsoup.connect(url)
-                  .userAgent(USER_AGENT)
-                  .header("Referer", BASE_URL + "/")
-                  .header("X-Requested-With", "XMLHttpRequest")
-                  .timeout(TIMEOUT_MS)
-                  .ignoreContentType(true)
-                  .method(Connection.Method.POST);
-          data.forEach((k, v) -> conn.data(k, v));
-          headers.forEach((k, v) -> conn.header(k, v));
-          return conn.execute().body();
-        };
+                  Jsoup.connect(url)
+                      .userAgent(USER_AGENT)
+                      .header(HEADER_REFERER, BASE_URL + "/")
+                      .header(HEADER_X_REQUESTED_WITH, HEADER_XML_HTTP_REQUEST)
+                      .timeout(TIMEOUT_MS)
+                      .ignoreContentType(true)
+                      .method(Connection.Method.POST);
+              data.forEach(conn::data);
+              headers.forEach(conn::header);
+              return conn.execute().body();
+            };
   }
 
   /** Test constructor — allows injecting mocked fetchers. */
@@ -168,15 +174,10 @@ public class SakuraMangasScraper implements MangaScraper {
 
   // ── Security key loading ───────────────────────────────────────────────────
 
-  private SakuraMangasKeys getKeys() {
-    if (cachedKeys != null && System.currentTimeMillis() - keysLoadedAt < KEYS_TTL_MS) {
-      return cachedKeys;
-    }
-    synchronized (this) {
-      if (cachedKeys == null || System.currentTimeMillis() - keysLoadedAt >= KEYS_TTL_MS) {
-        cachedKeys = loadKeys();
-        keysLoadedAt = System.currentTimeMillis();
-      }
+  private synchronized SakuraMangasKeys getKeys() {
+    if (cachedKeys == null || System.currentTimeMillis() - keysLoadedAt >= KEYS_TTL_MS) {
+      cachedKeys = loadKeys();
+      keysLoadedAt = System.currentTimeMillis();
     }
     return cachedKeys;
   }
@@ -190,8 +191,8 @@ public class SakuraMangasScraper implements MangaScraper {
     }
 
     long mangaInfoKey = extractLong(script, MANGA_INFO_KEY_PATTERN, "manga_info");
-    String vKey1 = extractString(script, VKEY1_PATTERN, "X-Verification-Key-1");
-    String vKey2 = extractString(script, VKEY2_PATTERN, "X-Verification-Key-2");
+    String vKey1 = extractString(script, VKEY1_PATTERN, HEADER_VKEY1);
+    String vKey2 = extractString(script, VKEY2_PATTERN, HEADER_VKEY2);
 
     LOGGER.debug(
         "Keys loaded — manga_info={} key1-present={} key2-present={}",
@@ -281,9 +282,9 @@ public class SakuraMangasScraper implements MangaScraper {
             "proof", proof);
     Map<String, String> headers =
         Map.of(
-            "X-Verification-Key-1", keys.verificationKey1(),
-            "X-Verification-Key-2", keys.verificationKey2(),
-            "X-CSRF-Token", csrfToken);
+            HEADER_VKEY1, keys.verificationKey1(),
+            HEADER_VKEY2, keys.verificationKey2(),
+            HEADER_CSRF_TOKEN, csrfToken);
     String body;
     try {
       body = apiCaller.call(MANGA_INFO_URL, data, headers);
@@ -322,9 +323,9 @@ public class SakuraMangasScraper implements MangaScraper {
             proof);
     Map<String, String> headers =
         Map.of(
-            "X-Verification-Key-1", keys.verificationKey1(),
-            "X-Verification-Key-2", keys.verificationKey2(),
-            "X-CSRF-Token", csrfToken);
+            HEADER_VKEY1, keys.verificationKey1(),
+            HEADER_VKEY2, keys.verificationKey2(),
+            HEADER_CSRF_TOKEN, csrfToken);
     String body;
     try {
       body = apiCaller.call(MANGA_CHAPTERS_URL, data, headers);
