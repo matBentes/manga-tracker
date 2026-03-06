@@ -4,6 +4,7 @@
 > Human+Claude workflow guide: `docs/workflow.md`.
 > Shared agent rules for Codex + Claude: `docs/agent-workflow.md`.
 > This file is the compact "fast path" — read it first, reference docs for depth.
+> Recommended split: use Claude for PRD/planning, then Codex for implementation/testing/push.
 
 ## What This Project Is
 

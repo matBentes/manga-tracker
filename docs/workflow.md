@@ -10,6 +10,19 @@ How to run this project effectively with either Claude Code or Codex.
    - Claude: `CLAUDE.md`
 3. Use `docs/developer-guide.md` for detailed project conventions
 
+## Practical Split That Works Well
+
+1. Use Claude for feature discovery:
+   - scope clarification
+   - PRD generation
+   - story slicing and acceptance criteria
+2. Use Codex for delivery:
+   - implement stories
+   - run/fix tests and linting
+   - prepare clean commit chunks and push
+3. Use either for final review:
+   - run project-convention checks from `docs/agent-workflow.md`
+
 ## Session Structure
 
 Every non-trivial session should follow this pattern:

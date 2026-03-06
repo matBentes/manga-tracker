@@ -12,6 +12,7 @@ Read these in order:
 - Use `AGENTS.md` as the entrypoint (this file).
 - Project-specific reusable workflows live in `skills/`.
 - Community-installed skills live in `.agents/skills/`.
+- Recommended split: Claude for PRD/scope, Codex for implementation/testing/push.
 
 ### Codex Operating Profile
 

@@ -10,6 +10,14 @@ Shared operating rules for AI agents in this repository.
   - Codex: `AGENTS.md`
   - Claude: `CLAUDE.md`
 
+## Practical Split (Recommended)
+
+Use this default split for faster delivery with clearer responsibilities:
+
+1. Claude: idea shaping, PRD creation, and story breakdown.
+2. Codex: implementation, test execution, fixes, and commit/push flow.
+3. Either agent: final review pass against project conventions before merge.
+
 ## Non-Negotiable Conventions
 
 - Use `jakarta.persistence.*` only (never `javax.persistence.*`)
