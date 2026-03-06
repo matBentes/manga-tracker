@@ -210,6 +210,35 @@ See `.github/workflows/ci.yml`. The pipeline has four stages:
 
 Branch protection on `main` requires stages 1 and 2 to pass plus at least one human approval.
 
+### CI Auto-fix Setup
+
+The repository includes `.github/workflows/ci-autofix.yml`, which can attempt a minimal Codex-based
+fix after a failed `CI` run on a pull request. It only runs when:
+
+- the failed workflow is `CI`
+- the event is `pull_request`
+- the PR comes from the same repository
+- the PR has the `autofix` label
+
+The workflow also requires a repository secret named `OPENAI_API_KEY`. Without that secret, the job
+will run but skip the actual Codex fix step.
+
+Configure it in one of these ways:
+
+```bash
+# From a shell that already has OPENAI_API_KEY set locally
+gh secret set OPENAI_API_KEY --body "$OPENAI_API_KEY"
+```
+
+Or via GitHub UI:
+
+- Repository -> `Settings` -> `Secrets and variables` -> `Actions`
+- Add a new repository secret named `OPENAI_API_KEY`
+
+`fix/*` pull requests from this repository are labeled automatically by
+`.github/workflows/pr-autofix-label.yml`, so once the secret exists the next failed `CI` run on a
+`fix/*` PR is eligible for auto-fix.
+
 ## Branch Policy
 
 To reduce accidental bypass of failing CI, this repository enforces a local Git hook:

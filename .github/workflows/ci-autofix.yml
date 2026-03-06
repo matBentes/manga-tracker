@@ -97,12 +97,15 @@ jobs:
         run: gh run view ${{ github.event.workflow_run.id }} --log-failed > .autofix-failed.log
 
       - name: Run Codex auto-fix
+        id: codex
         if: steps.pr.outputs.enabled == 'true' && steps.attempts.outputs.allowed == 'true'
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           if [ -z "${OPENAI_API_KEY}" ]; then
             echo "OPENAI_API_KEY is not configured. Skipping auto-fix."
+            echo "result=skipped" >> "$GITHUB_OUTPUT"
+            echo "reason=Missing OPENAI_API_KEY repository secret." >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -128,13 +131,18 @@ jobs:
             --dangerously-bypass-approvals-and-sandbox \
             -
 
+          echo "result=ran" >> "$GITHUB_OUTPUT"
+          echo "reason=Codex auto-fix completed." >> "$GITHUB_OUTPUT"
+
       - name: Commit and push changes
+        id: commit
         if: steps.pr.outputs.enabled == 'true' && steps.attempts.outputs.allowed == 'true'
         env:
           BRANCH_NAME: ${{ steps.pr.outputs.head_ref }}
         run: |
           if git diff --quiet; then
             echo "No changes created by auto-fix."
+            echo "created=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -143,18 +151,25 @@ jobs:
           git add -A
           git commit -m "chore: auto-fix CI for run ${{ github.event.workflow_run.id }}"
           git push origin "HEAD:${BRANCH_NAME}"
+          echo "created=true" >> "$GITHUB_OUTPUT"
 
       - name: Comment on PR
         if: steps.pr.outputs.enabled == 'true' && steps.attempts.outputs.allowed == 'true'
         uses: actions/github-script@v7
         with:
           script: |
+            const result = '${{ steps.codex.outputs.result }}' || 'unknown';
+            const reason = '${{ steps.codex.outputs.reason }}' || 'No reason reported.';
+            const created = '${{ steps.commit.outputs.created }}' === 'true';
             const body = [
               '🤖 Auto-fix workflow ran for failed CI.',
               '',
               `- Source run: ${context.payload.workflow_run.html_url}`,
-              '- If changes were produced, they were pushed to this PR branch.',
-              '- If no changes were produced, the failure likely requires manual intervention.',
+              `- Result: ${result}`,
+              `- Detail: ${reason}`,
+              created
+                ? '- Changes were produced and pushed to this PR branch.'
+                : '- No changes were pushed to this PR branch.',
             ].join('\n');
 
             await github.rest.issues.createComment({
