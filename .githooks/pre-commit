@@ -1,5 +1,21 @@
 #!/bin/sh
-# Auto-format staged files before commit
+# Auto-format and lint staged files before commit
+
+# ── Frontend: Design-token linter (colors) ────────────────────────────────────
+SCSS_STAGED=$(git diff --cached --name-only --diff-filter=ACM \
+  | grep '^frontend/src/.*\.scss$' \
+  | grep -v '_tokens\.scss$')
+
+if [ -n "$SCSS_STAGED" ]; then
+  # Convert repo-relative paths to absolute paths for the linter
+  SCSS_ABS=$(echo "$SCSS_STAGED" | while read -r f; do echo "$PWD/$f"; done)
+  if ! echo "$SCSS_ABS" | xargs node frontend/tools/lint-design-tokens.js; then
+    echo ""
+    echo "Commit blocked: use design tokens instead of hardcoded colors."
+    echo "Token file: frontend/src/styles/_tokens.scss"
+    exit 1
+  fi
+fi
 
 # ── Frontend: Prettier ────────────────────────────────────────────────────────
 FRONTEND_STAGED=$(git diff --cached --name-only --diff-filter=ACM | grep '^frontend/src/.*\.\(ts\|html\|scss\|json\)$')
