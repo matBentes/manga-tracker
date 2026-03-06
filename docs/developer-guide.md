@@ -205,22 +205,18 @@ See `.github/workflows/ci.yml`. The pipeline has four stages:
 |------------------|--------------------|--------------------------------------------------------------|
 | 1. Format & Lint | Every push/PR      | Spotless, Checkstyle, ESLint, Prettier, `ng build --prod`    |
 | 2. Tests         | After stage 1      | JUnit 5, Jacoco coverage, SonarCloud, Playwright E2E         |
-| 3. AI Code Review| PRs only           | Claude posts review comments on the PR                       |
+| 3. AI Code Review| PRs only           | Advisory review comments from AI tools (not a required check)|
 | 4. Build & Deploy| Push to `main` only| Builds Docker images, pushes to GHCR (`ghcr.io`)             |
 
-Branch protection on `main` requires stages 1 and 2 to pass plus at least one human approval.
+GitHub Rulesets on `main` should require CI/security checks to pass plus at least one human approval.
 
 ## Branch Policy
 
-To reduce accidental bypass of failing CI, this repository enforces a local Git hook:
+To reduce accidental bypass of failing CI, this repository uses two layers:
 
-- `.githooks/pre-push` blocks direct pushes to `main` by default.
+- `.githooks/pre-push` blocks direct pushes to `main` locally.
+- GitHub Rulesets are the source-of-truth enforcement for PR-required merges.
 - Expected flow: feature branch -> pull request -> CI green -> merge.
-- Emergency override (intentional only):
-
-```bash
-ALLOW_MAIN_PUSH=1 git push origin main
-```
 
 ---
 

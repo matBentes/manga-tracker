@@ -57,12 +57,8 @@ If the change touches cross-service behavior, also run:
 
 - Prefer small, reviewable commits.
 - Direct pushes to `main` are blocked by `.githooks/pre-push`; use branch + PR by default.
+- GitHub Rulesets on `main` are the primary enforcement for required checks and approvals.
+- Codex GitHub review is advisory PR commentary, not a required status check in this repository.
 - Do not revert unrelated local changes.
 - Call out assumptions and any unexecuted checks.
 - For UI changes, validate behavior with Playwright and capture evidence when relevant.
-
-Emergency override (explicit and intentional only):
-
-```bash
-ALLOW_MAIN_PUSH=1 git push origin main
-```

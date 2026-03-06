@@ -99,8 +99,9 @@ The items below are Claude-specific workflow features and should not be treated 
 
 ## Pre-Push Checklist
 
-Direct pushes to `main` are blocked by `.githooks/pre-push` by default.
-Use branch + PR flow; only use `ALLOW_MAIN_PUSH=1 git push origin main` intentionally.
+Direct pushes to `main` are blocked by `.githooks/pre-push`.
+Use branch + PR flow.
+Codex GitHub review is advisory commentary; enforce merges with human approval plus required checks.
 
 ### Backend
 
