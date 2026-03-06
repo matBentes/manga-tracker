@@ -113,17 +113,17 @@ public class SakuraMangasScraper implements MangaScraper {
     this.apiCaller =
         (url, data, headers) -> {
           Connection conn =
-                  Jsoup.connect(url)
-                      .userAgent(USER_AGENT)
-                      .header(HEADER_REFERER, BASE_URL + "/")
-                      .header(HEADER_X_REQUESTED_WITH, HEADER_XML_HTTP_REQUEST)
-                      .timeout(TIMEOUT_MS)
-                      .ignoreContentType(true)
-                      .method(Connection.Method.POST);
-              data.forEach(conn::data);
-              headers.forEach(conn::header);
-              return conn.execute().body();
-            };
+              Jsoup.connect(url)
+                  .userAgent(USER_AGENT)
+                  .header(HEADER_REFERER, BASE_URL + "/")
+                  .header(HEADER_X_REQUESTED_WITH, HEADER_XML_HTTP_REQUEST)
+                  .timeout(TIMEOUT_MS)
+                  .ignoreContentType(true)
+                  .method(Connection.Method.POST);
+          data.forEach(conn::data);
+          headers.forEach(conn::header);
+          return conn.execute().body();
+        };
   }
 
   /** Test constructor — allows injecting mocked fetchers. */
