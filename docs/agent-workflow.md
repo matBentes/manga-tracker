@@ -15,8 +15,9 @@ Shared operating rules for AI agents in this repository.
 Use this default split for faster delivery with clearer responsibilities:
 
 1. Claude: idea shaping, PRD creation, and story breakdown.
-2. Codex: implementation, test execution, fixes, and commit/push flow.
-3. Either agent: final review pass against project conventions before merge.
+2. Codex: implementation, test execution, and the first self-review.
+3. Claude: independent second review against the plan and verification commands.
+4. Implementing agent: fixes agreed findings, then hands back for re-review.
 
 ## Non-Negotiable Conventions
 
@@ -37,6 +38,7 @@ cd backend
 # Frontend
 cd frontend
 npm run format
+npm test                         # Vitest unit tests
 npm run lint
 npm run e2e
 ```
@@ -49,13 +51,15 @@ If the change touches cross-service behavior, also run:
 
 ## Skills
 
-- Project skills: `skills/` (`prd`, `ralph`, `review`, `techdebt`)
+- Project skills: `skills/` (`prd`, `ralph`, `review`, `supervise`, `techdebt`)
 - Community skills: `.agents/skills/`
 - Use the minimum set of skills needed for the task; avoid broad, unfocused runs.
 
 ## Collaboration Rules
 
 - Prefer small, reviewable commits.
+- In the two-agent flow, require both an implementer self-review and an independent second review before push.
+- If the two reviews disagree, stop and reconcile the disagreement before fixing or pushing.
 - Direct pushes to `main` are blocked by `.githooks/pre-push`; use branch + PR by default.
 - Do not revert unrelated local changes.
 - Call out assumptions and any unexecuted checks.

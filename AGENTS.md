@@ -13,7 +13,7 @@ Read these in order:
 - Use `AGENTS.md` as the entrypoint (this file).
 - Project-specific reusable workflows live in `skills/` and are the canonical place for repo-owned skills.
 - Community-installed skills live in `.agents/skills/`.
-- Recommended split: Claude for PRD/scope, Codex for implementation/testing/push.
+- Recommended split: Claude for PRD/scope and independent second review, Codex for implementation/testing/fixes.
 
 ### Project Skill Split
 
@@ -25,6 +25,7 @@ Current repo-local skills in `skills/`:
 - `prd`
 - `ralph`
 - `review`
+- `supervise`
 - `techdebt`
 - `prioritize-features`
 - `pre-mortem`
@@ -40,7 +41,8 @@ Use this default behavior in this repository:
    - After exploration, summarize findings before edits.
    - After edits, report exactly what changed and which checks ran.
 3. Review-before-finalize:
-   - For feature or refactor work, run a project-convention review pass before closing.
+   - For feature or refactor work, run a self-review before closing.
+   - In the two-agent flow, expect an independent second review before anything is considered ready.
 4. Safety defaults:
    - Do not modify existing Flyway migrations.
    - Do not revert unrelated local changes.
@@ -51,7 +53,7 @@ Use this default behavior in this repository:
 
 - `plan first`: forces planning before any edits.
 - `implement now`: skip planning and execute directly.
-- `review this`: run a findings-first review on current changes.
+- `review this`: run a findings-first self-review on current changes before the second agent checks them.
 - `tech debt scan`: run the project tech debt workflow.
 
 ## Claude Notes

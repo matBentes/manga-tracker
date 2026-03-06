@@ -5,7 +5,7 @@
 > Human+Claude workflow guide: `docs/workflow.md`.
 > Shared agent rules for Codex + Claude: `docs/agent-workflow.md`.
 > This file is the compact "fast path" — read it first, reference docs for depth.
-> Recommended split: use Claude for PRD/planning, then Codex for implementation/testing/push.
+> Recommended split: use Claude for PRD/planning and independent second review, then Codex for implementation/testing/fixes.
 
 ## What This Project Is
 
@@ -35,6 +35,7 @@ tasks/          PRD outputs and techdebt reports
 | `/prioritize-features` | Rank candidate work by value, effort, and delivery risk |
 | `/pre-mortem` | Identify likely failure modes before implementation or release |
 | `/outcome-roadmap` | Group future work into outcome-based roadmap themes |
+| `/supervise` | Independent second review against a plan; verify, agree/disagree, then fix only if requested |
 
 ### Installed (`.agents/skills/`)
 | Skill | Purpose |
@@ -53,6 +54,17 @@ tasks/          PRD outputs and techdebt reports
 
 > **`/review` vs `/code-review`:** `/review` = project conventions (jakarta, Flyway, inject). `/code-review` = general SOLID/quality.
 > **Ownership split:** `skills/` is the project-owned layer; `.agents/skills/` is the imported general toolbox.
+
+## Two-Agent Loop
+
+Default supervised flow:
+1. Claude plans
+2. Codex implements
+3. Codex self-reviews
+4. Claude independently reviews with `/supervise`
+5. If both agree it is ready, push
+6. If they agree it is blocked, Codex fixes and both re-review
+7. If they disagree, stop and reconcile before fixing or pushing
 
 ## Non-Negotiable Conventions
 
@@ -79,6 +91,7 @@ cd backend
 # Frontend
 cd frontend
 npm run format                   # Prettier auto-fix
+npm test                         # Vitest unit tests
 npm run lint                     # ESLint check
 npm run e2e                      # Playwright E2E (mocked, no backend needed)
 ```
