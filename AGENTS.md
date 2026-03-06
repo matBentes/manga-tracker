@@ -28,6 +28,7 @@ Use this default behavior in this repository:
 4. Safety defaults:
    - Do not modify existing Flyway migrations.
    - Do not revert unrelated local changes.
+   - Do not push directly to `main` (blocked by `.githooks/pre-push` unless explicitly overridden).
    - Call out assumptions and any checks not executed.
 
 ### Prompt Shortcuts (Codex)

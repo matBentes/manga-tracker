@@ -210,6 +210,18 @@ See `.github/workflows/ci.yml`. The pipeline has four stages:
 
 Branch protection on `main` requires stages 1 and 2 to pass plus at least one human approval.
 
+## Branch Policy
+
+To reduce accidental bypass of failing CI, this repository enforces a local Git hook:
+
+- `.githooks/pre-push` blocks direct pushes to `main` by default.
+- Expected flow: feature branch -> pull request -> CI green -> merge.
+- Emergency override (intentional only):
+
+```bash
+ALLOW_MAIN_PUSH=1 git push origin main
+```
+
 ---
 
 ## Mailhog — Viewing Test Emails

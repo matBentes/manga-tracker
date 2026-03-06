@@ -99,6 +99,9 @@ The items below are Claude-specific workflow features and should not be treated 
 
 ## Pre-Push Checklist
 
+Direct pushes to `main` are blocked by `.githooks/pre-push` by default.
+Use branch + PR flow; only use `ALLOW_MAIN_PUSH=1 git push origin main` intentionally.
+
 ### Backend
 
 ```bash
