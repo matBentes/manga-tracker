@@ -6,6 +6,7 @@ Read these in order:
 1. `docs/agent-workflow.md` (shared rules for both agents)
 2. `docs/developer-guide.md` (project structure, tests, quality gates)
 3. `docs/architecture.md` and `docs/api.md` (system behavior and contracts)
+4. `docs/github-operations.md` (rulesets, required checks, autofix, merge flow)
 
 ## Codex Notes
 

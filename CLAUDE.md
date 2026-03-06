@@ -1,6 +1,7 @@
 # manga-tracker — Claude Code Briefing
 
 > Full details in `docs/developer-guide.md`, `docs/architecture.md`, and `docs/api.md`.
+> GitHub operations reference: `docs/github-operations.md`.
 > Human+Claude workflow guide: `docs/workflow.md`.
 > Shared agent rules for Codex + Claude: `docs/agent-workflow.md`.
 > This file is the compact "fast path" — read it first, reference docs for depth.
