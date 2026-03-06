@@ -10,9 +10,24 @@ Read these in order:
 ## Codex Notes
 
 - Use `AGENTS.md` as the entrypoint (this file).
-- Project-specific reusable workflows live in `skills/`.
+- Project-specific reusable workflows live in `skills/` and are the canonical place for repo-owned skills.
 - Community-installed skills live in `.agents/skills/`.
 - Recommended split: Claude for PRD/scope, Codex for implementation/testing/push.
+
+### Project Skill Split
+
+- `skills/`: repo-specific workflows and conventions for manga-tracker
+- `.agents/skills/`: broader imported toolbox skills
+- `~/.codex/skills`: personal/global Codex skills outside this repository
+
+Current repo-local skills in `skills/`:
+- `prd`
+- `ralph`
+- `review`
+- `techdebt`
+- `prioritize-features`
+- `pre-mortem`
+- `outcome-roadmap`
 
 ### Codex Operating Profile
 
