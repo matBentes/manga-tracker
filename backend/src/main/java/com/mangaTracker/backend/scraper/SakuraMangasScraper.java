@@ -30,7 +30,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class SakuraMangasScraper implements MangaScraper {
 
-  private static final Logger log = LoggerFactory.getLogger(SakuraMangasScraper.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(SakuraMangasScraper.class);
   private static final String SUPPORTED_HOST = "sakuramangas.org";
   private static final String BASE_URL = "https://sakuramangas.org";
   private static final String SECURITY_JS_URL = BASE_URL + "/dist/sakura/global/security.oby.js";
@@ -144,7 +144,7 @@ public class SakuraMangasScraper implements MangaScraper {
     Element csrfMeta = doc.selectFirst("meta[name=csrf-token]");
 
     if (mangaIdMeta == null || challengeMeta == null || csrfMeta == null) {
-      log.warn(
+      LOGGER.warn(
           "Missing meta tags at {} — manga-id={} header-challenge={} csrf-token={}",
           url,
           mangaIdMeta != null,
@@ -156,7 +156,7 @@ public class SakuraMangasScraper implements MangaScraper {
     String mangaId = mangaIdMeta.attr("manga-id");
     String challenge = challengeMeta.attr("content");
     String csrfToken = csrfMeta.attr("content");
-    log.debug("manga-id={} challenge-length={}", mangaId, challenge.length());
+    LOGGER.debug("manga-id={} challenge-length={}", mangaId, challenge.length());
 
     SakuraMangasKeys keys = getKeys();
     String proof = generateProof(challenge, keys.mangaInfo());
@@ -193,7 +193,7 @@ public class SakuraMangasScraper implements MangaScraper {
     String vKey1 = extractString(script, VKEY1_PATTERN, "X-Verification-Key-1");
     String vKey2 = extractString(script, VKEY2_PATTERN, "X-Verification-Key-2");
 
-    log.debug(
+    LOGGER.debug(
         "Keys loaded — manga_info={} key1-present={} key2-present={}",
         mangaInfoKey,
         !vKey1.isBlank(),
@@ -207,10 +207,10 @@ public class SakuraMangasScraper implements MangaScraper {
       try {
         return Long.parseLong(m.group(1));
       } catch (NumberFormatException e) {
-        log.warn("Failed to parse {} value '{}' as long", name, m.group(1));
+        LOGGER.warn("Failed to parse {} value '{}' as long", name, m.group(1));
       }
     }
-    log.warn("Pattern for {} not found in security script", name);
+    LOGGER.warn("Pattern for {} not found in security script", name);
     return 0L;
   }
 
@@ -219,7 +219,7 @@ public class SakuraMangasScraper implements MangaScraper {
     if (m.find()) {
       return m.group(1);
     }
-    log.warn("Pattern for {} not found in security script", name);
+    LOGGER.warn("Pattern for {} not found in security script", name);
     return "";
   }
 
@@ -290,7 +290,7 @@ public class SakuraMangasScraper implements MangaScraper {
     } catch (IOException e) {
       throw new ScrapingException("Failed to call manga info API", e);
     }
-    log.debug("Manga info response: {}", body.length() > 200 ? body.substring(0, 200) : body);
+    LOGGER.debug("Manga info response: {}", body.length() > 200 ? body.substring(0, 200) : body);
     try {
       JsonNode json = objectMapper.readTree(body);
       String title = json.path("titulo").asText();
@@ -331,12 +331,12 @@ public class SakuraMangasScraper implements MangaScraper {
     } catch (IOException e) {
       throw new ScrapingException("Failed to call chapters API", e);
     }
-    log.debug("Chapters response: {}", body.length() > 200 ? body.substring(0, 200) : body);
+    LOGGER.debug("Chapters response: {}", body.length() > 200 ? body.substring(0, 200) : body);
 
     Document doc = Jsoup.parse(body);
     Element numCap = doc.selectFirst(".capitulo-item .num-capitulo");
     if (numCap == null) {
-      log.warn(
+      LOGGER.warn(
           "No .capitulo-item .num-capitulo in chapters response. Snippet: {}",
           body.length() > 300 ? body.substring(0, 300) : body);
       throw new ScrapingException("Could not find chapter list in API response");
@@ -347,7 +347,7 @@ public class SakuraMangasScraper implements MangaScraper {
       try {
         return (int) Float.parseFloat(dataChapter);
       } catch (NumberFormatException e) {
-        log.warn("Failed to parse data-chapter='{}' as number", dataChapter);
+        LOGGER.warn("Failed to parse data-chapter='{}' as number", dataChapter);
       }
     }
 
