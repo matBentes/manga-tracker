@@ -17,7 +17,7 @@ backend/        Spring Boot 3 (Gradle, Java 21, Jakarta EE 10)
 frontend/       Angular 18 (standalone components, SCSS, Playwright E2E)
 docs/           API reference, architecture, developer guide, workflow, change log
 ralph/          Ralph autonomous agent system (PRD-driven iteration)
-skills/         Project-specific skills (/prd, /ralph, /techdebt, /review)
+skills/         Project-specific skills and repo-owned workflows
 .agents/skills/ Installed community skills (see Available Skills below)
 tasks/          PRD outputs and techdebt reports
 ```
@@ -31,6 +31,9 @@ tasks/          PRD outputs and techdebt reports
 | `/ralph` | Convert PRD to Ralph JSON for autonomous execution |
 | `/techdebt` | Scan for tech debt and inconsistencies |
 | `/review` | Pre-push review against **project conventions** (jakarta, Flyway, inject, etc.) |
+| `/prioritize-features` | Rank candidate work by value, effort, and delivery risk |
+| `/pre-mortem` | Identify likely failure modes before implementation or release |
+| `/outcome-roadmap` | Group future work into outcome-based roadmap themes |
 
 ### Installed (`.agents/skills/`)
 | Skill | Purpose |
@@ -48,6 +51,7 @@ tasks/          PRD outputs and techdebt reports
 | `/skill-creator` | Create and iterate on custom skills |
 
 > **`/review` vs `/code-review`:** `/review` = project conventions (jakarta, Flyway, inject). `/code-review` = general SOLID/quality.
+> **Ownership split:** `skills/` is the project-owned layer; `.agents/skills/` is the imported general toolbox.
 
 ## Non-Negotiable Conventions
 
