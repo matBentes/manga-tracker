@@ -35,12 +35,11 @@ class SakuraMangasScraperTest {
   }
 
   private static SakuraMangasScraper scraperWith(
-      String mangaId,
-      String titleJson,
-      String chaptersHtml) {
+      String mangaId, String titleJson, String chaptersHtml) {
     return new SakuraMangasScraper(
         url -> parsePage(mangaId, CHALLENGE, "csrf-token"),
-        url -> "manga_info: 99999 \"X-Verification-Key-1\" = 'key1val' \"X-Verification-Key-2\" = 'key2val'",
+        url ->
+            "manga_info: 99999 \"X-Verification-Key-1\" = 'key1val' \"X-Verification-Key-2\" = 'key2val'",
         (url, data, headers) -> url.contains("manga_info") ? titleJson : chaptersHtml);
   }
 
@@ -48,29 +47,25 @@ class SakuraMangasScraperTest {
 
   @Test
   void supports_returnsTrue_forMangaPath() {
-    SakuraMangasScraper scraper =
-        new SakuraMangasScraper(url -> null, url -> "", (u, d, h) -> "");
+    SakuraMangasScraper scraper = new SakuraMangasScraper(url -> null, url -> "", (u, d, h) -> "");
     assertThat(scraper.supports("https://sakuramangas.org/manga/one-piece/")).isTrue();
   }
 
   @Test
   void supports_returnsTrue_forObrasPath() {
-    SakuraMangasScraper scraper =
-        new SakuraMangasScraper(url -> null, url -> "", (u, d, h) -> "");
+    SakuraMangasScraper scraper = new SakuraMangasScraper(url -> null, url -> "", (u, d, h) -> "");
     assertThat(scraper.supports("https://sakuramangas.org/obras/chainsaw-man/")).isTrue();
   }
 
   @Test
   void supports_returnsFalse_forOtherHost() {
-    SakuraMangasScraper scraper =
-        new SakuraMangasScraper(url -> null, url -> "", (u, d, h) -> "");
+    SakuraMangasScraper scraper = new SakuraMangasScraper(url -> null, url -> "", (u, d, h) -> "");
     assertThat(scraper.supports("https://mangadex.org/manga/test/")).isFalse();
   }
 
   @Test
   void supports_returnsFalse_forNull() {
-    SakuraMangasScraper scraper =
-        new SakuraMangasScraper(url -> null, url -> "", (u, d, h) -> "");
+    SakuraMangasScraper scraper = new SakuraMangasScraper(url -> null, url -> "", (u, d, h) -> "");
     assertThat(scraper.supports(null)).isFalse();
   }
 
@@ -179,8 +174,7 @@ class SakuraMangasScraperTest {
 
   @Test
   void generateProof_producesA64CharHexString() {
-    SakuraMangasScraper scraper =
-        new SakuraMangasScraper(url -> null, url -> "", (u, d, h) -> "");
+    SakuraMangasScraper scraper = new SakuraMangasScraper(url -> null, url -> "", (u, d, h) -> "");
     String proof = scraper.generateProof(CHALLENGE, 12345L);
 
     assertThat(proof).hasSize(64).matches("[0-9a-f]+");
@@ -188,8 +182,7 @@ class SakuraMangasScraperTest {
 
   @Test
   void generateProof_isDeterministic() {
-    SakuraMangasScraper scraper =
-        new SakuraMangasScraper(url -> null, url -> "", (u, d, h) -> "");
+    SakuraMangasScraper scraper = new SakuraMangasScraper(url -> null, url -> "", (u, d, h) -> "");
     String proof1 = scraper.generateProof(CHALLENGE, 12345L);
     String proof2 = scraper.generateProof(CHALLENGE, 12345L);
 
@@ -198,8 +191,7 @@ class SakuraMangasScraperTest {
 
   @Test
   void generateProof_differsByKey() {
-    SakuraMangasScraper scraper =
-        new SakuraMangasScraper(url -> null, url -> "", (u, d, h) -> "");
+    SakuraMangasScraper scraper = new SakuraMangasScraper(url -> null, url -> "", (u, d, h) -> "");
     String proof1 = scraper.generateProof(CHALLENGE, 0L);
     String proof2 = scraper.generateProof(CHALLENGE, 99999L);
 
@@ -208,8 +200,7 @@ class SakuraMangasScraperTest {
 
   @Test
   void generateProof_throwsScrapingException_forInvalidChallenge() {
-    SakuraMangasScraper scraper =
-        new SakuraMangasScraper(url -> null, url -> "", (u, d, h) -> "");
+    SakuraMangasScraper scraper = new SakuraMangasScraper(url -> null, url -> "", (u, d, h) -> "");
     String badChallenge = Base64.getEncoder().encodeToString("onlytwoparts/here".getBytes());
 
     assertThatThrownBy(() -> scraper.generateProof(badChallenge, 0L))

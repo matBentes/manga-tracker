@@ -23,9 +23,9 @@ import org.springframework.stereotype.Component;
  *
  * <p>The site uses a custom API with a SHA-256 proof-of-work security challenge. Each manga page
  * exposes three meta tags (manga-id, header-challenge, csrf-token). The challenge is decoded,
- * combined with a numeric key extracted from a companion security JS file, and hashed 29 times
- * with SHA-256 to produce a proof. The proof is then sent to private API endpoints that return
- * the manga title (JSON) and chapter list (HTML).
+ * combined with a numeric key extracted from a companion security JS file, and hashed 29 times with
+ * SHA-256 to produce a proof. The proof is then sent to private API endpoints that return the manga
+ * title (JSON) and chapter list (HTML).
  */
 @Component
 public class SakuraMangasScraper implements MangaScraper {
@@ -33,8 +33,7 @@ public class SakuraMangasScraper implements MangaScraper {
   private static final Logger log = LoggerFactory.getLogger(SakuraMangasScraper.class);
   private static final String SUPPORTED_HOST = "sakuramangas.org";
   private static final String BASE_URL = "https://sakuramangas.org";
-  private static final String SECURITY_JS_URL =
-      BASE_URL + "/dist/sakura/global/security.oby.js";
+  private static final String SECURITY_JS_URL = BASE_URL + "/dist/sakura/global/security.oby.js";
   private static final String MANGA_INFO_URL =
       BASE_URL + "/dist/sakura/models/manga/__obf__manga_info.php";
   private static final String MANGA_CHAPTERS_URL =
@@ -229,8 +228,8 @@ public class SakuraMangasScraper implements MangaScraper {
   /**
    * Generates the SHA-256 proof-of-work.
    *
-   * <p>The challenge is a base64 string of the form {@code address/middle/pathSegment}. The seed
-   * is {@code address + USER_AGENT + key + pathSegment}, then SHA-256 is applied 29 times.
+   * <p>The challenge is a base64 string of the form {@code address/middle/pathSegment}. The seed is
+   * {@code address + USER_AGENT + key + pathSegment}, then SHA-256 is applied 29 times.
    */
   String generateProof(String base64Challenge, long key) {
     try {
@@ -309,12 +308,18 @@ public class SakuraMangasScraper implements MangaScraper {
       String mangaId, String challenge, String proof, String csrfToken, SakuraMangasKeys keys) {
     Map<String, String> data =
         Map.of(
-            "manga_id", mangaId,
-            "offset", "0",
-            "order", "desc",
-            "limit", "1",
-            "challenge", challenge,
-            "proof", proof);
+            "manga_id",
+            mangaId,
+            "offset",
+            "0",
+            "order",
+            "desc",
+            "limit",
+            "1",
+            "challenge",
+            challenge,
+            "proof",
+            proof);
     Map<String, String> headers =
         Map.of(
             "X-Verification-Key-1", keys.verificationKey1(),
