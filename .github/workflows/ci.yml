@@ -216,7 +216,8 @@ jobs:
           java -jar backend/build/libs/*.jar \
             --spring.datasource.url=jdbc:postgresql://localhost:5432/manga_tracker \
             --spring.datasource.username=manga_tracker \
-            --spring.datasource.password=manga_tracker &
+            --spring.datasource.password=manga_tracker \
+            --management.health.mail.enabled=false &
           echo $! > /tmp/backend.pid
 
       - name: Wait for backend to be ready

@@ -53,7 +53,8 @@ jobs:
 
       - name: Skip (not enabled)
         if: steps.pr.outputs.enabled != 'true'
-        run: echo "Auto-fix skipped: ${{ steps.pr.outputs.reason }}"
+        run: |
+          echo "Auto-fix skipped: ${{ steps.pr.outputs.reason }}"
 
       - name: Checkout PR branch
         if: steps.pr.outputs.enabled == 'true'
@@ -76,7 +77,8 @@ jobs:
 
       - name: Skip (attempt limit reached)
         if: steps.pr.outputs.enabled == 'true' && steps.attempts.outputs.allowed != 'true'
-        run: echo "Auto-fix skipped: attempt limit reached."
+        run: |
+          echo "Auto-fix skipped: attempt limit reached."
 
       - name: Setup Node
         if: steps.pr.outputs.enabled == 'true' && steps.attempts.outputs.allowed == 'true'
@@ -105,22 +107,21 @@ jobs:
           fi
 
           {
-            cat <<'PROMPT'
-          You are fixing a failing GitHub Actions CI run for this repository.
-
-          Goals:
-          1. Fix only what is required to make the failed checks pass.
-          2. Keep changes minimal and scoped to the failing issues.
-          3. Run the relevant local commands to validate fixes.
-
-          Constraints:
-          - Do not modify unrelated files.
-          - Do not change branch protection or bypass rules.
-          - Do not push directly to main; work only on the current PR branch.
-          - If no safe fix is possible, make no code changes.
-
-          Failed log:
-          PROMPT
+            printf '%s\n' \
+              'You are fixing a failing GitHub Actions CI run for this repository.' \
+              '' \
+              'Goals:' \
+              '1. Fix only what is required to make the failed checks pass.' \
+              '2. Keep changes minimal and scoped to the failing issues.' \
+              '3. Run the relevant local commands to validate fixes.' \
+              '' \
+              'Constraints:' \
+              '- Do not modify unrelated files.' \
+              '- Do not change branch protection or bypass rules.' \
+              '- Do not push directly to main; work only on the current PR branch.' \
+              '- If no safe fix is possible, make no code changes.' \
+              '' \
+              'Failed log:'
             cat .autofix-failed.log
           } | codex exec \
             --skip-git-repo-check \
