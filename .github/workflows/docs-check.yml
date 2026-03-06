@@ -24,11 +24,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: DavidAnson/markdownlint-cli2-action@v20
+      - id: changed-markdown
+        uses: tj-actions/changed-files@v46
         with:
-          globs: |
+          files: |
             docs/**/*.md
             README.md
             AGENTS.md
             CLAUDE.md
             .github/pull_request_template.md
+      - name: No changed docs files
+        if: steps.changed-markdown.outputs.any_changed != 'true'
+        run: echo "No matching markdown files changed."
+      - uses: DavidAnson/markdownlint-cli2-action@v20
+        if: steps.changed-markdown.outputs.any_changed == 'true'
+        with:
+          globs: ${{ steps.changed-markdown.outputs.all_changed_files }}
