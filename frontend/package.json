@@ -6,7 +6,9 @@
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "lint": "ng lint",
     "format": "prettier --write \"src/**/*.{ts,html,scss,json}\"",
     "format:check": "prettier --check \"src/**/*.{ts,html,scss,json}\"",
@@ -29,24 +31,24 @@
     "zone.js": "~0.14.10"
   },
   "devDependencies": {
+    "@analogjs/vite-plugin-angular": "2.4.0-beta.4",
     "@angular-devkit/build-angular": "^18.2.21",
     "@angular/cli": "^18.2.21",
     "@angular/compiler-cli": "^18.2.0",
     "@playwright/test": "^1.58.2",
-    "@types/jasmine": "~5.1.0",
+    "@testing-library/angular": "^17.4.0",
+    "@testing-library/dom": "^10.4.1",
+    "@vitest/coverage-v8": "^4.0.18",
     "angular-eslint": "21.0.1",
     "eslint": "^9.39.1",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.5",
-    "jasmine-core": "~5.2.0",
-    "karma": "~6.4.0",
-    "karma-chrome-launcher": "~3.2.0",
-    "karma-coverage": "~2.2.0",
-    "karma-jasmine": "~5.1.0",
-    "karma-jasmine-html-reporter": "~2.1.0",
+    "jsdom": "^28.1.0",
     "prettier": "^3.8.1",
     "prettier-eslint": "^16.4.2",
     "typescript": "~5.5.2",
-    "typescript-eslint": "8.46.4"
+    "typescript-eslint": "8.46.4",
+    "vite": "^7.3.1",
+    "vitest": "^4.0.18"
   }
 }

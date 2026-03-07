@@ -81,6 +81,9 @@ Coverage reports: `backend/build/reports/jacoco/test/html/index.html`
 ```bash
 cd frontend
 
+# Vitest unit tests
+npm test
+
 # Playwright E2E tests (mocks backend — no real server needed)
 npm run e2e
 
@@ -192,6 +195,7 @@ Check and fix before committing:
 ```bash
 cd frontend
 npm run format        # Prettier auto-fix
+npm test              # Vitest unit tests
 npm run lint          # ESLint check
 ```
 
@@ -208,7 +212,8 @@ See `.github/workflows/ci.yml`. The pipeline has four stages:
 | 3. AI Code Review| PRs only           | Claude posts review comments on the PR                       |
 | 4. Build & Deploy| Push to `main` only| Builds Docker images, pushes to GHCR (`ghcr.io`)             |
 
-Branch protection on `main` requires stages 1 and 2 to pass plus at least one human approval.
+The `main` ruleset requires the configured status checks to pass before merge. Required approvals
+depend on the active repository ruleset and may be set to `0` for solo-maintainer flow.
 
 ## Branch Policy
 

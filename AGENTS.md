@@ -6,13 +6,14 @@ Read these in order:
 1. `docs/agent-workflow.md` (shared rules for both agents)
 2. `docs/developer-guide.md` (project structure, tests, quality gates)
 3. `docs/architecture.md` and `docs/api.md` (system behavior and contracts)
+4. `docs/github-operations.md` (rulesets, required checks, autofix, merge flow)
 
 ## Codex Notes
 
 - Use `AGENTS.md` as the entrypoint (this file).
 - Project-specific reusable workflows live in `skills/` and are the canonical place for repo-owned skills.
 - Community-installed skills live in `.agents/skills/`.
-- Recommended split: Claude for PRD/scope, Codex for implementation/testing/push.
+- Recommended split: Claude for PRD/scope and independent second review, Codex for implementation/testing/fixes.
 
 ### Project Skill Split
 
@@ -24,6 +25,7 @@ Current repo-local skills in `skills/`:
 - `prd`
 - `ralph`
 - `review`
+- `supervise`
 - `techdebt`
 - `prioritize-features`
 - `pre-mortem`
@@ -35,11 +37,14 @@ Use this default behavior in this repository:
 
 1. Plan-first for non-trivial tasks:
    - Before editing multiple files, changing architecture, or touching DB schema/API contracts, first present a short plan.
+   - For medium/large features, use `/prd` to define scope, then use `tasks/plan-template.md` for the implementation handoff and review contract.
+   - For small, clear bug fixes, a task plan is enough; do not force a PRD.
 2. Implementation checkpoints:
    - After exploration, summarize findings before edits.
    - After edits, report exactly what changed and which checks ran.
 3. Review-before-finalize:
-   - For feature or refactor work, run a project-convention review pass before closing.
+   - For feature or refactor work, run a self-review before closing.
+   - In the two-agent flow, expect an independent second review before anything is considered ready.
 4. Safety defaults:
    - Do not modify existing Flyway migrations.
    - Do not revert unrelated local changes.
@@ -50,7 +55,7 @@ Use this default behavior in this repository:
 
 - `plan first`: forces planning before any edits.
 - `implement now`: skip planning and execute directly.
-- `review this`: run a findings-first review on current changes.
+- `review this`: run a findings-first self-review on current changes before the second agent checks them.
 - `tech debt scan`: run the project tech debt workflow.
 
 ## Claude Notes
