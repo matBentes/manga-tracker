@@ -71,14 +71,16 @@ For medium/large work, use this explicit handoff:
 2. The PRD is reviewed and approved before implementation starts.
 3. Claude or the user creates `tasks/plan-*.md` from `tasks/plan-template.md`, linking the approved PRD and the exact stories/requirements in scope.
 4. Codex implements from the task plan, not directly from the PRD or ad hoc chat context.
-5. Codex runs the implementer self-review.
+5. Codex runs the implementer self-review and records it in the task artifact.
 6. Claude runs `/supervise` against the task plan and linked PRD.
-7. Any fix requires both agents to review again before push.
+7. Record the final review outcome in the same artifact (`## Agreement`: implementer verdict, independent verdict, final status).
+8. Any fix requires both agents to review again before push and update the agreement record.
 
 ## Collaboration Rules
 
 - Prefer small, reviewable commits.
 - In the two-agent flow, require both an implementer self-review and an independent second review before push.
+- Record both reviews and the final agreement in the task artifact before push.
 - If the two reviews disagree, stop and reconcile the disagreement before fixing or pushing.
 - Direct pushes to `main` are blocked by `.githooks/pre-push`; use branch + PR by default.
 - Do not revert unrelated local changes.

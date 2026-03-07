@@ -38,7 +38,7 @@ public class SakuraMangasScraper implements MangaScraper {
       BASE_URL + "/dist/sakura/models/manga/__obf__manga_info.php";
   private static final String MANGA_CHAPTERS_URL =
       BASE_URL + "/dist/sakura/models/manga/__obf__manga_capitulos.php";
-  private static final String USER_AGENT =
+  static final String USER_AGENT =
       "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"
           + " (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
   private static final String HEADER_REFERER = "Referer";
@@ -91,25 +91,24 @@ public class SakuraMangasScraper implements MangaScraper {
 
   // ── Constructors ───────────────────────────────────────────────────────────
 
-  /** Production constructor — uses real Jsoup HTTP calls. */
-  public SakuraMangasScraper() {
+  /** Production constructor — uses Playwright for the HTML page and Jsoup for API/script calls. */
+  public SakuraMangasScraper(PlaywrightBrowserManager browserManager) {
     this.objectMapper = new ObjectMapper();
-    this.pageFetcher =
-        url ->
-            Jsoup.connect(url)
-                .userAgent(USER_AGENT)
-                .header(HEADER_REFERER, BASE_URL + "/")
-                .timeout(TIMEOUT_MS)
-                .get();
+    this.pageFetcher = browserManager::fetchPage;
+    // Only the initial HTML document needs a browser. We keep the script/API fetchers on Jsoup,
+    // but forward any Playwright-acquired cookies so the downstream requests stay in the same
+    // challenge-cleared session if Sakura starts enforcing them there too.
     this.scriptFetcher =
-        url ->
-            Jsoup.connect(url)
-                .userAgent(USER_AGENT)
-                .header(HEADER_REFERER, BASE_URL + "/")
-                .timeout(TIMEOUT_MS)
-                .ignoreContentType(true)
-                .execute()
-                .body();
+        url -> {
+          Connection connection =
+              Jsoup.connect(url)
+                  .userAgent(USER_AGENT)
+                  .header(HEADER_REFERER, BASE_URL + "/")
+                  .timeout(TIMEOUT_MS)
+                  .ignoreContentType(true);
+          browserManager.applySessionCookies(connection);
+          return connection.execute().body();
+        };
     this.apiCaller =
         (url, data, headers) -> {
           Connection conn =
@@ -120,6 +119,7 @@ public class SakuraMangasScraper implements MangaScraper {
                   .timeout(TIMEOUT_MS)
                   .ignoreContentType(true)
                   .method(Connection.Method.POST);
+          browserManager.applySessionCookies(conn);
           data.forEach(conn::data);
           headers.forEach(conn::header);
           return conn.execute().body();
@@ -267,6 +267,8 @@ public class SakuraMangasScraper implements MangaScraper {
   private Document fetchPage(String url) {
     try {
       return pageFetcher.fetch(url);
+    } catch (ScrapingException e) {
+      throw e;
     } catch (IOException e) {
       throw new ScrapingException("Failed to fetch manga page: " + url, e);
     }

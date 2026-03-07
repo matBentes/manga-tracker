@@ -215,6 +215,23 @@ jobs:
           DB_USERNAME: manga_tracker
           DB_PASSWORD: manga_tracker
 
+      - name: Set up Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend deps
+        working-directory: frontend
+        run: npm ci
+
+      - name: Install Playwright browsers for frontend and backend
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+        env:
+          PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.playwright-browsers
+
       - name: Start backend
         run: |
           java -jar backend/build/libs/*.jar \
@@ -223,6 +240,8 @@ jobs:
             --spring.datasource.password=manga_tracker \
             --management.health.mail.enabled=false &
           echo $! > /tmp/backend.pid
+        env:
+          PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.playwright-browsers
 
       - name: Wait for backend to be ready
         run: |
@@ -236,24 +255,11 @@ jobs:
           done
           echo "Backend did not start in time." && exit 1
 
-      - name: Set up Node 20
-        uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Install frontend deps
-        working-directory: frontend
-        run: npm ci
-
-      - name: Install Playwright browsers
-        working-directory: frontend
-        run: npx playwright install --with-deps chromium
-
       - name: Run integration E2E tests
         working-directory: frontend
         run: npm run e2e:integration
+        env:
+          PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.playwright-browsers
 
       - name: Upload integration Playwright report on failure
         uses: actions/upload-artifact@v4

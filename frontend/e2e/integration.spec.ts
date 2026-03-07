@@ -44,16 +44,19 @@ test.describe('Dashboard', () => {
     await expect(page.getByText(/valid URL starting with http/i)).not.toBeVisible();
   });
 
-  test('shows error for unreachable manga URL', async ({ page }) => {
+  test('adds a Sakura manga through the real backend', async ({ page }) => {
     await page.goto('/');
 
     const input = page.getByRole('textbox', { name: /manga URL/i });
-    await input.fill('https://sakuramangas.org/manga/one-piece');
+    await input.fill('https://sakuramangas.org/obras/chainsaw-man/');
     await page.getByRole('button', { name: 'Add Manga' }).click();
 
     await expect(page.getByRole('button', { name: /adding/i })).toBeVisible();
-    await expect(page.getByText(/could not extract manga data|error|failed/i)).toBeVisible({
-      timeout: 30000,
+    await expect(page.getByText(/has been added to your reading list/i)).toBeVisible({
+      timeout: 60000,
+    });
+    await expect(page.locator('.manga-title').first()).toHaveText(/Chainsaw Man/i, {
+      timeout: 60000,
     });
   });
 

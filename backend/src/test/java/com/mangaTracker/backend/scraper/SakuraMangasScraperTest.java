@@ -223,19 +223,23 @@ class SakuraMangasScraperTest {
   }
 
   @Test
-  void productionConstructor_fetchersAreExecutable() throws Exception {
-    SakuraMangasScraper scraper = new SakuraMangasScraper();
+  void productionConstructor_wiresPlaywrightPageFetcher_andPassesBrowserCookiesToHttpClients()
+      throws Exception {
+    Document pageDocument = parsePage("123", CHALLENGE, "tok");
+    RecordingBrowserManager browserManager = new RecordingBrowserManager(pageDocument);
+    SakuraMangasScraper scraper = new SakuraMangasScraper(browserManager);
 
     SakuraMangasScraper.PageFetcher pageFetcher = getField(scraper, "pageFetcher");
     SakuraMangasScraper.ScriptFetcher scriptFetcher = getField(scraper, "scriptFetcher");
     SakuraMangasScraper.ApiCaller apiCaller = getField(scraper, "apiCaller");
 
-    assertThatThrownBy(() -> pageFetcher.fetch("http://127.0.0.1:1/page"))
-        .isInstanceOf(IOException.class);
+    assertThat(pageFetcher.fetch(MANGA_URL)).isSameAs(pageDocument);
+    assertThat(browserManager.fetchCalls).isEqualTo(1);
     assertThatThrownBy(() -> scriptFetcher.fetch("http://127.0.0.1:1/script"))
         .isInstanceOf(IOException.class);
     assertThatThrownBy(() -> apiCaller.call("http://127.0.0.1:1/api", Map.of("a", "b"), Map.of()))
         .isInstanceOf(IOException.class);
+    assertThat(browserManager.cookieApplyCalls).isEqualTo(2);
   }
 
   // ── generateProof() ───────────────────────────────────────────────────────
@@ -291,5 +295,27 @@ class SakuraMangasScraperTest {
     Field field = SakuraMangasScraper.class.getDeclaredField(name);
     field.setAccessible(true);
     return (T) field.get(scraper);
+  }
+
+  private static final class RecordingBrowserManager extends PlaywrightBrowserManager {
+    private final Document document;
+    private int fetchCalls;
+    private int cookieApplyCalls;
+
+    private RecordingBrowserManager(Document document) {
+      super("", () -> null, (PlaywrightBrowserManager.BrowserLauncher) ignored -> null);
+      this.document = document;
+    }
+
+    @Override
+    public Document fetchPage(String url) {
+      fetchCalls++;
+      return document;
+    }
+
+    @Override
+    public void applySessionCookies(org.jsoup.Connection connection) {
+      cookieApplyCalls++;
+    }
   }
 }
