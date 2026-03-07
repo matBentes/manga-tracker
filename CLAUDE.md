@@ -19,13 +19,11 @@ frontend/       Angular 18 (standalone components, SCSS, Playwright E2E)
 docs/           API reference, architecture, developer guide, workflow, change log
 ralph/          Ralph autonomous agent system (PRD-driven iteration)
 skills/         Project-specific skills and repo-owned workflows
-.agents/skills/ Installed community skills (see Available Skills below)
 tasks/          PRD outputs and techdebt reports
 ```
 
-## Available Skills
+## Available Skills (`skills/`)
 
-### Project-specific (`skills/`)
 | Skill | Purpose |
 |-------|---------|
 | `/prd` | Generate a structured PRD for a new feature |
@@ -36,24 +34,6 @@ tasks/          PRD outputs and techdebt reports
 | `/pre-mortem` | Identify likely failure modes before implementation or release |
 | `/outcome-roadmap` | Group future work into outcome-based roadmap themes |
 | `/supervise` | Independent second review against a plan; verify, agree/disagree, then fix only if requested |
-
-### Installed (`.agents/skills/`)
-| Skill | Purpose |
-|-------|---------|
-| `/angular-component` | Angular component best practices |
-| `/java-springboot` | Spring Boot patterns |
-| `/playwright-e2e-testing` | Playwright E2E tests |
-| `/tdd` | Test-driven development workflow |
-| `/code-review` | General code quality (SOLID, best practices) |
-| `/security-review` | OWASP-based security scan |
-| `/backend-testing` | Backend test patterns |
-| `/docker-expert` | Docker and Compose guidance |
-| `/github-actions-cicd` | CI/CD pipeline configuration |
-| `/find-skills` | Discover and install new skills |
-| `/skill-creator` | Create and iterate on custom skills |
-
-> **`/review` vs `/code-review`:** `/review` = project conventions (jakarta, Flyway, inject). `/code-review` = general SOLID/quality.
-> **Ownership split:** `skills/` is the project-owned layer; `.agents/skills/` is the imported general toolbox.
 
 ## Two-Agent Loop
 
@@ -82,6 +62,7 @@ These cause CI failures or runtime errors if violated:
 | Never edit or delete existing Flyway migrations | Checksum mismatch will block startup |
 | `inject()` function — never constructor injection | ESLint `@angular-eslint/prefer-inject` enforced |
 | Run `spotlessApply` before committing Java changes | CI rejects unformatted code |
+| New features use TDD — one test, make it pass, repeat. No horizontal slicing (all tests first then all code) | Tests drive design; ensures behavior coverage and prevents speculative code |
 
 ## Quality Gate Commands
 
@@ -119,6 +100,3 @@ For any UI change, verify in browser using Playwright MCP tools:
 3. Interact with the feature and take a screenshot
 4. Save screenshot to `/tmp/<description>.png`
 
-## Skill Discovery
-
-Before starting an unfamiliar type of task, check for existing skills: `npx skills find "<keywords>"`. Install at project level (`-y`, no `-g`).

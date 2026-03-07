@@ -63,6 +63,18 @@ If the change touches cross-service behavior, also run:
 - Task plans should also record manual verification and review evidence when the task needs them.
 - Small bug fixes or obvious refactors can skip the PRD if the scope is already clear.
 
+## Canonical Handoff
+
+For medium/large work, use this explicit handoff:
+
+1. Claude creates the PRD in `tasks/prd-*.md`.
+2. The PRD is reviewed and approved before implementation starts.
+3. Claude or the user creates `tasks/plan-*.md` from `tasks/plan-template.md`, linking the approved PRD and the exact stories/requirements in scope.
+4. Codex implements from the task plan, not directly from the PRD or ad hoc chat context.
+5. Codex runs the implementer self-review.
+6. Claude runs `/supervise` against the task plan and linked PRD.
+7. Any fix requires both agents to review again before push.
+
 ## Collaboration Rules
 
 - Prefer small, reviewable commits.

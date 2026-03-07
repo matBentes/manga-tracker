@@ -81,6 +81,9 @@ Coverage reports: `backend/build/reports/jacoco/test/html/index.html`
 ```bash
 cd frontend
 
+# Vitest unit tests
+npm test
+
 # Playwright E2E tests (mocks backend — no real server needed)
 npm run e2e
 
@@ -192,6 +195,7 @@ Check and fix before committing:
 ```bash
 cd frontend
 npm run format        # Prettier auto-fix
+npm test              # Vitest unit tests
 npm run lint          # ESLint check
 ```
 

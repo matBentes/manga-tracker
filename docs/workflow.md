@@ -69,6 +69,11 @@ Use two different planning artifacts, with a clear handoff between them:
 Use both for medium/large work.
 Use only a task plan for small bug fixes or straightforward refactors where scope is already clear.
 
+Important handoff rule:
+- Approve the PRD before creating the task plan.
+- Treat the task plan as the implementation contract.
+- Codex should implement from the task plan and its linked PRD slice, not from raw chat context alone.
+
 ## Supervised Implementation Flow
 
 When Codex (or another agent) implements a plan that Claude created:
@@ -78,11 +83,11 @@ Claude: /prd → tasks/prd-*.md (if scope needs product definition)
                 ↓
 Claude or user: create tasks/*.md from tasks/plan-template.md (link PRD + story IDs)
                 ↓
-User: hand plan to Codex → Codex implements
+User: hand approved task plan to Codex → Codex implements from the plan
                 ↓
 Codex: run self-review (`review this`) → record findings / ready verdict
                 ↓
-User: ask Claude to /supervise → Claude independently reviews and verifies
+User: ask Claude to /supervise → Claude independently reviews and verifies against the task plan and linked PRD
                 ↓
 Agreement?
   - agree-pass → push
