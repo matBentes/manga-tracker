@@ -67,6 +67,10 @@ public class PlaywrightBrowserManager {
     this.browserLauncher = browserLauncher;
   }
 
+  // Thread safety: Browser.newContext() is safe to call concurrently per Playwright docs.
+  // Each BrowserContext is fully isolated (own cookies, cache, storage) and closed after use,
+  // so concurrent scrape requests do not share any mutable state outside the synchronized
+  // getOrCreateBrowser() call.
   public Document fetchPage(String url) {
     Browser activeBrowser = getOrCreateBrowser();
     try (BrowserContext context =

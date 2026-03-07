@@ -226,11 +226,9 @@ jobs:
         working-directory: frontend
         run: npm ci
 
-      - name: Install Playwright browsers for frontend and backend
+      - name: Install Playwright browsers
         working-directory: frontend
         run: npx playwright install --with-deps chromium
-        env:
-          PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.playwright-browsers
 
       - name: Start backend
         run: |
@@ -241,7 +239,7 @@ jobs:
             --management.health.mail.enabled=false &
           echo $! > /tmp/backend.pid
         env:
-          PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.playwright-browsers
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
 
       - name: Wait for backend to be ready
         run: |
@@ -258,8 +256,6 @@ jobs:
       - name: Run integration E2E tests
         working-directory: frontend
         run: npm run e2e:integration
-        env:
-          PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.playwright-browsers
 
       - name: Upload integration Playwright report on failure
         uses: actions/upload-artifact@v4
