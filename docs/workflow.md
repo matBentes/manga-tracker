@@ -37,11 +37,13 @@ Every non-trivial session should follow this pattern:
 3. **Implement**: Make targeted changes with tests
 4. **Self-Review**: Implementing agent runs a findings-first review
 5. **Second Review**: The other agent independently reviews and verifies
-6. **Fix**: The implementing agent fixes agreed issues
-7. **Re-review**: Both agents confirm the fix set or explicitly disagree
-8. **Capture**: Record notable process updates in docs when needed
+6. **Fix Doc**: If blocked, the reviewer writes a focused fix doc (`tasks/fix-*.md`) for the implementer
+7. **Fix**: The implementing agent fixes from the fix doc
+8. **Re-review**: Both agents confirm the fix set or explicitly disagree
+9. **Record Agreement**: Append the final review outcome to the local task artifact as `## Agreement`
+10. **Capture**: Record notable process updates in docs when needed
 
-If both reviews pass on the first check, skip directly from Step 5 to Step 8.
+If both reviews pass on the first check, skip directly from Step 5 to Step 9.
 
 ### Codex Rule Mapping (Claude-like behavior)
 
@@ -49,7 +51,8 @@ To emulate a Claude-style disciplined loop in Codex, use:
 
 - `plan first`: Codex explores and proposes a plan before editing
 - `implement now`: Codex executes immediately without a separate planning pause
-- `review this`: Codex performs the first findings-first self-review before the second agent checks
+- `review this`: Codex performs the first findings-first self-review before the second agent checks. Appends the review to the local task plan (`## Implementer Review`) or local fix doc.
+- After the independent review, append `## Agreement` to the same local task artifact with the implementer verdict, independent verdict, and final status (`agree-pass`, `agree-fail`, or `disagree`).
 - `tech debt scan`: Codex runs the project tech debt workflow
 
 Recommended default for non-trivial tasks: start with `plan first`.
@@ -66,6 +69,10 @@ Use two different planning artifacts, with a clear handoff between them:
    - References the source PRD and selected story IDs in `## Source`
    - Carries the `## Verification` and `## Review Gate` sections used by both reviewers
 
+By default, execution artifacts stay local and untracked:
+- put active task plans, fix docs, and review records under `.local/agent-artifacts/`
+- only commit a task or fix artifact when the user explicitly wants it tracked in the repository
+
 Use both for medium/large work.
 Use only a task plan for small bug fixes or straightforward refactors where scope is already clear.
 
@@ -79,19 +86,21 @@ Important handoff rule:
 When Codex (or another agent) implements a plan that Claude created:
 
 ```
-Claude: /prd → tasks/prd-*.md (if scope needs product definition)
+Claude: /prd → task artifact (commit only if explicitly requested)
                 ↓
-Claude or user: create tasks/*.md from tasks/plan-template.md (link PRD + story IDs)
+Claude or user: create local task artifact from `tasks/plan-template.md`
                 ↓
 User: hand approved task plan to Codex → Codex implements from the plan
                 ↓
-Codex: run self-review (`review this`) → record findings / ready verdict
+Codex: run self-review (`review this`) → append `## Implementer Review`
                 ↓
 User: ask Claude to /supervise → Claude independently reviews and verifies against the task plan and linked PRD
                 ↓
+Record agreement in the same local task artifact as `## Agreement`
+                ↓
 Agreement?
   - agree-pass → push
-  - agree-fail → Codex fixes → both re-review
+  - agree-fail → Claude writes local fix doc → Codex fixes from fix doc → both re-review
   - disagree   → reconcile review differences before fixing or pushing
 ```
 
@@ -99,7 +108,7 @@ Agreement?
 
 Every implementation task plan in `tasks/` should end with a `## Verification` block and a `## Review Gate` block so the two-agent loop is explicit. PRDs can stay requirements-focused; task plans are the execution artifact reviewers verify against.
 
-Start from `tasks/plan-template.md` when writing a new task plan.
+Start from `tasks/plan-template.md` when writing a new task plan, then place the working copy under `.local/agent-artifacts/` unless the user explicitly asks to commit it.
 
 ```markdown
 ## Verification
@@ -126,13 +135,15 @@ Start from `tasks/plan-template.md` when writing a new task plan.
 
 **Implementer review:**
 - Codex runs `review this`
+- Append the self-review as `## Implementer Review` in this local task artifact
 
 **Independent review:**
 - Claude runs `/supervise`
 
 **Review evidence:**
-- Implementer self-review summary or link
+- Implementer self-review: `## Implementer Review` section in this local artifact
 - Independent review summary or link
+- Final agreement: `## Agreement` section in this local artifact
 
 **Agreement rule:**
 - `agree-pass` = both reviews say ready
@@ -173,8 +184,9 @@ For new features:
    - Codex style: `review this`
 7. Run the independent second review
    - Claude style: `/supervise`
-8. Fix agreed issues and re-review until the verdict is `agree-pass`
-9. Run tech debt scan periodically
+8. Record the review outcome in the local task artifact as `## Agreement`
+9. Fix agreed issues and re-review until the verdict is `agree-pass`
+10. Run tech debt scan periodically
    - Claude style: `/techdebt`
    - Codex style: ask to use the `techdebt` skill
 
