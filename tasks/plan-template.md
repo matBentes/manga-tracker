@@ -66,16 +66,13 @@
 
 **Implementer review:**
 - Codex runs `review this`
-- Append the self-review as a `## Implementer Review` section at the bottom of this plan file
 
 **Independent review:**
 - Claude runs `/supervise`
-- Append the final agreement as `## Agreement` at the bottom of this plan file after both reviews exist
 
 **Review evidence:**
-- Implementer self-review: `## Implementer Review` section in this file
+- Implementer self-review summary or link
 - Independent review summary or link
-- Final agreement: `## Agreement` section in this file
 
 **Agreement rule:**
 - `agree-pass` = both reviews say ready
