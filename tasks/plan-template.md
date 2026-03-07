@@ -4,6 +4,7 @@
 - **PRD:** `tasks/prd-<feature-name>.md` or `none`
 - **Stories / requirements in scope:** `US-001`, `FR-2`, or `none`
 - If there is no PRD, explain why this task can stand alone.
+- Store working copies of plans and review artifacts under `.local/agent-artifacts/` unless the user explicitly asks to commit them.
 
 ## Goal
 - Describe the user-visible outcome in one or two lines.
@@ -66,13 +67,16 @@
 
 **Implementer review:**
 - Codex runs `review this`
+- Append the self-review as a `## Implementer Review` section at the bottom of the working copy of this plan
 
 **Independent review:**
 - Claude runs `/supervise`
+- Append the final agreement as `## Agreement` at the bottom of the working copy of this plan after both reviews exist
 
 **Review evidence:**
-- Implementer self-review summary or link
+- Implementer self-review: `## Implementer Review` section in the working copy of this plan
 - Independent review summary or link
+- Final agreement: `## Agreement` section in the working copy of this plan
 
 **Agreement rule:**
 - `agree-pass` = both reviews say ready
