@@ -26,5 +26,12 @@ Thumbs.db
 .vscode/*
 !.vscode/extensions.json
 
+# ── Test artifacts ──────────────────────────────────────────────────────────
+frontend/playwright-report/
+frontend/test-results/
+
+# ── Playwright MCP ──────────────────────────────────────────────────────────
+.playwright-mcp/
+
 # ── Docker ───────────────────────────────────────────────────────────────────
 postgres_data/
