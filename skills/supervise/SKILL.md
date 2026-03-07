@@ -49,9 +49,9 @@ Report a brief table:
 ## Step 2: Collect self-review context
 
 Look for the implementing agent's own review result if it exists. Check in order:
-1. User-provided summary
-2. The plan's `## Review Gate` review evidence / notes
-3. Recent task or terminal summary from the implementing agent
+1. `## Implementer Review` section at the bottom of the task plan file
+2. User-provided summary
+3. The plan's `## Review Gate` review evidence / notes
 
 If you cannot find a real self-review, continue with your review anyway, but record that the two-agent double-check is incomplete.
 
@@ -91,7 +91,40 @@ Use these outcomes:
 
 If the result is `disagree`, stop and explain the difference clearly. Do not enter fix mode unless the user explicitly tells you whose direction to follow.
 
-## Step 6: Fix loop (optional)
+## Step 6: Fix doc (when handing back)
+
+When the verdict is `blocked`, `agree-fail`, or `disagree` and the supervisor is **not** entering fix mode, write a fix document to `tasks/fix-<short-description>.md` so the implementing agent can pick it up directly.
+
+The fix doc should contain:
+
+```markdown
+# Fix: <short title>
+
+## Source
+- **Plan:** <path to the task plan>
+- **Supervision report:** <who reviewed, date>
+
+## Problem
+<Exact error message or failure. File path, line number, root cause explanation.>
+
+## Fix
+<The minimal change needed. Show the before/after code or the specific edit.>
+
+## Verification
+<The exact commands to run after fixing, copied from the plan's verification section.>
+
+## Constraints
+<What NOT to change — guard rails so the implementer stays scoped.>
+
+## Implementer Review
+<The implementer appends their self-review here after fixing.>
+```
+
+**Why:** The implementing agent (often Codex) works best with a focused, self-contained document. Extracting the actionable fix from the full supervision report avoids the implementer needing to parse a long review to find the one thing that matters. The implementer appends their self-review to the same file, keeping the fix and its review colocated.
+
+Skip this step when the verdict is `ready` or `agree-pass`.
+
+## Step 7: Fix loop (optional)
 
 Only run this step when the user explicitly asks for fixes after review, or when the plan says the supervisor should proceed into the fix stage.
 
@@ -112,9 +145,23 @@ If verification fails or the agreed outcome is `agree-fail`:
 - Prefer the simplest fix (downgrade a dep > rewrite integration code)
 - If the plan's approach is fundamentally broken, say so and propose an alternative — don't keep retrying a dead end
 
-After fixing, rerun the independent review and restate the agreement outcome.
+After fixing, rerun the independent review and restate the agreement outcome. If the fix loop is exhausted and blockers remain, write a fix doc (Step 6) for the remaining issues before the summary.
 
-## Step 7: Summary
+## Step 8: Record agreement
+
+After producing the summary, append a `## Agreement` section to the task artifact (the plan file for initial reviews, or the fix doc for fix rounds). This makes the outcome durable and visible to both agents.
+
+```markdown
+## Agreement
+
+**Implementer verdict:** <ready / blocked>
+**Independent verdict:** <ready / blocked>
+**Status:** <agree-pass / agree-fail / disagree>
+**Date:** <YYYY-MM-DD>
+**Notes:** <one-line summary or "none">
+```
+
+## Step 9: Summary
 
 Output a final report:
 
@@ -141,7 +188,7 @@ Output a final report:
 - <issue>: <what was wrong>
 
 ### Issues Fixed
-- <issue>: <what was wrong> → <what was done>
+- <issue>: <what was wrong> -> <what was done>
 
 ### Remaining Concerns
 - <anything that works but is suboptimal, or risks for future>

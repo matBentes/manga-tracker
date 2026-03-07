@@ -1,5 +1,18 @@
 # Change Log
 
+## 2026-03-07 — Dev Container: Add Codex CLI and mount Codex home
+
+**Files:** `.devcontainer/.devcontainer/devcontainer.json`, `.devcontainer/.devcontainer/Dockerfile`, `.devcontainer/.devcontainer/init-firewall.sh`
+
+**What changed:**
+- Renamed the dev container to `Claude + Codex Sandbox`
+- Added a `CODEX_VERSION` build arg and installed `@openai/codex` globally in the image
+- Mounted the host `~/.codex` directory into `/home/node/.codex` and exposed `CODEX_HOME`
+- Allowed `chatgpt.com`, `api.openai.com`, and `auth.openai.com` through the dev container firewall
+
+**Why:**
+The repository already uses Codex in CI (`.github/workflows/ci-autofix.yml`), but the dev container only provisioned Claude Code. Adding Codex to the image keeps the local container workflow aligned with CI and reuses the developer's existing Codex auth, config, and skills inside the container.
+
 ## 2026-03-05 — Skills: Install community skills and simplify all project skills
 
 **Files:** `CLAUDE.md`, `skills/*/SKILL.md`, `.agents/skills/`

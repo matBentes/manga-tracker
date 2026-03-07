@@ -4,6 +4,7 @@ ARG TZ
 ENV TZ="$TZ"
 
 ARG CLAUDE_CODE_VERSION=latest
+ARG CODEX_VERSION=latest
 
 # Add Adoptium (Eclipse Temurin) repository for Java 21
 RUN apt-get update && apt-get install -y --no-install-recommends wget apt-transport-https gpg && \
@@ -110,8 +111,9 @@ RUN sh -c "$(wget -O- https://github.com/deluan/zsh-in-docker/releases/download/
   -a "export PROMPT_COMMAND='history -a' && export HISTFILE=/commandhistory/.bash_history" \
   -x
 
-# Install Claude
+# Install agent CLIs
 RUN npm install -g @anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}
+RUN npm install -g @openai/codex@${CODEX_VERSION}
 
 # Copy and set up firewall script, and install Google Chrome (requires root
 # because it installs to /opt/google/chrome/chrome)
