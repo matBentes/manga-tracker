@@ -3,7 +3,6 @@ package com.mangaTracker.backend.model;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
@@ -14,6 +13,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UuidGenerator;
 
 @Entity
 @Table(name = "notification_log")
@@ -25,7 +25,8 @@ import org.hibernate.annotations.CreationTimestamp;
 public class NotificationLog {
 
   @Id
-  @GeneratedValue(strategy = GenerationType.UUID)
+  @GeneratedValue
+  @UuidGenerator(style = UuidGenerator.Style.TIME)
   private UUID id;
 
   @Column(name = "manga_id", nullable = false)
