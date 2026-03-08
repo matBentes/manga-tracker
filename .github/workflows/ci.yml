@@ -236,7 +236,8 @@ jobs:
             --spring.datasource.url=jdbc:postgresql://localhost:5432/manga_tracker \
             --spring.datasource.username=manga_tracker \
             --spring.datasource.password=manga_tracker \
-            --management.health.mail.enabled=false &
+            --management.health.mail.enabled=false \
+            --scraper.sakura.playwright.enabled=false &
           echo $! > /tmp/backend.pid
         env:
           PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'

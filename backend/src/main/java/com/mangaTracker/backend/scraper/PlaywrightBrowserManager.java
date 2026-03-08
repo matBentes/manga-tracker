@@ -21,11 +21,11 @@ import org.jsoup.nodes.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Lazy;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 @Component
-@Lazy
+@ConditionalOnProperty(name = "scraper.sakura.playwright.enabled", matchIfMissing = true)
 public class PlaywrightBrowserManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PlaywrightBrowserManager.class);

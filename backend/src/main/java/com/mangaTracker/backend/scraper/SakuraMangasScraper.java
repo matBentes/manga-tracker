@@ -16,7 +16,7 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.annotation.Lazy;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 /**
@@ -29,6 +29,7 @@ import org.springframework.stereotype.Component;
  * title (JSON) and chapter list (HTML).
  */
 @Component
+@ConditionalOnProperty(name = "scraper.sakura.playwright.enabled", matchIfMissing = true)
 public class SakuraMangasScraper implements MangaScraper {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SakuraMangasScraper.class);
@@ -93,7 +94,7 @@ public class SakuraMangasScraper implements MangaScraper {
   // ── Constructors ───────────────────────────────────────────────────────────
 
   /** Production constructor — uses Playwright for the HTML page and Jsoup for API/script calls. */
-  public SakuraMangasScraper(@Lazy PlaywrightBrowserManager browserManager) {
+  public SakuraMangasScraper(PlaywrightBrowserManager browserManager) {
     this.objectMapper = new ObjectMapper();
     this.pageFetcher = browserManager::fetchPage;
     // Only the initial HTML document needs a browser. We keep the script/API fetchers on Jsoup,
