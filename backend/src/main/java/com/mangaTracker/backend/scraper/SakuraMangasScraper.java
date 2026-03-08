@@ -16,6 +16,7 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 /**
@@ -92,7 +93,7 @@ public class SakuraMangasScraper implements MangaScraper {
   // ── Constructors ───────────────────────────────────────────────────────────
 
   /** Production constructor — uses Playwright for the HTML page and Jsoup for API/script calls. */
-  public SakuraMangasScraper(PlaywrightBrowserManager browserManager) {
+  public SakuraMangasScraper(@Lazy PlaywrightBrowserManager browserManager) {
     this.objectMapper = new ObjectMapper();
     this.pageFetcher = browserManager::fetchPage;
     // Only the initial HTML document needs a browser. We keep the script/API fetchers on Jsoup,
