@@ -14,6 +14,10 @@ import com.microsoft.playwright.BrowserContext;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Playwright;
 import com.microsoft.playwright.PlaywrightException;
+import com.microsoft.playwright.options.Cookie;
+import java.util.List;
+import java.util.Map;
+import org.jsoup.Connection;
 import org.jsoup.nodes.Document;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -115,6 +119,53 @@ class PlaywrightBrowserManagerTest {
 
     verify(browser).close();
     verify(playwright).close();
+  }
+
+  @Test
+  void fetchPage_extractsCookies_andAppliesThemToConnection() {
+    stubSuccessfulFetch(playwright, browser, context, page, "123");
+    when(context.cookies())
+        .thenReturn(
+            List.of(new Cookie("cf_clearance", "token-1"), new Cookie("session", "token-2")));
+    Connection connection = org.mockito.Mockito.mock(Connection.class);
+
+    browserManager.fetchPage(URL);
+    browserManager.applySessionCookies(connection);
+
+    verify(connection).cookies(Map.of("cf_clearance", "token-1", "session", "token-2"));
+  }
+
+  @Test
+  void applySessionCookies_isNoOp_whenNoCookiesCaptured() {
+    Connection connection = org.mockito.Mockito.mock(Connection.class);
+
+    browserManager.applySessionCookies(connection);
+
+    org.mockito.Mockito.verifyNoInteractions(connection);
+  }
+
+  @Test
+  void fetchPage_cleansUpRuntime_whenBrowserLaunchFails() {
+    when(playwrightFactory.create()).thenReturn(playwright);
+    when(browserLauncher.launch(playwright))
+        .thenThrow(new PlaywrightException("chromium executable missing"));
+
+    assertThatThrownBy(() -> browserManager.fetchPage(URL))
+        .isInstanceOf(PlaywrightException.class)
+        .hasMessageContaining("chromium executable missing");
+
+    verify(playwright).close();
+  }
+
+  @Test
+  void fetchPage_succeeds_whenConfiguredWithExplicitChromiumExecutable() {
+    PlaywrightBrowserManager managerWithPath =
+        new PlaywrightBrowserManager("/usr/bin/chromium", playwrightFactory, browserLauncher);
+    stubSuccessfulFetch(playwright, browser, context, page, "789");
+
+    Document document = managerWithPath.fetchPage(URL);
+
+    assertThat(document.selectFirst("meta[manga-id]").attr("manga-id")).isEqualTo("789");
   }
 
   private void stubSuccessfulFetch(

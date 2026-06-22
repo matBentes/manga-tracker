@@ -76,11 +76,11 @@ public class PlaywrightBrowserManager {
   public Document fetchPage(String url) {
     Browser activeBrowser = getOrCreateBrowser();
     try (BrowserContext context =
-        activeBrowser.newContext(
-            new Browser.NewContextOptions()
-                .setUserAgent(SakuraMangasScraper.USER_AGENT)
-                .setExtraHTTPHeaders(Map.of("Referer", SAKURA_REFERER)))) {
-      Page page = context.newPage();
+            activeBrowser.newContext(
+                new Browser.NewContextOptions()
+                    .setUserAgent(SakuraMangasScraper.USER_AGENT)
+                    .setExtraHTTPHeaders(Map.of("Referer", SAKURA_REFERER)));
+        Page page = context.newPage()) {
       page.navigate(url, new Page.NavigateOptions().setTimeout(PAGE_TIMEOUT_MS));
       page.waitForSelector(
           READY_SELECTOR,
