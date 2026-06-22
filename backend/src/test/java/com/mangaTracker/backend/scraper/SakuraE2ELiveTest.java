@@ -29,7 +29,8 @@ class SakuraE2ELiveTest {
             "https://sakuramangas.org/obras/gachiakuta/"
           }) {
         ScrapedManga r = scraper.scrape(url);
-        System.out.println("LIVE " + url + " -> title='" + r.title() + "' chapter=" + r.latestChapter());
+        System.out.println(
+            "LIVE " + url + " -> title='" + r.title() + "' chapter=" + r.latestChapter());
         assertThat(r.title()).isNotBlank();
         assertThat(r.latestChapter()).isPositive();
       }
