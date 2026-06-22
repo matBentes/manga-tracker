@@ -85,32 +85,36 @@ public class PlaywrightBrowserManager {
     this.browserLauncher = browserLauncher;
   }
 
-  // Thread safety: Browser.newContext() is safe to call concurrently per Playwright docs.
-  // Each BrowserContext is fully isolated (own cookies, cache, storage) and closed after use,
-  // so concurrent scrape requests do not share any mutable state outside the synchronized
-  // getOrCreateBrowser() call.
+  // Thread safety: the Playwright Java connection is NOT safe for unsynchronized concurrent use,
+  // and a user-triggered scrape can overlap the scheduled poll job. We therefore serialize the
+  // whole browser interaction on browserLock. browserLock is reentrant, so the nested
+  // getOrCreateBrowser()/invalidateBrowserIfDisconnected() calls are fine. Scrapes run
+  // sequentially — acceptable for a single-site background workload, and it guarantees the shared
+  // Browser/BrowserContext are never driven from two threads at once.
   public Document fetchPage(String url) {
-    Browser activeBrowser = getOrCreateBrowser();
-    try (BrowserContext context =
-        activeBrowser.newContext(
-            new Browser.NewContextOptions()
-                .setUserAgent(SakuraMangasScraper.USER_AGENT)
-                .setLocale("pt-BR")
-                .setViewportSize(1280, 800)
-                .setExtraHTTPHeaders(Map.of("Referer", SAKURA_REFERER)))) {
-      context.addInitScript(STEALTH_INIT_SCRIPT);
-      try (Page page = context.newPage()) {
-        page.navigate(url, new Page.NavigateOptions().setTimeout(PAGE_TIMEOUT_MS));
-        page.waitForSelector(
-            READY_SELECTOR,
-            new Page.WaitForSelectorOptions()
-                .setState(WaitForSelectorState.ATTACHED)
-                .setTimeout(PAGE_TIMEOUT_MS));
-        return Jsoup.parse(page.content(), url);
+    synchronized (browserLock) {
+      Browser activeBrowser = getOrCreateBrowser();
+      try (BrowserContext context =
+          activeBrowser.newContext(
+              new Browser.NewContextOptions()
+                  .setUserAgent(SakuraMangasScraper.USER_AGENT)
+                  .setLocale("pt-BR")
+                  .setViewportSize(1280, 800)
+                  .setExtraHTTPHeaders(Map.of("Referer", SAKURA_REFERER)))) {
+        context.addInitScript(STEALTH_INIT_SCRIPT);
+        try (Page page = context.newPage()) {
+          page.navigate(url, new Page.NavigateOptions().setTimeout(PAGE_TIMEOUT_MS));
+          page.waitForSelector(
+              READY_SELECTOR,
+              new Page.WaitForSelectorOptions()
+                  .setState(WaitForSelectorState.ATTACHED)
+                  .setTimeout(PAGE_TIMEOUT_MS));
+          return Jsoup.parse(page.content(), url);
+        }
+      } catch (PlaywrightException e) {
+        invalidateBrowserIfDisconnected(activeBrowser);
+        throw new ScrapingException("Failed to fetch manga page via Playwright: " + url, e);
       }
-    } catch (PlaywrightException e) {
-      invalidateBrowserIfDisconnected(activeBrowser);
-      throw new ScrapingException("Failed to fetch manga page via Playwright: " + url, e);
     }
   }
 
