@@ -3,6 +3,7 @@ package com.mangaTracker.backend.scraper;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -14,10 +15,6 @@ import com.microsoft.playwright.BrowserContext;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Playwright;
 import com.microsoft.playwright.PlaywrightException;
-import com.microsoft.playwright.options.Cookie;
-import java.util.List;
-import java.util.Map;
-import org.jsoup.Connection;
 import org.jsoup.nodes.Document;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -29,6 +26,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class PlaywrightBrowserManagerTest {
 
   private static final String URL = "https://sakuramangas.org/obras/chainsaw-man/";
+  private static final String READY_SELECTOR = ".chapter-list a";
 
   @Mock private Playwright playwright;
   @Mock private Browser browser;
@@ -45,22 +43,23 @@ class PlaywrightBrowserManagerTest {
   }
 
   @Test
-  void fetchPage_returnsDocumentAfterWaitingForMangaMeta() {
-    stubSuccessfulFetch(playwright, browser, context, page, "123");
+  void fetchPage_returnsDocumentAfterStealthSetupAndChapterWait() {
+    stubSuccessfulFetch(playwright, browser, context, page, "232");
 
     Document document = browserManager.fetchPage(URL);
 
-    assertThat(document.selectFirst("meta[manga-id]")).isNotNull();
+    assertThat(document.selectFirst(READY_SELECTOR)).isNotNull();
     verify(playwrightFactory).create();
     verify(browserLauncher).launch(playwright);
+    verify(context).addInitScript(contains("navigator,'webdriver'"));
     verify(page).navigate(eq(URL), any(Page.NavigateOptions.class));
-    verify(page).waitForSelector(eq("meta[manga-id]"), any(Page.WaitForSelectorOptions.class));
+    verify(page).waitForSelector(eq(READY_SELECTOR), any(Page.WaitForSelectorOptions.class));
     verify(context).close();
   }
 
   @Test
   void fetchPage_reusesSharedBrowserAcrossRequests() {
-    stubSuccessfulFetch(playwright, browser, context, page, "123");
+    stubSuccessfulFetch(playwright, browser, context, page, "232");
     when(browser.isConnected()).thenReturn(true);
 
     browserManager.fetchPage(URL);
@@ -78,15 +77,15 @@ class PlaywrightBrowserManagerTest {
     BrowserContext context2 = org.mockito.Mockito.mock(BrowserContext.class);
     Page page2 = org.mockito.Mockito.mock(Page.class);
 
-    stubSuccessfulFetch(playwright, browser, context, page, "123");
+    stubSuccessfulFetch(playwright, browser, context, page, "232");
     stubSuccessfulFetch(playwright2, browser2, context2, page2, "456");
     when(playwrightFactory.create()).thenReturn(playwright, playwright2);
     when(browser.isConnected()).thenReturn(false);
 
     browserManager.fetchPage(URL);
-    Document refreshedDocument = browserManager.fetchPage(URL);
+    Document refreshed = browserManager.fetchPage(URL);
 
-    assertThat(refreshedDocument.selectFirst("meta[manga-id]").attr("manga-id")).isEqualTo("456");
+    assertThat(refreshed.selectFirst(READY_SELECTOR).text()).isEqualTo("Cap. 456");
     verify(playwrightFactory, times(2)).create();
     verify(browserLauncher, times(2)).launch(any(Playwright.class));
     verify(browser).close();
@@ -99,7 +98,7 @@ class PlaywrightBrowserManagerTest {
     when(browserLauncher.launch(playwright)).thenReturn(browser);
     when(browser.newContext(any(Browser.NewContextOptions.class))).thenReturn(context);
     when(context.newPage()).thenReturn(page);
-    when(page.waitForSelector(eq("meta[manga-id]"), any(Page.WaitForSelectorOptions.class)))
+    when(page.waitForSelector(eq(READY_SELECTOR), any(Page.WaitForSelectorOptions.class)))
         .thenThrow(new PlaywrightException("challenge timeout"));
 
     assertThatThrownBy(() -> browserManager.fetchPage(URL))
@@ -111,37 +110,13 @@ class PlaywrightBrowserManagerTest {
 
   @Test
   void shutdown_closesSharedBrowserState() {
-    stubSuccessfulFetch(playwright, browser, context, page, "123");
+    stubSuccessfulFetch(playwright, browser, context, page, "232");
 
     browserManager.fetchPage(URL);
-
     browserManager.shutdown();
 
     verify(browser).close();
     verify(playwright).close();
-  }
-
-  @Test
-  void fetchPage_extractsCookies_andAppliesThemToConnection() {
-    stubSuccessfulFetch(playwright, browser, context, page, "123");
-    when(context.cookies())
-        .thenReturn(
-            List.of(new Cookie("cf_clearance", "token-1"), new Cookie("session", "token-2")));
-    Connection connection = org.mockito.Mockito.mock(Connection.class);
-
-    browserManager.fetchPage(URL);
-    browserManager.applySessionCookies(connection);
-
-    verify(connection).cookies(Map.of("cf_clearance", "token-1", "session", "token-2"));
-  }
-
-  @Test
-  void applySessionCookies_isNoOp_whenNoCookiesCaptured() {
-    Connection connection = org.mockito.Mockito.mock(Connection.class);
-
-    browserManager.applySessionCookies(connection);
-
-    org.mockito.Mockito.verifyNoInteractions(connection);
   }
 
   @Test
@@ -165,16 +140,22 @@ class PlaywrightBrowserManagerTest {
 
     Document document = managerWithPath.fetchPage(URL);
 
-    assertThat(document.selectFirst("meta[manga-id]").attr("manga-id")).isEqualTo("789");
+    assertThat(document.selectFirst(READY_SELECTOR).text()).isEqualTo("Cap. 789");
   }
 
   private void stubSuccessfulFetch(
-      Playwright playwright, Browser browser, BrowserContext context, Page page, String mangaId) {
+      Playwright playwright, Browser browser, BrowserContext context, Page page, String chapter) {
     when(playwrightFactory.create()).thenReturn(playwright);
     when(browserLauncher.launch(playwright)).thenReturn(browser);
     when(browser.newContext(any(Browser.NewContextOptions.class))).thenReturn(context);
     when(context.newPage()).thenReturn(page);
     when(page.content())
-        .thenReturn("<html><head><meta manga-id=\"" + mangaId + "\" /></head></html>");
+        .thenReturn(
+            "<html><body><div class=\"chapter-list\">"
+                + "<a href=\"/x/"
+                + chapter
+                + "\">Cap. "
+                + chapter
+                + "</a></div></body></html>");
   }
 }
