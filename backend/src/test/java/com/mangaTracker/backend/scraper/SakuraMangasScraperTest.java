@@ -79,8 +79,9 @@ class SakuraMangasScraperTest {
   void scrape_throwsWhenNoTitle() {
     String html =
         "<html><body><div class=\"chapter-list\"><a href=\"/o/5\">Cap. 5</a></div></body></html>";
+    SakuraMangasScraper scraper = scraperReturning(html);
 
-    assertThatThrownBy(() -> scraperReturning(html).scrape(URL))
+    assertThatThrownBy(() -> scraper.scrape(URL))
         .isInstanceOf(ScrapingException.class)
         .hasMessageContaining("Could not extract manga title");
   }
@@ -88,8 +89,9 @@ class SakuraMangasScraperTest {
   @Test
   void scrape_throwsWhenNoChapters() {
     String html = "<html><body><h1>Bleach</h1><div class=\"chapter-list\"></div></body></html>";
+    SakuraMangasScraper scraper = scraperReturning(html);
 
-    assertThatThrownBy(() -> scraperReturning(html).scrape(URL))
+    assertThatThrownBy(() -> scraper.scrape(URL))
         .isInstanceOf(ScrapingException.class)
         .hasMessageContaining("No chapters found");
   }
@@ -99,8 +101,9 @@ class SakuraMangasScraperTest {
     String html =
         "<html><body><h1>Berserk</h1>"
             + "<div class=\"chapter-list\"><a href=\"/o/x\">Cap. final</a></div></body></html>";
+    SakuraMangasScraper scraper = scraperReturning(html);
 
-    assertThatThrownBy(() -> scraperReturning(html).scrape(URL))
+    assertThatThrownBy(() -> scraper.scrape(URL))
         .isInstanceOf(ScrapingException.class)
         .hasMessageContaining("Could not parse any chapter number");
   }

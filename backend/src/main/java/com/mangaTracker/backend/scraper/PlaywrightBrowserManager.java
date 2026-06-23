@@ -68,6 +68,7 @@ public class PlaywrightBrowserManager {
   private Playwright playwright;
   private Browser browser;
 
+  @org.springframework.beans.factory.annotation.Autowired
   public PlaywrightBrowserManager(
       @Value("${scraper.sakura.chromium-executable:}") String chromiumExecutablePath) {
     this(
