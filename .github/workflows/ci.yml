@@ -159,17 +159,9 @@ jobs:
 
       - name: Install Playwright browsers
         working-directory: frontend
-        timeout-minutes: 18
-        # The install (apt --with-deps + browser download) intermittently hangs on the runner.
-        # Cap each attempt at 5 min so a hang is killed, then retry up to 3 times.
-        run: |
-          for attempt in 1 2 3; do
-            echo "Playwright install attempt $attempt"
-            timeout 300 npx playwright install --with-deps chromium && exit 0
-            echo "attempt $attempt failed or timed out; retrying"
-          done
-          echo "Playwright install failed after 3 attempts" >&2
-          exit 1
+        # ubuntu-latest already ships the shared libraries Chromium needs, so we skip --with-deps:
+        # the apt step it runs is what intermittently hangs. Download only the browser binary.
+        run: npx playwright install chromium
 
       - name: Run Playwright E2E tests
         working-directory: frontend
@@ -242,17 +234,9 @@ jobs:
 
       - name: Install Playwright browsers
         working-directory: frontend
-        timeout-minutes: 18
-        # The install (apt --with-deps + browser download) intermittently hangs on the runner.
-        # Cap each attempt at 5 min so a hang is killed, then retry up to 3 times.
-        run: |
-          for attempt in 1 2 3; do
-            echo "Playwright install attempt $attempt"
-            timeout 300 npx playwright install --with-deps chromium && exit 0
-            echo "attempt $attempt failed or timed out; retrying"
-          done
-          echo "Playwright install failed after 3 attempts" >&2
-          exit 1
+        # ubuntu-latest already ships the shared libraries Chromium needs, so we skip --with-deps:
+        # the apt step it runs is what intermittently hangs. Download only the browser binary.
+        run: npx playwright install chromium
 
       - name: Start backend
         run: |
