@@ -9,6 +9,7 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
@@ -59,6 +60,7 @@ public class SakuraMangasScraper implements MangaScraper {
   // ── Constructors ─────────────────────────────────────────────────────────────
 
   /** Production constructor — fetches the fully rendered page through a stealth browser. */
+  @Autowired
   public SakuraMangasScraper(PlaywrightBrowserManager browserManager) {
     this.pageFetcher = browserManager::fetchPage;
   }
