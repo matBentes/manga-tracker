@@ -157,10 +157,17 @@ jobs:
         working-directory: frontend
         run: npm test
 
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ms-playwright-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
+
       - name: Install Playwright browsers
         working-directory: frontend
-        # ubuntu-latest already ships the shared libraries Chromium needs, so we skip --with-deps:
-        # the apt step it runs is what intermittently hangs. Download only the browser binary.
+        # ubuntu-latest already ships the shared libraries Chromium needs, so we skip --with-deps.
+        # The cache step above restores the browser binaries, so this only downloads on a cache
+        # miss (i.e. when the pinned Playwright version changes) instead of every run.
         run: npx playwright install chromium
 
       - name: Run Playwright E2E tests
@@ -232,10 +239,17 @@ jobs:
         working-directory: frontend
         run: npm ci
 
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ms-playwright-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
+
       - name: Install Playwright browsers
         working-directory: frontend
-        # ubuntu-latest already ships the shared libraries Chromium needs, so we skip --with-deps:
-        # the apt step it runs is what intermittently hangs. Download only the browser binary.
+        # ubuntu-latest already ships the shared libraries Chromium needs, so we skip --with-deps.
+        # The cache step above restores the browser binaries, so this only downloads on a cache
+        # miss (i.e. when the pinned Playwright version changes) instead of every run.
         run: npx playwright install chromium
 
       - name: Start backend
