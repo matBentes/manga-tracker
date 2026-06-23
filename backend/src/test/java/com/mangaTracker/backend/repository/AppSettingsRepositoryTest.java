@@ -31,27 +31,17 @@ class AppSettingsRepositoryTest {
     Optional<AppSettings> settings = appSettingsRepository.findById(1);
 
     assertThat(settings).isPresent();
-    assertThat(settings.get().getNotificationEmail()).isEqualTo("user@localhost");
     assertThat(settings.get().getPollIntervalMinutes()).isEqualTo(30);
-    assertThat(settings.get().isEmailNotificationsEnabled()).isTrue();
   }
 
   @Test
   void save_updatesAndPersistsSingleSettingsRow() {
-    AppSettings updated =
-        AppSettings.builder()
-            .id(1)
-            .emailNotificationsEnabled(false)
-            .notificationEmail("admin@example.com")
-            .pollIntervalMinutes(60)
-            .build();
+    AppSettings updated = AppSettings.builder().id(1).pollIntervalMinutes(60).build();
 
     appSettingsRepository.saveAndFlush(updated);
     entityManager.clear();
 
     AppSettings saved = appSettingsRepository.findById(1).orElseThrow();
-    assertThat(saved.getNotificationEmail()).isEqualTo("admin@example.com");
     assertThat(saved.getPollIntervalMinutes()).isEqualTo(60);
-    assertThat(saved.isEmailNotificationsEnabled()).isFalse();
   }
 }

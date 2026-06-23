@@ -25,12 +25,8 @@ public class SettingsController {
 
   @PutMapping
   public AppSettings updateSettings(@RequestBody UpdateSettingsRequest request) {
-    return settingsService.updateSettings(
-        request.emailNotificationsEnabled(),
-        request.notificationEmail(),
-        request.pollIntervalMinutes());
+    return settingsService.updateSettings(request.pollIntervalMinutes());
   }
 
-  record UpdateSettingsRequest(
-      Boolean emailNotificationsEnabled, String notificationEmail, Integer pollIntervalMinutes) {}
+  record UpdateSettingsRequest(Integer pollIntervalMinutes) {}
 }

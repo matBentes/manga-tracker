@@ -21,12 +21,6 @@ public class AppSettings {
 
   @Id private Integer id;
 
-  @Column(name = "email_notifications_enabled", nullable = false)
-  private boolean emailNotificationsEnabled;
-
-  @Column(name = "notification_email", nullable = false)
-  private String notificationEmail;
-
   @Column(name = "poll_interval_minutes", nullable = false)
   private int pollIntervalMinutes;
 }

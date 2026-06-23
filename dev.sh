@@ -9,14 +9,14 @@ cleanup() {
   kill "$BACKEND_PID" "$FRONTEND_PID" 2>/dev/null
   wait "$BACKEND_PID" "$FRONTEND_PID" 2>/dev/null
   echo "Stopping database..."
-  docker compose -f "$ROOT/docker-compose.yml" stop db mailhog
+  docker compose -f "$ROOT/docker-compose.yml" stop db
   echo "Done."
 }
 trap cleanup EXIT INT TERM
 
-echo "Starting database (PostgreSQL + Mailhog)..."
+echo "Starting database (PostgreSQL)..."
 cd "$ROOT"
-docker compose up -d db mailhog
+docker compose up -d db
 
 echo "Waiting for PostgreSQL to be ready..."
 until docker compose exec db pg_isready -U manga_tracker -d manga_tracker -q 2>/dev/null; do

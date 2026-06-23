@@ -31,51 +31,38 @@ class SettingsControllerTest {
     mockMvc
         .perform(get("/api/settings").accept(MediaType.APPLICATION_JSON))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.notificationEmail").value("user@example.com"))
-        .andExpect(jsonPath("$.pollIntervalMinutes").value(30))
-        .andExpect(jsonPath("$.emailNotificationsEnabled").value(true));
+        .andExpect(jsonPath("$.pollIntervalMinutes").value(30));
   }
 
   @Test
   void updateSettings_returns200_onValidRequest() throws Exception {
     AppSettings updated = buildSettings();
-    when(settingsService.updateSettings(any(), any(), any())).thenReturn(updated);
+    when(settingsService.updateSettings(any())).thenReturn(updated);
 
     mockMvc
         .perform(
             put("/api/settings")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(
-                    "{\"emailNotificationsEnabled\":true,"
-                        + "\"notificationEmail\":\"user@example.com\","
-                        + "\"pollIntervalMinutes\":30}"))
+                .content("{\"pollIntervalMinutes\":30}"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.notificationEmail").value("user@example.com"));
+        .andExpect(jsonPath("$.pollIntervalMinutes").value(30));
   }
 
   @Test
   void updateSettings_returns400_onInvalidInput() throws Exception {
-    when(settingsService.updateSettings(any(), any(), any()))
+    when(settingsService.updateSettings(any()))
         .thenThrow(new IllegalArgumentException("pollIntervalMinutes must be > 0"));
 
     mockMvc
         .perform(
             put("/api/settings")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(
-                    "{\"emailNotificationsEnabled\":true,"
-                        + "\"notificationEmail\":\"user@example.com\","
-                        + "\"pollIntervalMinutes\":0}"))
+                .content("{\"pollIntervalMinutes\":0}"))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.error").exists());
   }
 
   private static AppSettings buildSettings() {
-    return AppSettings.builder()
-        .id(1)
-        .emailNotificationsEnabled(true)
-        .notificationEmail("user@example.com")
-        .pollIntervalMinutes(30)
-        .build();
+    return AppSettings.builder().id(1).pollIntervalMinutes(30).build();
   }
 }

@@ -12,6 +12,62 @@
   color: #1a1a2e;
 }
 
+.push-card {
+  border: 1px solid #e3e3ef;
+  border-radius: 12px;
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+  background: #fafaff;
+}
+
+.push-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 1rem;
+
+  .label-text {
+    font-weight: 600;
+    color: #1a1a2e;
+  }
+
+  .label-desc {
+    font-size: 0.875rem;
+    color: #555;
+  }
+}
+
+.push-btn {
+  padding: 0.6rem 1.1rem;
+  border: none;
+  border-radius: 8px;
+  background: #6c3fcb;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+
+  &.enabled {
+    background: #b23b3b;
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.push-unsupported {
+  font-size: 0.875rem;
+  color: #8a6d00;
+  margin: 0;
+}
+
+.push-error {
+  margin: 0.75rem 0 0;
+  color: #b23b3b;
+  font-size: 0.875rem;
+}
+
 .loading-state {
   display: flex;
   align-items: center;

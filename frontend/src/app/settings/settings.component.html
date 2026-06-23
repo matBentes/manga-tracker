@@ -1,6 +1,39 @@
 <div class="settings">
   <h1 class="settings-title">Notification Settings</h1>
 
+  <section class="push-card">
+    <div class="push-info">
+      <span class="label-text">Phone Notifications</span>
+      <span class="label-desc">
+        Get a push notification on this device when a tracked manga has a new chapter. Tap it to
+        open the manga.
+      </span>
+    </div>
+    @if (!pushSupported) {
+      <p class="push-unsupported">
+        Push notifications aren't supported in this browser. Install the app to your home screen and
+        open it from there.
+      </p>
+    } @else {
+      <button
+        type="button"
+        class="push-btn"
+        [class.enabled]="pushEnabled"
+        [disabled]="pushBusy"
+        (click)="onTogglePush()"
+      >
+        @if (pushBusy) {
+          {{ pushEnabled ? 'Disabling…' : 'Enabling…' }}
+        } @else {
+          {{ pushEnabled ? 'Disable phone notifications' : 'Enable phone notifications' }}
+        }
+      </button>
+    }
+    @if (pushError) {
+      <p class="push-error">{{ pushError }}</p>
+    }
+  </section>
+
   @if (isLoading) {
     <div class="loading-state">
       <span class="loading-spinner"></span>
@@ -10,37 +43,6 @@
     <div class="error-state">{{ loadError }}</div>
   } @else {
     <form class="settings-form" (ngSubmit)="onSave()">
-      <div class="form-group toggle-group">
-        <label class="toggle-label" for="emailNotificationsEnabled">
-          <span class="label-text">Email Notifications</span>
-          <span class="label-desc">Enable email alerts when new chapters are available</span>
-        </label>
-        <input
-          type="checkbox"
-          id="emailNotificationsEnabled"
-          name="emailNotificationsEnabled"
-          [(ngModel)]="emailNotificationsEnabled"
-          class="toggle-checkbox"
-        />
-      </div>
-
-      <div class="form-group">
-        <label class="field-label" for="notificationEmail">Notification Email</label>
-        <input
-          type="email"
-          id="notificationEmail"
-          name="notificationEmail"
-          [(ngModel)]="notificationEmail"
-          (ngModelChange)="onEmailChange()"
-          class="field-input"
-          placeholder="you@example.com"
-          required
-        />
-        @if (emailValidationError) {
-          <span class="field-error">{{ emailValidationError }}</span>
-        }
-      </div>
-
       <div class="form-group">
         <label class="field-label" for="pollIntervalMinutes">Poll Interval (minutes)</label>
         <input
@@ -62,7 +64,7 @@
         <div class="save-success">Settings saved successfully!</div>
       }
 
-      <button type="submit" class="save-btn" [disabled]="isSaving || !isEmailValid">
+      <button type="submit" class="save-btn" [disabled]="isSaving">
         {{ isSaving ? 'Saving…' : 'Save Settings' }}
       </button>
     </form>

@@ -21,18 +21,8 @@ public class SettingsService {
     return appSettingsRepository.findById(SETTINGS_ID).orElseGet(this::createDefaultSettings);
   }
 
-  public AppSettings updateSettings(
-      Boolean emailNotificationsEnabled, String notificationEmail, Integer pollIntervalMinutes) {
+  public AppSettings updateSettings(Integer pollIntervalMinutes) {
     AppSettings settings = getSettings();
-    if (emailNotificationsEnabled != null) {
-      settings.setEmailNotificationsEnabled(emailNotificationsEnabled);
-    }
-    if (notificationEmail != null) {
-      if (notificationEmail.isBlank()) {
-        throw new IllegalArgumentException("notificationEmail must not be blank");
-      }
-      settings.setNotificationEmail(notificationEmail);
-    }
     if (pollIntervalMinutes != null) {
       if (pollIntervalMinutes <= 0) {
         throw new IllegalArgumentException("pollIntervalMinutes must be a positive integer");
@@ -43,13 +33,7 @@ public class SettingsService {
   }
 
   private AppSettings createDefaultSettings() {
-    AppSettings defaults =
-        AppSettings.builder()
-            .id(SETTINGS_ID)
-            .emailNotificationsEnabled(true)
-            .notificationEmail("user@localhost")
-            .pollIntervalMinutes(30)
-            .build();
+    AppSettings defaults = AppSettings.builder().id(SETTINGS_ID).pollIntervalMinutes(30).build();
     return appSettingsRepository.save(defaults);
   }
 }

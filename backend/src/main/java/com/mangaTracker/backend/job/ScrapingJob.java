@@ -34,6 +34,17 @@ public class ScrapingJob {
   // Changes to AppSettings.pollIntervalMinutes at runtime do NOT affect this schedule.
   @Scheduled(fixedDelayString = "#{${app.scraper.poll-interval-minutes:30} * 60000}")
   public void pollAllManga() {
+    poll();
+  }
+
+  // Daily guaranteed check at 08:00 America/Sao_Paulo, in addition to the rolling poll above.
+  @Scheduled(cron = "0 0 8 * * *", zone = "America/Sao_Paulo")
+  public void dailyCheck() {
+    LOG.info("ScrapingJob: running daily 08:00 check");
+    poll();
+  }
+
+  private void poll() {
     List<Manga> mangaList = mangaRepository.findAllByOrderByUpdatedAtDesc();
     LOG.info("ScrapingJob: polling {} manga entries", mangaList.size());
     for (Manga manga : mangaList) {

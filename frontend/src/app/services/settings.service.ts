@@ -5,14 +5,10 @@ import { environment } from '../../environments/environment';
 
 export interface AppSettings {
   id: number;
-  emailNotificationsEnabled: boolean;
-  notificationEmail: string;
   pollIntervalMinutes: number;
 }
 
 export interface UpdateSettingsRequest {
-  emailNotificationsEnabled?: boolean;
-  notificationEmail?: string;
   pollIntervalMinutes?: number;
 }
 

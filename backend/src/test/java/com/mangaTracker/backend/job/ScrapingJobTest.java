@@ -81,6 +81,21 @@ class ScrapingJobTest {
   }
 
   @Test
+  void dailyCheck_pollsAndNotifies_likeRollingPoll() {
+    Manga manga = buildManga(UUID.randomUUID(), 10);
+    MangaScraper scraper = mock(MangaScraper.class);
+    when(mangaRepository.findAllByOrderByUpdatedAtDesc()).thenReturn(List.of(manga));
+    when(scraperRegistry.resolve(manga.getSourceUrl())).thenReturn(scraper);
+    when(scraper.scrape(manga.getSourceUrl())).thenReturn(new ScrapedManga("Test Manga", 12));
+    when(mangaRepository.save(manga)).thenReturn(manga);
+
+    scrapingJob.dailyCheck();
+
+    assertThat(manga.getLatestChapter()).isEqualTo(12);
+    verify(notificationService).notify(manga, 12);
+  }
+
+  @Test
   void pollAllManga_doesNothing_whenListIsEmpty() {
     when(mangaRepository.findAllByOrderByUpdatedAtDesc()).thenReturn(List.of());
 
