@@ -159,6 +159,7 @@ jobs:
 
       - name: Install Playwright browsers
         working-directory: frontend
+        timeout-minutes: 8
         run: npx playwright install --with-deps chromium
 
       - name: Run Playwright E2E tests
@@ -232,6 +233,7 @@ jobs:
 
       - name: Install Playwright browsers
         working-directory: frontend
+        timeout-minutes: 8
         run: npx playwright install --with-deps chromium
 
       - name: Start backend
