@@ -154,6 +154,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # The image ships Node 20; the lock was generated with Node 24's npm, so install 24 to keep
+      # `npm ci` in sync. (Browsers come from the image, independent of the Node version.)
+      - name: Set up Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
       - name: Install frontend deps
         working-directory: frontend
         run: npm ci
