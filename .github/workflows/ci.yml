@@ -159,8 +159,17 @@ jobs:
 
       - name: Install Playwright browsers
         working-directory: frontend
-        timeout-minutes: 8
-        run: npx playwright install --with-deps chromium
+        timeout-minutes: 18
+        # The install (apt --with-deps + browser download) intermittently hangs on the runner.
+        # Cap each attempt at 5 min so a hang is killed, then retry up to 3 times.
+        run: |
+          for attempt in 1 2 3; do
+            echo "Playwright install attempt $attempt"
+            timeout 300 npx playwright install --with-deps chromium && exit 0
+            echo "attempt $attempt failed or timed out; retrying"
+          done
+          echo "Playwright install failed after 3 attempts" >&2
+          exit 1
 
       - name: Run Playwright E2E tests
         working-directory: frontend
@@ -233,8 +242,17 @@ jobs:
 
       - name: Install Playwright browsers
         working-directory: frontend
-        timeout-minutes: 8
-        run: npx playwright install --with-deps chromium
+        timeout-minutes: 18
+        # The install (apt --with-deps + browser download) intermittently hangs on the runner.
+        # Cap each attempt at 5 min so a hang is killed, then retry up to 3 times.
+        run: |
+          for attempt in 1 2 3; do
+            echo "Playwright install attempt $attempt"
+            timeout 300 npx playwright install --with-deps chromium && exit 0
+            echo "attempt $attempt failed or timed out; retrying"
+          done
+          echo "Playwright install failed after 3 attempts" >&2
+          exit 1
 
       - name: Start backend
         run: |
