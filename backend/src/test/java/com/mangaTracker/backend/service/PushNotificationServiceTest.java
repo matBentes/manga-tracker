@@ -2,6 +2,7 @@ package com.mangaTracker.backend.service;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -20,6 +21,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class PushNotificationServiceTest {
 
+  private static final UUID MANGA_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
+  private static final String SOURCE_URL = "https://sakuramangas.org/obras/blue-lock/";
+
   @Mock private PushSubscriptionRepository repository;
   @Mock private WebPushSender sender;
 
@@ -32,7 +36,7 @@ class PushNotificationServiceTest {
     when(repository.findAll()).thenReturn(List.of(a, b));
     when(sender.send(any(), anyString())).thenReturn(201);
 
-    service.send("New chapter", "Chapter 11", "https://sakuramangas.org/manga/test/");
+    service.send(message(null));
 
     verify(sender).send(eq(a), anyString());
     verify(sender).send(eq(b), anyString());
@@ -40,21 +44,34 @@ class PushNotificationServiceTest {
   }
 
   @Test
-  void send_includesTitleBodyAndUrlInPayload() {
+  void send_payloadCarriesTitleBodyAndMarkReadDeepLink() {
     PushSubscription a = buildSubscription("https://push.example/a");
     when(repository.findAll()).thenReturn(List.of(a));
     when(sender.send(any(), anyString())).thenReturn(201);
 
-    service.send("New chapter", "Chapter 11", "https://sakuramangas.org/manga/test/");
+    service.send(message(null));
 
     verify(sender)
         .send(
             eq(a),
-            org.mockito.ArgumentMatchers.argThat(
+            argThat(
                 json ->
-                    json.contains("New chapter")
-                        && json.contains("Chapter 11")
-                        && json.contains("https://sakuramangas.org/manga/test/")));
+                    json.contains("Blue Lock")
+                        && json.contains("New chapter 169 is out")
+                        // deep link opens the mark-read route, URL-encoded source
+                        && json.contains("/open/" + MANGA_ID)
+                        && json.contains("sakuramangas.org%2Fobras%2Fblue-lock")));
+  }
+
+  @Test
+  void send_payloadIncludesCover_whenPresent() {
+    PushSubscription a = buildSubscription("https://push.example/a");
+    when(repository.findAll()).thenReturn(List.of(a));
+    when(sender.send(any(), anyString())).thenReturn(201);
+
+    service.send(message("https://img/cover.jpg"));
+
+    verify(sender).send(eq(a), argThat(json -> json.contains("https://img/cover.jpg")));
   }
 
   @Test
@@ -63,7 +80,7 @@ class PushNotificationServiceTest {
     when(repository.findAll()).thenReturn(List.of(dead));
     when(sender.send(any(), anyString())).thenReturn(410);
 
-    service.send("t", "b", "u");
+    service.send(message(null));
 
     verify(repository).delete(dead);
   }
@@ -74,7 +91,7 @@ class PushNotificationServiceTest {
     when(repository.findAll()).thenReturn(List.of(dead));
     when(sender.send(any(), anyString())).thenReturn(404);
 
-    service.send("t", "b", "u");
+    service.send(message(null));
 
     verify(repository).delete(dead);
   }
@@ -88,10 +105,15 @@ class PushNotificationServiceTest {
         .thenThrow(new WebPushException("boom", new RuntimeException()));
     when(sender.send(eq(b), anyString())).thenReturn(201);
 
-    service.send("t", "b", "u");
+    service.send(message(null));
 
     verify(sender).send(eq(b), anyString());
     verify(repository, never()).delete(any());
+  }
+
+  private static PushMessage message(String coverImageUrl) {
+    return new PushMessage(
+        "Blue Lock", "New chapter 169 is out", MANGA_ID, SOURCE_URL, coverImageUrl);
   }
 
   private static PushSubscription buildSubscription(String endpoint) {

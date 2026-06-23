@@ -38,7 +38,12 @@ public class MangaController {
 
   @PatchMapping("/{id}")
   public Manga updateManga(@PathVariable UUID id, @RequestBody PatchMangaRequest request) {
-    return mangaService.updateManga(id, request.currentChapter(), request.notificationsEnabled());
+    return mangaService.updateManga(id, request.notificationsEnabled());
+  }
+
+  @PostMapping("/{id}/read")
+  public Manga markRead(@PathVariable UUID id) {
+    return mangaService.markRead(id);
   }
 
   @DeleteMapping("/{id}")
@@ -49,5 +54,5 @@ public class MangaController {
 
   record AddMangaRequest(String sourceUrl) {}
 
-  record PatchMangaRequest(Integer currentChapter, Boolean notificationsEnabled) {}
+  record PatchMangaRequest(Boolean notificationsEnabled) {}
 }

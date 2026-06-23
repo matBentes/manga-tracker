@@ -48,6 +48,9 @@ public class SakuraMangasScraper implements MangaScraper {
   private static final String CHAPTER_LIST_SELECTOR = ".chapter-list a";
   private static final Pattern CHAPTER_NUMBER_PATTERN = Pattern.compile("(\\d+(?:\\.\\d+)?)");
 
+  // Cover image is exposed as the Open Graph image meta tag.
+  private static final String COVER_IMAGE_SELECTOR = "meta[property=og:image]";
+
   // ── Testable HTTP abstraction ────────────────────────────────────────────────
 
   @FunctionalInterface
@@ -82,8 +85,24 @@ public class SakuraMangasScraper implements MangaScraper {
     Document doc = fetchPage(url);
     String title = extractTitle(doc, url);
     int latestChapter = extractLatestChapter(doc, url);
-    LOGGER.debug("Scraped {} -> title='{}' latestChapter={}", url, title, latestChapter);
-    return new ScrapedManga(title, latestChapter);
+    String coverImageUrl = extractCoverImageUrl(doc);
+    LOGGER.debug(
+        "Scraped {} -> title='{}' latestChapter={} cover={}",
+        url,
+        title,
+        latestChapter,
+        coverImageUrl);
+    return new ScrapedManga(title, latestChapter, coverImageUrl);
+  }
+
+  /** Cover image is optional: return {@code null} rather than failing the whole scrape. */
+  private String extractCoverImageUrl(Document doc) {
+    Element ogImage = doc.selectFirst(COVER_IMAGE_SELECTOR);
+    if (ogImage == null) {
+      return null;
+    }
+    String content = ogImage.attr("content").trim();
+    return content.isBlank() ? null : content;
   }
 
   // ── Extraction ───────────────────────────────────────────────────────────────

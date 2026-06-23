@@ -42,8 +42,13 @@ public class NotificationService {
         NotificationLog.builder().mangaId(manga.getId()).chapterNumber(newLatestChapter).build();
     notificationLogRepository.save(log);
 
-    String title = "New chapter: " + manga.getTitle();
-    String body = "Chapter " + newLatestChapter + " of \"" + manga.getTitle() + "\" is available.";
-    pushNotificationService.send(title, body, manga.getSourceUrl());
+    PushMessage message =
+        new PushMessage(
+            manga.getTitle(),
+            "New chapter " + newLatestChapter + " is out",
+            manga.getId(),
+            manga.getSourceUrl(),
+            manga.getCoverImageUrl());
+    pushNotificationService.send(message);
   }
 }

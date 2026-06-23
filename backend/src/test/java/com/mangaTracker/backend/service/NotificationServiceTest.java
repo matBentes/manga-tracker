@@ -1,8 +1,7 @@
 package com.mangaTracker.backend.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -12,6 +11,7 @@ import com.mangaTracker.backend.repository.NotificationLogRepository;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -30,7 +30,7 @@ class NotificationServiceTest {
 
     notificationService.notify(manga, 11);
 
-    verify(pushNotificationService, never()).send(anyString(), anyString(), anyString());
+    verify(pushNotificationService, never()).send(any());
   }
 
   @Test
@@ -39,7 +39,7 @@ class NotificationServiceTest {
 
     notificationService.notify(manga, 11);
 
-    verify(pushNotificationService, never()).send(anyString(), anyString(), anyString());
+    verify(pushNotificationService, never()).send(any());
   }
 
   @Test
@@ -50,7 +50,7 @@ class NotificationServiceTest {
 
     notificationService.notify(manga, 11);
 
-    verify(pushNotificationService, never()).send(anyString(), anyString(), anyString());
+    verify(pushNotificationService, never()).send(any());
   }
 
   @Test
@@ -62,8 +62,13 @@ class NotificationServiceTest {
     notificationService.notify(manga, 11);
 
     verify(notificationLogRepository).save(any());
-    verify(pushNotificationService)
-        .send(anyString(), anyString(), eq("https://sakuramangas.org/manga/test/"));
+    ArgumentCaptor<PushMessage> captor = ArgumentCaptor.forClass(PushMessage.class);
+    verify(pushNotificationService).send(captor.capture());
+    PushMessage sent = captor.getValue();
+    assertThat(sent.title()).isEqualTo("Test Manga");
+    assertThat(sent.body()).contains("11");
+    assertThat(sent.mangaId()).isEqualTo(mangaId);
+    assertThat(sent.sourceUrl()).isEqualTo("https://sakuramangas.org/manga/test/");
   }
 
   @Test
@@ -76,7 +81,7 @@ class NotificationServiceTest {
 
     var inOrder = org.mockito.Mockito.inOrder(notificationLogRepository, pushNotificationService);
     inOrder.verify(notificationLogRepository).save(any());
-    inOrder.verify(pushNotificationService).send(anyString(), anyString(), anyString());
+    inOrder.verify(pushNotificationService).send(any());
   }
 
   private static Manga buildManga(

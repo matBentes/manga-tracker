@@ -38,6 +38,7 @@ public class MangaService {
             .sourceUrl(sourceUrl)
             .currentChapter(0)
             .latestChapter(scraped.latestChapter())
+            .coverImageUrl(scraped.coverImageUrl())
             .notificationsEnabled(true)
             .build();
     try {
@@ -53,21 +54,24 @@ public class MangaService {
     return mangaRepository.findAllByOrderByUpdatedAtDesc();
   }
 
-  public Manga updateManga(UUID id, Integer currentChapter, Boolean notificationsEnabled) {
+  public Manga updateManga(UUID id, Boolean notificationsEnabled) {
     Manga manga =
         mangaRepository
             .findById(id)
             .orElseThrow(() -> new MangaNotFoundException("Manga not found: " + id));
-    if (currentChapter != null) {
-      if (currentChapter < 0 || currentChapter > manga.getLatestChapter()) {
-        throw new IllegalArgumentException(
-            "currentChapter must be between 0 and " + manga.getLatestChapter());
-      }
-      manga.setCurrentChapter(currentChapter);
-    }
     if (notificationsEnabled != null) {
       manga.setNotificationsEnabled(notificationsEnabled);
     }
+    return mangaRepository.save(manga);
+  }
+
+  /** Mark a manga as fully read: caught up to its latest known chapter. */
+  public Manga markRead(UUID id) {
+    Manga manga =
+        mangaRepository
+            .findById(id)
+            .orElseThrow(() -> new MangaNotFoundException("Manga not found: " + id));
+    manga.setCurrentChapter(manga.getLatestChapter());
     return mangaRepository.save(manga);
   }
 

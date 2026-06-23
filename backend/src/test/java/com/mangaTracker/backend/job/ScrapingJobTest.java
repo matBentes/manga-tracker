@@ -33,15 +33,15 @@ class ScrapingJobTest {
   @InjectMocks private ScrapingJob scrapingJob;
 
   @Test
-  void pollAllManga_updatesLatestChapterAndNotifies_whenNewChapterFound() {
+  void runDailyCheck_updatesLatestChapterAndNotifies_whenNewChapterFound() {
     Manga manga = buildManga(UUID.randomUUID(), 10);
     MangaScraper scraper = mock(MangaScraper.class);
     when(mangaRepository.findAllByOrderByUpdatedAtDesc()).thenReturn(List.of(manga));
     when(scraperRegistry.resolve(manga.getSourceUrl())).thenReturn(scraper);
-    when(scraper.scrape(manga.getSourceUrl())).thenReturn(new ScrapedManga("Test Manga", 11));
+    when(scraper.scrape(manga.getSourceUrl())).thenReturn(new ScrapedManga("Test Manga", 11, null));
     when(mangaRepository.save(manga)).thenReturn(manga);
 
-    scrapingJob.pollAllManga();
+    scrapingJob.runDailyCheck();
 
     assertThat(manga.getLatestChapter()).isEqualTo(11);
     assertThat(manga.getLastCheckedAt()).isNotNull();
@@ -50,15 +50,30 @@ class ScrapingJobTest {
   }
 
   @Test
-  void pollAllManga_savesWithoutNotifying_whenNoNewChapter() {
+  void runDailyCheck_refreshesCoverImage_whenScraped() {
     Manga manga = buildManga(UUID.randomUUID(), 10);
     MangaScraper scraper = mock(MangaScraper.class);
     when(mangaRepository.findAllByOrderByUpdatedAtDesc()).thenReturn(List.of(manga));
     when(scraperRegistry.resolve(manga.getSourceUrl())).thenReturn(scraper);
-    when(scraper.scrape(manga.getSourceUrl())).thenReturn(new ScrapedManga("Test Manga", 10));
+    when(scraper.scrape(manga.getSourceUrl()))
+        .thenReturn(new ScrapedManga("Test Manga", 10, "https://img/cover.jpg"));
     when(mangaRepository.save(manga)).thenReturn(manga);
 
-    scrapingJob.pollAllManga();
+    scrapingJob.runDailyCheck();
+
+    assertThat(manga.getCoverImageUrl()).isEqualTo("https://img/cover.jpg");
+  }
+
+  @Test
+  void runDailyCheck_savesWithoutNotifying_whenNoNewChapter() {
+    Manga manga = buildManga(UUID.randomUUID(), 10);
+    MangaScraper scraper = mock(MangaScraper.class);
+    when(mangaRepository.findAllByOrderByUpdatedAtDesc()).thenReturn(List.of(manga));
+    when(scraperRegistry.resolve(manga.getSourceUrl())).thenReturn(scraper);
+    when(scraper.scrape(manga.getSourceUrl())).thenReturn(new ScrapedManga("Test Manga", 10, null));
+    when(mangaRepository.save(manga)).thenReturn(manga);
+
+    scrapingJob.runDailyCheck();
 
     assertThat(manga.getLatestChapter()).isEqualTo(10);
     verify(notificationService, never()).notify(any(), anyInt());
@@ -66,14 +81,14 @@ class ScrapingJobTest {
   }
 
   @Test
-  void pollAllManga_handlesExceptionAndContinues_whenScrapingFails() {
+  void runDailyCheck_handlesExceptionAndContinues_whenScrapingFails() {
     Manga manga = buildManga(UUID.randomUUID(), 10);
     when(mangaRepository.findAllByOrderByUpdatedAtDesc()).thenReturn(List.of(manga));
     when(scraperRegistry.resolve(manga.getSourceUrl()))
         .thenThrow(new ScrapingException("Network error"));
     when(mangaRepository.save(manga)).thenReturn(manga);
 
-    scrapingJob.pollAllManga();
+    scrapingJob.runDailyCheck();
 
     assertThat(manga.getLastCheckedAt()).isNotNull();
     verify(notificationService, never()).notify(any(), anyInt());
@@ -81,25 +96,10 @@ class ScrapingJobTest {
   }
 
   @Test
-  void dailyCheck_pollsAndNotifies_likeRollingPoll() {
-    Manga manga = buildManga(UUID.randomUUID(), 10);
-    MangaScraper scraper = mock(MangaScraper.class);
-    when(mangaRepository.findAllByOrderByUpdatedAtDesc()).thenReturn(List.of(manga));
-    when(scraperRegistry.resolve(manga.getSourceUrl())).thenReturn(scraper);
-    when(scraper.scrape(manga.getSourceUrl())).thenReturn(new ScrapedManga("Test Manga", 12));
-    when(mangaRepository.save(manga)).thenReturn(manga);
-
-    scrapingJob.dailyCheck();
-
-    assertThat(manga.getLatestChapter()).isEqualTo(12);
-    verify(notificationService).notify(manga, 12);
-  }
-
-  @Test
-  void pollAllManga_doesNothing_whenListIsEmpty() {
+  void runDailyCheck_doesNothing_whenListIsEmpty() {
     when(mangaRepository.findAllByOrderByUpdatedAtDesc()).thenReturn(List.of());
 
-    scrapingJob.pollAllManga();
+    scrapingJob.runDailyCheck();
 
     verify(mangaRepository, never()).save(any());
     verify(notificationService, never()).notify(any(), anyInt());

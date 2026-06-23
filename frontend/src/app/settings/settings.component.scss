@@ -9,7 +9,7 @@
   font-size: 1.75rem;
   font-weight: 700;
   margin-bottom: 1.5rem;
-  color: #1a1a2e;
+  color: #f3f3fa;
 }
 
 .push-card {
@@ -66,6 +66,26 @@
   margin: 0.75rem 0 0;
   color: #b23b3b;
   font-size: 0.875rem;
+}
+
+.schedule-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  border: 1px solid #e3e3ef;
+  border-radius: 12px;
+  padding: 1.25rem;
+  background: #fafaff;
+
+  .label-text {
+    font-weight: 600;
+    color: #1a1a2e;
+  }
+
+  .label-desc {
+    font-size: 0.875rem;
+    color: #555;
+  }
 }
 
 .loading-state {

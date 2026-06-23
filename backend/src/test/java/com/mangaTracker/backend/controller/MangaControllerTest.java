@@ -90,47 +90,56 @@ class MangaControllerTest {
   }
 
   @Test
-  void updateManga_returns200_onValidUpdate() throws Exception {
+  void updateManga_returns200_onNotificationsToggle() throws Exception {
     UUID id = UUID.randomUUID();
     Manga manga = buildManga(id);
-    manga.setCurrentChapter(50);
-    when(mangaService.updateManga(id, 50, null)).thenReturn(manga);
+    manga.setNotificationsEnabled(false);
+    when(mangaService.updateManga(id, false)).thenReturn(manga);
 
     mockMvc
         .perform(
             patch("/api/manga/" + id)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"currentChapter\":50}"))
+                .content("{\"notificationsEnabled\":false}"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.currentChapter").value(50));
-  }
-
-  @Test
-  void updateManga_returns400_onInvalidCurrentChapter() throws Exception {
-    UUID id = UUID.randomUUID();
-    when(mangaService.updateManga(eq(id), any(), any()))
-        .thenThrow(new IllegalArgumentException("currentChapter cannot exceed latestChapter"));
-
-    mockMvc
-        .perform(
-            patch("/api/manga/" + id)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"currentChapter\":999}"))
-        .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.error").exists());
+        .andExpect(jsonPath("$.notificationsEnabled").value(false));
   }
 
   @Test
   void updateManga_returns404_onUnknownId() throws Exception {
     UUID id = UUID.randomUUID();
-    when(mangaService.updateManga(eq(id), any(), any()))
+    when(mangaService.updateManga(eq(id), any()))
         .thenThrow(new MangaNotFoundException("Manga not found"));
 
     mockMvc
         .perform(
             patch("/api/manga/" + id)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"currentChapter\":50}"))
+                .content("{\"notificationsEnabled\":true}"))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.error").exists());
+  }
+
+  @Test
+  void markRead_returns200WithCaughtUpManga() throws Exception {
+    UUID id = UUID.randomUUID();
+    Manga manga = buildManga(id);
+    manga.setCurrentChapter(100);
+    when(mangaService.markRead(id)).thenReturn(manga);
+
+    mockMvc
+        .perform(post("/api/manga/" + id + "/read"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.currentChapter").value(100));
+  }
+
+  @Test
+  void markRead_returns404_onUnknownId() throws Exception {
+    UUID id = UUID.randomUUID();
+    when(mangaService.markRead(id)).thenThrow(new MangaNotFoundException("Manga not found"));
+
+    mockMvc
+        .perform(post("/api/manga/" + id + "/read"))
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.error").exists());
   }
