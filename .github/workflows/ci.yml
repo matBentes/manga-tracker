@@ -142,12 +142,17 @@ jobs:
           SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
           SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
 
-      - name: Set up Node 20
-        uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
+  # ── Stage 2a: Frontend unit + E2E (mocked, no real backend) ────────────────
+  e2e:
+    name: E2E
+    runs-on: ubuntu-latest
+    needs: format-lint
+    # The official Playwright image ships the matching browser preinstalled, so there is no flaky
+    # `playwright install` download/extract step. Tag is pinned to the project's Playwright version.
+    container:
+      image: mcr.microsoft.com/playwright:v1.58.2-jammy
+    steps:
+      - uses: actions/checkout@v4
 
       - name: Install frontend deps
         working-directory: frontend
@@ -156,18 +161,6 @@ jobs:
       - name: Run frontend unit tests
         working-directory: frontend
         run: npm test
-
-      - name: Cache Playwright browsers
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: ms-playwright-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
-
-      - name: Install Playwright browsers
-        working-directory: frontend
-        # Cached by the step above; only downloads on a cache miss. DEBUG + a hard kill surface
-        # exactly where the install stalls (download vs extract vs which asset) instead of hanging.
-        run: DEBUG=pw:install timeout --verbose 360 npx playwright install chromium
 
       - name: Run Playwright E2E tests
         working-directory: frontend
@@ -186,6 +179,10 @@ jobs:
     name: E2E Integration Tests
     runs-on: ubuntu-latest
     needs: format-lint
+    # Run inside the Playwright image (browser preinstalled, no flaky install). Inside a container
+    # job, service containers are reachable by their id as hostname (postgres), not localhost.
+    container:
+      image: mcr.microsoft.com/playwright:v1.58.2-jammy
     services:
       postgres:
         image: postgres:16-alpine
@@ -238,22 +235,10 @@ jobs:
         working-directory: frontend
         run: npm ci
 
-      - name: Cache Playwright browsers
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: ms-playwright-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
-
-      - name: Install Playwright browsers
-        working-directory: frontend
-        # Cached by the step above; only downloads on a cache miss. DEBUG + a hard kill surface
-        # exactly where the install stalls (download vs extract vs which asset) instead of hanging.
-        run: DEBUG=pw:install timeout --verbose 360 npx playwright install chromium
-
       - name: Start backend
         run: |
           java -jar backend/build/libs/*.jar \
-            --spring.datasource.url=jdbc:postgresql://localhost:5432/manga_tracker \
+            --spring.datasource.url=jdbc:postgresql://postgres:5432/manga_tracker \
             --spring.datasource.username=manga_tracker \
             --spring.datasource.password=manga_tracker \
             --management.health.mail.enabled=false \
