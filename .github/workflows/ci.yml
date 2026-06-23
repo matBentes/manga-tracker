@@ -165,10 +165,9 @@ jobs:
 
       - name: Install Playwright browsers
         working-directory: frontend
-        # ubuntu-latest already ships the shared libraries Chromium needs, so we skip --with-deps.
-        # The cache step above restores the browser binaries, so this only downloads on a cache
-        # miss (i.e. when the pinned Playwright version changes) instead of every run.
-        run: npx playwright install chromium
+        # Cached by the step above; only downloads on a cache miss. DEBUG + a hard kill surface
+        # exactly where the install stalls (download vs extract vs which asset) instead of hanging.
+        run: DEBUG=pw:install timeout --verbose 360 npx playwright install chromium
 
       - name: Run Playwright E2E tests
         working-directory: frontend
@@ -247,10 +246,9 @@ jobs:
 
       - name: Install Playwright browsers
         working-directory: frontend
-        # ubuntu-latest already ships the shared libraries Chromium needs, so we skip --with-deps.
-        # The cache step above restores the browser binaries, so this only downloads on a cache
-        # miss (i.e. when the pinned Playwright version changes) instead of every run.
-        run: npx playwright install chromium
+        # Cached by the step above; only downloads on a cache miss. DEBUG + a hard kill surface
+        # exactly where the install stalls (download vs extract vs which asset) instead of hanging.
+        run: DEBUG=pw:install timeout --verbose 360 npx playwright install chromium
 
       - name: Start backend
         run: |
