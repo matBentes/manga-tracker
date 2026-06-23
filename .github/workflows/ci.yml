@@ -130,6 +130,10 @@ jobs:
 
       - name: SonarCloud analysis
         working-directory: backend
+        # Non-blocking: a SonarCloud auth/availability problem (e.g. expired SONAR_TOKEN) must not
+        # block PRs. The analysis still runs and reports; re-enable blocking by removing this once
+        # the token/vars are confirmed good.
+        continue-on-error: true
         run: ./gradlew sonar --no-daemon
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
