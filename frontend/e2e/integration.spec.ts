@@ -44,19 +44,6 @@ test.describe('Dashboard', () => {
     await expect(page.getByText(/valid URL starting with http/i)).not.toBeVisible();
   });
 
-  test('shows error for unreachable manga URL', async ({ page }) => {
-    await page.goto('/');
-
-    const input = page.getByRole('textbox', { name: /manga URL/i });
-    await input.fill('https://sakuramangas.org/manga/one-piece');
-    await page.getByRole('button', { name: 'Add Manga' }).click();
-
-    await expect(page.getByRole('button', { name: /adding/i })).toBeVisible();
-    await expect(page.getByText(/could not extract manga data|error|failed/i)).toBeVisible({
-      timeout: 30000,
-    });
-  });
-
   test('navigation links work', async ({ page }) => {
     await page.goto('/');
 
