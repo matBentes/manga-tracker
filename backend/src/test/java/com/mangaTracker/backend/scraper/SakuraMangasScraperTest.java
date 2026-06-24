@@ -85,12 +85,22 @@ class SakuraMangasScraperTest {
   }
 
   @Test
-  void scrape_returnsNullCover_whenNoOgImage() {
+  void scrape_returnsNullCover_whenNoImageMeta() {
     String html =
         "<html><body><h1>Gachiakuta</h1>"
             + "<div class=\"chapter-list\"><a href=\"/o/10\">Cap. 10</a></div></body></html>";
 
     assertThat(scraperReturning(html).scrape(URL).coverImageUrl()).isNull();
+  }
+
+  @Test
+  void scrape_fallsBackToTwitterImage_whenNoOgImage() {
+    String html =
+        "<html><head><meta name=\"twitter:image\" content=\"https://img/tw.jpg\"></head>"
+            + "<body><h1>Gachiakuta</h1>"
+            + "<div class=\"chapter-list\"><a href=\"/o/10\">Cap. 10</a></div></body></html>";
+
+    assertThat(scraperReturning(html).scrape(URL).coverImageUrl()).isEqualTo("https://img/tw.jpg");
   }
 
   // ── scrape() error paths ─────────────────────────────────────────────────────────

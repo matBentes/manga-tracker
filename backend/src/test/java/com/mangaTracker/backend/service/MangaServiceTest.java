@@ -131,6 +131,19 @@ class MangaServiceTest {
   }
 
   @Test
+  void markUnread_resetsCurrentChapterToZero() {
+    UUID id = UUID.randomUUID();
+    Manga manga = buildManga(id, 100);
+    manga.setCurrentChapter(100);
+    when(mangaRepository.findById(id)).thenReturn(Optional.of(manga));
+    when(mangaRepository.save(manga)).thenReturn(manga);
+
+    Manga result = mangaService.markUnread(id);
+
+    assertThat(result.getCurrentChapter()).isZero();
+  }
+
+  @Test
   void markRead_throwsMangaNotFoundException_forUnknownId() {
     UUID id = UUID.randomUUID();
     when(mangaRepository.findById(id)).thenReturn(Optional.empty());

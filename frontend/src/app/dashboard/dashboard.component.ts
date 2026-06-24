@@ -58,19 +58,24 @@ export class DashboardComponent implements OnInit {
     return relativeTime(manga.lastCheckedAt);
   }
 
-  markRead(manga: Manga): void {
-    if (this.busy[manga.id] || !this.isUnread(manga)) {
+  /** Toggle a manga between read (caught up) and unread — the latter undoes a mark-read. */
+  toggleRead(manga: Manga): void {
+    if (this.busy[manga.id]) {
       return;
     }
+    const wasUnread = this.isUnread(manga);
+    const request$ = wasUnread
+      ? this.mangaService.markRead(manga.id)
+      : this.mangaService.markUnread(manga.id);
     this.busy[manga.id] = true;
     this.actionError[manga.id] = null;
-    this.mangaService.markRead(manga.id).subscribe({
+    request$.subscribe({
       next: (updated) => {
         manga.currentChapter = updated.currentChapter;
         this.busy[manga.id] = false;
       },
       error: () => {
-        this.actionError[manga.id] = 'Failed to mark as read.';
+        this.actionError[manga.id] = wasUnread ? 'Failed to mark as read.' : 'Failed to undo.';
         this.busy[manga.id] = false;
       },
     });

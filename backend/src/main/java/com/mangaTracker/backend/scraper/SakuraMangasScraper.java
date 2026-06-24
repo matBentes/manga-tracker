@@ -48,8 +48,16 @@ public class SakuraMangasScraper implements MangaScraper {
   private static final String CHAPTER_LIST_SELECTOR = ".chapter-list a";
   private static final Pattern CHAPTER_NUMBER_PATTERN = Pattern.compile("(\\d+(?:\\.\\d+)?)");
 
-  // Cover image is exposed as the Open Graph image meta tag.
-  private static final String COVER_IMAGE_SELECTOR = "meta[property=og:image]";
+  // Cover image: try the standard social meta tags first, then page-level cover images. The first
+  // selector that yields a non-blank URL wins. `attrKey` is the attribute holding the URL.
+  private static final java.util.List<String[]> COVER_SELECTORS =
+      java.util.List.of(
+          new String[] {"meta[property=og:image]", "content"},
+          new String[] {"meta[name=og:image]", "content"},
+          new String[] {"meta[name=twitter:image]", "content"},
+          new String[] {"meta[property=twitter:image]", "content"},
+          new String[] {"link[rel=image_src]", "href"},
+          new String[] {".manga-cover img, .obra-capa img, .cover img, img.cover", "src"});
 
   // ── Testable HTTP abstraction ────────────────────────────────────────────────
 
@@ -97,12 +105,16 @@ public class SakuraMangasScraper implements MangaScraper {
 
   /** Cover image is optional: return {@code null} rather than failing the whole scrape. */
   private String extractCoverImageUrl(Document doc) {
-    Element ogImage = doc.selectFirst(COVER_IMAGE_SELECTOR);
-    if (ogImage == null) {
-      return null;
+    for (String[] selector : COVER_SELECTORS) {
+      Element element = doc.selectFirst(selector[0]);
+      if (element != null) {
+        String url = element.attr(selector[1]).trim();
+        if (!url.isBlank()) {
+          return url;
+        }
+      }
     }
-    String content = ogImage.attr("content").trim();
-    return content.isBlank() ? null : content;
+    return null;
   }
 
   // ── Extraction ───────────────────────────────────────────────────────────────

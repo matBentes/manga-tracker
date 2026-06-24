@@ -46,6 +46,11 @@ public class MangaController {
     return mangaService.markRead(id);
   }
 
+  @PostMapping("/{id}/unread")
+  public Manga markUnread(@PathVariable UUID id) {
+    return mangaService.markUnread(id);
+  }
+
   @DeleteMapping("/{id}")
   public ResponseEntity<Void> deleteManga(@PathVariable UUID id) {
     mangaService.deleteManga(id);

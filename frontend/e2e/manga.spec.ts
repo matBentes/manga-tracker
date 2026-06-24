@@ -24,7 +24,7 @@ test('add manga by URL - appears in reading list with detected title', async ({ 
   });
 
   await page.goto('/');
-  await expect(page.locator('.empty-state')).toBeVisible();
+  await expect(page.locator('.state-box')).toBeVisible();
 
   // Set up POST to return the new manga and subsequent GET to return it in list
   await page.route(`${API_BASE}/api/manga`, async (route) => {
@@ -50,7 +50,7 @@ test('mark as read - card shows caught up after marking', async ({ page }) => {
   });
 
   await page.goto('/');
-  await expect(page.locator('.unread-badge')).toBeVisible();
+  await expect(page.locator('.badge-new')).toBeVisible();
 
   await page.route(`${API_BASE}/api/manga/${unread.id}/read`, async (route) => {
     if (route.request().method() === 'POST') {
@@ -61,7 +61,8 @@ test('mark as read - card shows caught up after marking', async ({ page }) => {
   await page.click('.read-btn');
 
   await expect(page.locator('.caught-up')).toBeVisible();
-  await expect(page.locator('.read-btn')).toHaveCount(0);
+  await expect(page.locator('.manga-card.is-unread')).toHaveCount(0);
+  await expect(page.locator('.read-btn')).toHaveText('Mark unread');
 });
 
 test('delete manga - removed from list after confirmation', async ({ page }) => {
@@ -82,5 +83,5 @@ test('delete manga - removed from list after confirmation', async ({ page }) => 
   await page.click('.delete-btn');
 
   await expect(page.locator('.manga-title')).toHaveCount(0);
-  await expect(page.locator('.empty-state')).toBeVisible();
+  await expect(page.locator('.state-box')).toBeVisible();
 });

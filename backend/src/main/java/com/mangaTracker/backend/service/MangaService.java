@@ -67,11 +67,20 @@ public class MangaService {
 
   /** Mark a manga as fully read: caught up to its latest known chapter. */
   public Manga markRead(UUID id) {
+    return setReadState(id, true);
+  }
+
+  /** Mark a manga as unread again (undo): resets progress so it shows as having new chapters. */
+  public Manga markUnread(UUID id) {
+    return setReadState(id, false);
+  }
+
+  private Manga setReadState(UUID id, boolean read) {
     Manga manga =
         mangaRepository
             .findById(id)
             .orElseThrow(() -> new MangaNotFoundException("Manga not found: " + id));
-    manga.setCurrentChapter(manga.getLatestChapter());
+    manga.setCurrentChapter(read ? manga.getLatestChapter() : 0);
     return mangaRepository.save(manga);
   }
 

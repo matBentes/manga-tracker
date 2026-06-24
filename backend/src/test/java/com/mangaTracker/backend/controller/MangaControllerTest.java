@@ -145,6 +145,19 @@ class MangaControllerTest {
   }
 
   @Test
+  void markUnread_returns200WithResetManga() throws Exception {
+    UUID id = UUID.randomUUID();
+    Manga manga = buildManga(id);
+    manga.setCurrentChapter(0);
+    when(mangaService.markUnread(id)).thenReturn(manga);
+
+    mockMvc
+        .perform(post("/api/manga/" + id + "/unread"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.currentChapter").value(0));
+  }
+
+  @Test
   void deleteManga_returns204_onSuccess() throws Exception {
     UUID id = UUID.randomUUID();
     doNothing().when(mangaService).deleteManga(id);

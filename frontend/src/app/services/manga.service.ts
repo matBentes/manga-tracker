@@ -44,6 +44,11 @@ export class MangaService {
     return this.http.post<Manga>(`${this.apiUrl}/${id}/read`, {});
   }
 
+  /** Mark a manga unread again (undo a mark-read). */
+  markUnread(id: string): Observable<Manga> {
+    return this.http.post<Manga>(`${this.apiUrl}/${id}/unread`, {});
+  }
+
   deleteManga(id: string): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/${id}`);
   }

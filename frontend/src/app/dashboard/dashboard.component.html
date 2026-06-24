@@ -1,6 +1,6 @@
 <div class="dashboard">
   <div class="dashboard-header">
-    <h1 class="dashboard-title">Manga Reading List</h1>
+    <h1 class="dashboard-title">Reading List</h1>
     @if (unreadCount > 0) {
       <button class="mark-all-btn" [disabled]="isMarkingAll" (click)="markAllRead()">
         {{ isMarkingAll ? 'Marking…' : 'Mark all read (' + unreadCount + ')' }}
@@ -11,16 +11,11 @@
   <app-add-manga-form (mangaAdded)="loadManga()" />
 
   @if (isLoading) {
-    <div class="loading-state">
-      <span class="loading-spinner"></span>
-      <span>Loading your manga list...</span>
-    </div>
+    <div class="state-box">Loading your manga list…</div>
   } @else if (error) {
-    <div class="error-state">{{ error }}</div>
+    <div class="state-box error">{{ error }}</div>
   } @else if (mangaList.length === 0) {
-    <div class="empty-state">
-      <p>No manga tracked yet. Add your first manga to get started!</p>
-    </div>
+    <div class="state-box">No manga tracked yet. Add your first manga above.</div>
   } @else {
     <div class="manga-grid">
       @for (manga of mangaList; track manga.id) {
@@ -31,18 +26,15 @@
             } @else {
               <div class="cover-placeholder">{{ manga.title.charAt(0) }}</div>
             }
-            @if (isUnread(manga)) {
-              <span class="unread-badge">New</span>
-            }
           </div>
 
           <div class="card-body">
             <h2 class="manga-title">{{ manga.title }}</h2>
             <p class="chapter-line">
               @if (isUnread(manga)) {
-                <span class="latest">Chapter {{ manga.latestChapter }} is out</span>
+                <span class="badge-new">▲ New · Ch {{ manga.latestChapter }}</span>
               } @else {
-                <span class="caught-up">Caught up · ch. {{ manga.latestChapter }}</span>
+                <span class="caught-up">Caught up · Ch {{ manga.latestChapter }}</span>
               }
             </p>
             <p class="checked-line">Checked {{ checkedLabel(manga) }}</p>
@@ -52,11 +44,18 @@
             }
 
             <div class="card-actions">
-              @if (isUnread(manga)) {
-                <button class="read-btn" [disabled]="busy[manga.id]" (click)="markRead(manga)">
-                  {{ busy[manga.id] ? '…' : 'Mark read' }}
-                </button>
-              }
+              <button
+                class="read-btn"
+                [class.unread-action]="isUnread(manga)"
+                [disabled]="busy[manga.id]"
+                (click)="toggleRead(manga)"
+              >
+                @if (busy[manga.id]) {
+                  …
+                } @else {
+                  {{ isUnread(manga) ? 'Mark read' : 'Mark unread' }}
+                }
+              </button>
               <a
                 [href]="manga.sourceUrl"
                 target="_blank"
@@ -65,7 +64,7 @@
               >
                 Open
               </a>
-              <label class="notify-toggle" [title]="'Notify on new chapters'">
+              <label class="notify-toggle" title="Notify on new chapters">
                 <input
                   type="checkbox"
                   [checked]="manga.notificationsEnabled"
