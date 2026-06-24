@@ -4,7 +4,6 @@ import { forkJoin } from 'rxjs';
 
 import { AddMangaFormComponent } from '../add-manga/add-manga-form.component';
 import { Manga, MangaService } from '../services/manga.service';
-import { relativeTime } from '../shared/relative-time';
 
 @Component({
   selector: 'app-dashboard',
@@ -52,10 +51,6 @@ export class DashboardComponent implements OnInit {
 
   get unreadCount(): number {
     return this.mangaList.filter((m) => this.isUnread(m)).length;
-  }
-
-  checkedLabel(manga: Manga): string {
-    return relativeTime(manga.lastCheckedAt);
   }
 
   /** Toggle a manga between read (caught up) and unread — the latter undoes a mark-read. */

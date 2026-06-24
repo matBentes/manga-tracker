@@ -32,38 +32,32 @@
             <h2 class="manga-title">{{ manga.title }}</h2>
             <p class="chapter-line">
               @if (isUnread(manga)) {
-                <span class="badge-new">▲ New · Ch {{ manga.latestChapter }}</span>
+                <span class="badge-new">New · Ch {{ manga.latestChapter }}</span>
               } @else {
                 <span class="caught-up">Caught up · Ch {{ manga.latestChapter }}</span>
               }
             </p>
-            <p class="checked-line">Checked {{ checkedLabel(manga) }}</p>
 
             @if (actionError[manga.id]) {
               <p class="card-error">{{ actionError[manga.id] }}</p>
             }
 
             <div class="card-actions">
-              <button
-                class="read-btn"
-                [class.unread-action]="isUnread(manga)"
-                [disabled]="busy[manga.id]"
-                (click)="toggleRead(manga)"
+              <a
+                [href]="manga.sourceUrl"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="open-btn"
               >
+                Open
+              </a>
+              <button class="read-btn" [disabled]="busy[manga.id]" (click)="toggleRead(manga)">
                 @if (busy[manga.id]) {
                   …
                 } @else {
                   {{ isUnread(manga) ? 'Mark read' : 'Mark unread' }}
                 }
               </button>
-              <a
-                [href]="manga.sourceUrl"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="open-link"
-              >
-                Open
-              </a>
               <label class="notify-toggle" title="Notify on new chapters">
                 <input
                   type="checkbox"

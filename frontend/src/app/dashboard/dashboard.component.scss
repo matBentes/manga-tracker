@@ -2,6 +2,7 @@ $ink: #111111;
 $paper: #f5f5f0;
 $accent: #ffe600;
 $danger: #ff3b30;
+$green: #00b341;
 
 .dashboard {
   max-width: 980px;
@@ -64,17 +65,23 @@ $danger: #ff3b30;
 
 .manga-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 1.25rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.5rem;
+}
+
+@media (max-width: 620px) {
+  .manga-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .manga-card {
   display: flex;
-  gap: 14px;
+  gap: 18px;
   background: #fff;
   border: 3px solid $ink;
-  box-shadow: 6px 6px 0 $ink;
-  padding: 12px;
+  box-shadow: 8px 8px 0 $ink;
+  padding: 18px;
 
   &.is-unread {
     background: $accent;
@@ -82,12 +89,12 @@ $danger: #ff3b30;
 }
 
 .cover {
-  flex: 0 0 56px;
+  flex: 0 0 110px;
 
   img,
   .cover-placeholder {
-    width: 56px;
-    height: 78px;
+    width: 110px;
+    height: 160px;
     border: 3px solid $ink;
     object-fit: cover;
     display: block;
@@ -99,7 +106,7 @@ $danger: #ff3b30;
     justify-content: center;
     background: #fff;
     color: $ink;
-    font-size: 1.8rem;
+    font-size: 3rem;
     font-weight: 800;
   }
 }
@@ -112,11 +119,11 @@ $danger: #ff3b30;
 }
 
 .manga-title {
-  font-size: 1.05rem;
+  font-size: 1.3rem;
   font-weight: 800;
   text-transform: uppercase;
   line-height: 1.05;
-  margin: 0;
+  margin: 0 0 8px;
   color: $ink;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -124,28 +131,24 @@ $danger: #ff3b30;
 }
 
 .chapter-line {
-  margin: 4px 0 0;
-  font-size: 0.8rem;
-  font-weight: 700;
+  margin: 0 0 12px;
+  font-size: 0.85rem;
+  font-weight: 800;
 }
 
 .badge-new {
-  color: $ink;
+  display: inline-block;
+  background: $green;
+  color: #fff;
+  border: 3px solid $ink;
+  padding: 3px 8px;
+  text-transform: uppercase;
 }
 
 .caught-up {
   color: $ink;
   opacity: 0.6;
-}
-
-.checked-line {
-  margin: 2px 0 8px;
-  font-size: 0.68rem;
-  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: $ink;
-  opacity: 0.55;
 }
 
 .card-error {
@@ -185,27 +188,20 @@ $danger: #ff3b30;
   }
 }
 
+.open-btn {
+  @include brutal-btn($accent, $ink);
+  font-size: 0.82rem;
+  padding: 9px 16px;
+  text-decoration: none;
+}
+
 .read-btn {
   @include brutal-btn(#fff, $ink);
-
-  &.unread-action {
-    background: $ink;
-    color: #fff;
-  }
 }
 
 .delete-btn {
   @include brutal-btn(#fff, $danger);
   margin-left: auto;
-}
-
-.open-link {
-  font-size: 0.7rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  color: $ink;
-  text-decoration: underline;
-  text-underline-offset: 2px;
 }
 
 .notify-toggle {
