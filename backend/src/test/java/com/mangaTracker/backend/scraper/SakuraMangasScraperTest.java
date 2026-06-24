@@ -94,6 +94,18 @@ class SakuraMangasScraperTest {
   }
 
   @Test
+  void scrape_prefersPageCoverOverOgImageBanner() {
+    String html =
+        "<html><head><meta property=\"og:image\" content=\"https://site/og_banner.png\"></head>"
+            + "<body><h1>Gachiakuta</h1>"
+            + "<img class=\"img-fluid capa\" src=\"https://img/gachiakuta/thumb_256.jpg\">"
+            + "<div class=\"chapter-list\"><a href=\"/o/10\">Cap. 10</a></div></body></html>";
+
+    assertThat(scraperReturning(html).scrape(URL).coverImageUrl())
+        .isEqualTo("https://img/gachiakuta/thumb_256.jpg");
+  }
+
+  @Test
   void scrape_fallsBackToTwitterImage_whenNoOgImage() {
     String html =
         "<html><head><meta name=\"twitter:image\" content=\"https://img/tw.jpg\"></head>"

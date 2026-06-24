@@ -22,7 +22,7 @@
         <article class="manga-card" [class.is-unread]="isUnread(manga)">
           <div class="cover">
             @if (manga.coverImageUrl) {
-              <img [src]="manga.coverImageUrl" [alt]="manga.title + ' cover'" loading="lazy" />
+              <img [src]="manga.coverImageUrl" [alt]="manga.title + ' cover'" />
             } @else {
               <div class="cover-placeholder">{{ manga.title.charAt(0) }}</div>
             }

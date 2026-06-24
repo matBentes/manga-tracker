@@ -75,6 +75,17 @@ class PushNotificationServiceTest {
   }
 
   @Test
+  void send_omitsDataUrlCover_toStayUnderPayloadLimit() {
+    PushSubscription a = buildSubscription("https://push.example/a");
+    when(repository.findAll()).thenReturn(List.of(a));
+    when(sender.send(any(), anyString())).thenReturn(201);
+
+    service.send(message("data:image/jpeg;base64,QQQQ"));
+
+    verify(sender).send(eq(a), argThat(json -> !json.contains("data:image")));
+  }
+
+  @Test
   void send_prunesSubscription_on410Gone() {
     PushSubscription dead = buildSubscription("https://push.example/dead");
     when(repository.findAll()).thenReturn(List.of(dead));

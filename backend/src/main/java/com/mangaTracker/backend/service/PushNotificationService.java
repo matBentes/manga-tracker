@@ -79,9 +79,13 @@ public class PushNotificationService {
     notification.put("title", message.title());
     notification.put("body", message.body());
     notification.put("data", data);
-    if (message.coverImageUrl() != null && !message.coverImageUrl().isBlank()) {
-      notification.put("icon", message.coverImageUrl());
-      notification.put("image", message.coverImageUrl());
+    // Only embed an http(s) cover. Inlined data: URLs are tens of KB and would blow the ~4KB Web
+    // Push payload limit, so they are dropped from the notification (the dashboard still shows
+    // them).
+    String cover = message.coverImageUrl();
+    if (cover != null && (cover.startsWith("http://") || cover.startsWith("https://"))) {
+      notification.put("icon", cover);
+      notification.put("image", cover);
     }
 
     try {

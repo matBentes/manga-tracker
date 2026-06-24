@@ -48,16 +48,19 @@ public class SakuraMangasScraper implements MangaScraper {
   private static final String CHAPTER_LIST_SELECTOR = ".chapter-list a";
   private static final Pattern CHAPTER_NUMBER_PATTERN = Pattern.compile("(\\d+(?:\\.\\d+)?)");
 
-  // Cover image: try the standard social meta tags first, then page-level cover images. The first
-  // selector that yields a non-blank URL wins. `attrKey` is the attribute holding the URL.
+  // Cover image: prefer the page's real cover element, then fall back to social meta tags. On
+  // sakuramangas the per-manga cover is `img.capa`; og:image there is only a generic site banner,
+  // so the page image must come first. The first selector yielding a non-blank URL wins; the second
+  // entry is the attribute holding the URL.
   private static final java.util.List<String[]> COVER_SELECTORS =
       java.util.List.of(
+          new String[] {"img.capa", "src"},
+          new String[] {".manga-cover img, .obra-capa img, .cover img, img.cover", "src"},
           new String[] {"meta[property=og:image]", "content"},
           new String[] {"meta[name=og:image]", "content"},
           new String[] {"meta[name=twitter:image]", "content"},
           new String[] {"meta[property=twitter:image]", "content"},
-          new String[] {"link[rel=image_src]", "href"},
-          new String[] {".manga-cover img, .obra-capa img, .cover img, img.cover", "src"});
+          new String[] {"link[rel=image_src]", "href"});
 
   // ── Testable HTTP abstraction ────────────────────────────────────────────────
 
@@ -108,7 +111,12 @@ public class SakuraMangasScraper implements MangaScraper {
     for (String[] selector : COVER_SELECTORS) {
       Element element = doc.selectFirst(selector[0]);
       if (element != null) {
-        String url = element.attr(selector[1]).trim();
+        // absUrl resolves relative paths (e.g. "thumb_256.jpg") against the page base URI;
+        // it returns "" when there is no base, so fall back to the raw attribute.
+        String url = element.absUrl(selector[1]);
+        if (url.isBlank()) {
+          url = element.attr(selector[1]).trim();
+        }
         if (!url.isBlank()) {
           return url;
         }
