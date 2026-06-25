@@ -39,6 +39,9 @@ public class MartijnDwarsWebPushSender implements WebPushSender {
               subscription.getAuth(),
               payloadJson.getBytes(StandardCharsets.UTF_8));
       return pushService().send(notification).getStatusLine().getStatusCode();
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new WebPushException("Failed to deliver web push to " + subscription.getEndpoint(), e);
     } catch (Exception e) {
       throw new WebPushException("Failed to deliver web push to " + subscription.getEndpoint(), e);
     }
