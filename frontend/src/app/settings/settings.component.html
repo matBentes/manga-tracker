@@ -1,70 +1,43 @@
 <div class="settings">
-  <h1 class="settings-title">Notification Settings</h1>
+  <h1 class="settings-title">Settings</h1>
 
-  @if (isLoading) {
-    <div class="loading-state">
-      <span class="loading-spinner"></span>
-      <span>Loading settings...</span>
+  <section class="push-card">
+    <div class="push-info">
+      <span class="label-text">Phone Notifications</span>
+      <span class="label-desc">
+        Get a push notification on this device when a tracked manga has a new chapter. Tapping it
+        marks the manga as read and opens it.
+      </span>
     </div>
-  } @else if (loadError) {
-    <div class="error-state">{{ loadError }}</div>
-  } @else {
-    <form class="settings-form" (ngSubmit)="onSave()">
-      <div class="form-group toggle-group">
-        <label class="toggle-label" for="emailNotificationsEnabled">
-          <span class="label-text">Email Notifications</span>
-          <span class="label-desc">Enable email alerts when new chapters are available</span>
-        </label>
-        <input
-          type="checkbox"
-          id="emailNotificationsEnabled"
-          name="emailNotificationsEnabled"
-          [(ngModel)]="emailNotificationsEnabled"
-          class="toggle-checkbox"
-        />
-      </div>
-
-      <div class="form-group">
-        <label class="field-label" for="notificationEmail">Notification Email</label>
-        <input
-          type="email"
-          id="notificationEmail"
-          name="notificationEmail"
-          [(ngModel)]="notificationEmail"
-          (ngModelChange)="onEmailChange()"
-          class="field-input"
-          placeholder="you@example.com"
-          required
-        />
-        @if (emailValidationError) {
-          <span class="field-error">{{ emailValidationError }}</span>
+    @if (!pushSupported) {
+      <p class="push-unsupported">
+        Push notifications aren't supported in this browser. Install the app to your home screen and
+        open it from there.
+      </p>
+    } @else {
+      <button
+        type="button"
+        class="push-btn"
+        [class.enabled]="pushEnabled"
+        [disabled]="pushBusy"
+        (click)="onTogglePush()"
+      >
+        @if (pushBusy) {
+          {{ pushEnabled ? 'Disabling…' : 'Enabling…' }}
+        } @else {
+          {{ pushEnabled ? 'Disable phone notifications' : 'Enable phone notifications' }}
         }
-      </div>
-
-      <div class="form-group">
-        <label class="field-label" for="pollIntervalMinutes">Poll Interval (minutes)</label>
-        <input
-          type="number"
-          id="pollIntervalMinutes"
-          name="pollIntervalMinutes"
-          [(ngModel)]="pollIntervalMinutes"
-          class="field-input poll-input"
-          min="1"
-          required
-        />
-        <span class="field-hint">How often the app checks for new chapters</span>
-      </div>
-
-      @if (saveError) {
-        <div class="save-error">{{ saveError }}</div>
-      }
-      @if (saveSuccess) {
-        <div class="save-success">Settings saved successfully!</div>
-      }
-
-      <button type="submit" class="save-btn" [disabled]="isSaving || !isEmailValid">
-        {{ isSaving ? 'Saving…' : 'Save Settings' }}
       </button>
-    </form>
-  }
+    }
+    @if (pushError) {
+      <p class="push-error">{{ pushError }}</p>
+    }
+  </section>
+
+  <section class="schedule-card">
+    <span class="label-text">New-chapter check</span>
+    <span class="label-desc"
+      >{{ dailyCheckLabel }}. This runs automatically — nothing to configure.</span
+    >
+  </section>
 </div>

@@ -31,6 +31,23 @@ public class PlaywrightBrowserManager {
   private static final String SAKURA_REFERER = "https://sakuramangas.org/";
   private static final double PAGE_TIMEOUT_MS = 30_000;
 
+  // The cover image is hotlink/Cloudflare-protected, so a server-side or cross-origin fetch gets
+  // 403. Fetch it inside the cleared browser page and inline it as a data: URL, so downstream
+  // extraction and the frontend can use it directly. Best-effort: failure leaves the cover absent.
+  private static final String INLINE_COVER_SCRIPT =
+      "async () => {"
+          + "  const img = document.querySelector('img.capa');"
+          + "  if (!img || !img.src || img.src.startsWith('data:')) return;"
+          + "  try {"
+          + "    const blob = await (await fetch(img.src)).blob();"
+          + "    const dataUrl = await new Promise((res, rej) => {"
+          + "      const fr = new FileReader(); fr.onloadend = () => res(fr.result);"
+          + "      fr.onerror = rej; fr.readAsDataURL(blob);"
+          + "    });"
+          + "    img.setAttribute('src', dataUrl);"
+          + "  } catch (e) { /* leave original src */ }"
+          + "}";
+
   // Chromium flags that strip the most obvious automation fingerprints. Without these (and the
   // init script below) Cloudflare Bot Management never clears its interactive challenge and the
   // page stays on "Just a moment...". Verified against the live site 2026-06.
@@ -110,12 +127,22 @@ public class PlaywrightBrowserManager {
               new Page.WaitForSelectorOptions()
                   .setState(WaitForSelectorState.ATTACHED)
                   .setTimeout(PAGE_TIMEOUT_MS));
+          inlineCoverImage(page);
           return Jsoup.parse(page.content(), url);
         }
       } catch (PlaywrightException e) {
         invalidateBrowserIfDisconnected(activeBrowser);
         throw new ScrapingException("Failed to fetch manga page via Playwright: " + url, e);
       }
+    }
+  }
+
+  // Best-effort: a failure to inline the cover must not fail the scrape.
+  private void inlineCoverImage(Page page) {
+    try {
+      page.evaluate(INLINE_COVER_SCRIPT);
+    } catch (PlaywrightException e) {
+      LOGGER.debug("Could not inline cover image: {}", e.getMessage());
     }
   }
 

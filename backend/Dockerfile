@@ -8,6 +8,9 @@ COPY gradlew .
 COPY gradle/ gradle/
 COPY build.gradle settings.gradle ./
 
+# Normalize line endings (Windows checkouts may give gradlew CRLF) and make it executable
+RUN sed -i 's/\r$//' gradlew && chmod +x gradlew
+
 # Download dependencies (cached unless build.gradle changes)
 RUN ./gradlew dependencies --no-daemon
 
@@ -19,8 +22,14 @@ RUN ./gradlew bootJar --no-daemon -x test && \
 # ── Stage 2: runtime ──────────────────────────────────────────────────────────
 FROM eclipse-temurin:21-jre AS runtime
 
+# The Ubuntu base only ships a snap stub for `chromium` (no real /usr/bin/chromium), which
+# Playwright cannot launch. Install Google Chrome stable instead — a real binary at
+# /usr/bin/google-chrome-stable that Playwright drives over CDP.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends chromium wget ca-certificates \
+    && apt-get install -y --no-install-recommends wget gnupg ca-certificates \
+    && wget -qO /tmp/chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb \
+    && apt-get install -y --no-install-recommends /tmp/chrome.deb \
+    && rm -f /tmp/chrome.deb \
     && rm -rf /var/lib/apt/lists/*
 
 RUN groupadd --system app && useradd --system --gid app --create-home app
@@ -34,10 +43,7 @@ COPY --from=builder /app/build/libs/app.jar app.jar
 # first-request Playwright browser installation inside the running container.
 ENV DB_URL=jdbc:postgresql://localhost:5432/manga_tracker \
     DB_USERNAME=manga_tracker \
-    MAIL_HOST=localhost \
-    MAIL_PORT=1025 \
-    NOTIFICATION_FROM_EMAIL=tracker@localhost \
-    SCRAPER_SAKURA_CHROMIUM_EXECUTABLE=/usr/bin/chromium \
+    SCRAPER_SAKURA_CHROMIUM_EXECUTABLE=/usr/bin/google-chrome-stable \
     PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 
 USER app

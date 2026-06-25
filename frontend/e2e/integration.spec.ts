@@ -9,7 +9,7 @@ test.describe('Dashboard', () => {
   test('shows empty state with add-manga form', async ({ page }) => {
     await page.goto('/');
 
-    await expect(page.getByRole('heading', { name: 'Manga Reading List' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Reading List' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Add Manga' })).toBeVisible();
     await expect(page.getByRole('textbox', { name: /manga URL/i })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Add Manga' })).toBeDisabled();
@@ -56,83 +56,31 @@ test.describe('Dashboard', () => {
 });
 
 test.describe('Settings', () => {
-  test('loads settings form with values from backend', async ({ page }) => {
+  test('shows the push notification settings page', async ({ page }) => {
     await page.goto('/settings');
 
-    await expect(page.getByRole('heading', { name: 'Notification Settings' })).toBeVisible();
-    await expect(page.getByRole('checkbox', { name: /email notifications/i })).toBeVisible();
-    await expect(page.getByRole('textbox', { name: /notification email/i })).toBeVisible();
-    await expect(page.getByRole('spinbutton', { name: /poll interval/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Save Settings' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
+    await expect(page.getByText('Phone Notifications')).toBeVisible();
+    await expect(
+      page.getByText(/push notification on this device when a tracked manga has a new chapter/i),
+    ).toBeVisible();
   });
 
-  test('saves settings and shows success message', async ({ page }) => {
+  test('shows the daily new-chapter check schedule', async ({ page }) => {
     await page.goto('/settings');
 
-    const emailInput = page.getByRole('textbox', { name: /notification email/i });
-    await emailInput.fill('integration-test@example.com');
-    await page.getByRole('button', { name: 'Save Settings' }).click();
-
-    await expect(page.getByText(/settings saved successfully/i)).toBeVisible();
+    await expect(page.getByText('New-chapter check')).toBeVisible();
+    await expect(page.getByText(/Every day at 08:00/i)).toBeVisible();
   });
 
-  test('settings persist after page reload', async ({ page }) => {
+  test('exposes a push control (toggle or unsupported notice)', async ({ page }) => {
     await page.goto('/settings');
 
-    const emailInput = page.getByRole('textbox', { name: /notification email/i });
-    await emailInput.fill('persist-test@example.com');
-    await page.getByRole('button', { name: 'Save Settings' }).click();
-    await expect(page.getByText(/settings saved successfully/i)).toBeVisible();
+    // Push support varies by browser/context. Either the enable/disable toggle
+    // or the "not supported" notice must be present — never neither.
+    const toggle = page.getByRole('button', { name: /phone notifications/i });
+    const unsupported = page.getByText(/Push notifications aren't supported/i);
 
-    await page.reload();
-
-    await expect(page.getByRole('textbox', { name: /notification email/i })).toHaveValue(
-      'persist-test@example.com',
-    );
-  });
-
-  test('shows validation error for invalid email', async ({ page }) => {
-    await page.goto('/settings');
-
-    const emailInput = page.getByRole('textbox', { name: /notification email/i });
-    await emailInput.fill('not-an-email');
-
-    await expect(page.getByText(/valid email address/i)).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Save Settings' })).toBeDisabled();
-  });
-
-  test('clears email validation error when valid email entered', async ({ page }) => {
-    await page.goto('/settings');
-
-    const emailInput = page.getByRole('textbox', { name: /notification email/i });
-    await emailInput.fill('bad');
-    await expect(page.getByText(/valid email address/i)).toBeVisible();
-
-    await emailInput.fill('good@example.com');
-    await expect(page.getByText(/valid email address/i)).not.toBeVisible();
-    await expect(page.getByRole('button', { name: 'Save Settings' })).toBeEnabled();
-  });
-
-  test('toggle notifications checkbox and save', async ({ page }) => {
-    await page.goto('/settings');
-
-    const checkbox = page.getByRole('checkbox', { name: /email notifications/i });
-    const wasChecked = await checkbox.isChecked();
-
-    await checkbox.click();
-    await page.getByRole('button', { name: 'Save Settings' }).click();
-    await expect(page.getByText(/settings saved successfully/i)).toBeVisible();
-
-    await page.reload();
-
-    if (wasChecked) {
-      await expect(checkbox).not.toBeChecked();
-    } else {
-      await expect(checkbox).toBeChecked();
-    }
-
-    // Restore original state
-    await checkbox.click();
-    await page.getByRole('button', { name: 'Save Settings' }).click();
+    await expect(toggle.or(unsupported).first()).toBeVisible();
   });
 });

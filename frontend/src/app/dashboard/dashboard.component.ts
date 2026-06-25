@@ -1,5 +1,6 @@
 import { Component, OnInit, DestroyRef, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { forkJoin } from 'rxjs';
 
 import { AddMangaFormComponent } from '../add-manga/add-manga-form.component';
 import { Manga, MangaService } from '../services/manga.service';
@@ -18,10 +19,9 @@ export class DashboardComponent implements OnInit {
   mangaList: Manga[] = [];
   isLoading = false;
   error: string | null = null;
-  savingState: Record<string, boolean> = {};
-  updateError: Record<string, string | null> = {};
-  deletingState: Record<string, boolean> = {};
-  togglingNotifications: Record<string, boolean> = {};
+  actionError: Record<string, string | null> = {};
+  busy: Record<string, boolean> = {};
+  isMarkingAll = false;
 
   ngOnInit(): void {
     this.loadManga();
@@ -45,74 +45,121 @@ export class DashboardComponent implements OnInit {
       });
   }
 
-  hasUnreadChapters(manga: Manga): boolean {
+  isUnread(manga: Manga): boolean {
     return manga.latestChapter > manga.currentChapter;
   }
 
-  onChapterChange(manga: Manga, event: Event): void {
-    const input = event.target as HTMLInputElement;
-    const value = parseInt(input.value, 10);
+  get unreadCount(): number {
+    return this.mangaList.filter((m) => this.isUnread(m)).length;
+  }
 
-    if (isNaN(value) || value < 0 || value > manga.latestChapter) {
-      this.updateError[manga.id] = `Chapter must be between 0 and ${manga.latestChapter}.`;
-      input.value = String(manga.currentChapter);
+  /** Toggle a manga between read (caught up) and unread — the latter undoes a mark-read. */
+  toggleRead(manga: Manga): void {
+    if (this.busy[manga.id]) {
       return;
     }
-
-    if (value === manga.currentChapter) {
-      this.updateError[manga.id] = null;
-      return;
-    }
-
-    this.updateError[manga.id] = null;
-    this.savingState[manga.id] = true;
-
-    this.mangaService.updateManga(manga.id, { currentChapter: value }).subscribe({
+    const wasUnread = this.isUnread(manga);
+    const request$ = wasUnread
+      ? this.mangaService.markRead(manga.id)
+      : this.mangaService.markUnread(manga.id);
+    this.busy[manga.id] = true;
+    this.actionError[manga.id] = null;
+    request$.subscribe({
       next: (updated) => {
         manga.currentChapter = updated.currentChapter;
-        this.savingState[manga.id] = false;
+        this.busy[manga.id] = false;
       },
       error: () => {
-        this.updateError[manga.id] = 'Failed to save chapter. Please try again.';
-        this.savingState[manga.id] = false;
-        input.value = String(manga.currentChapter);
+        this.actionError[manga.id] = wasUnread ? 'Failed to mark as read.' : 'Failed to undo.';
+        this.busy[manga.id] = false;
       },
     });
   }
 
-  onNotificationsToggle(manga: Manga, event: Event): void {
+  markAllRead(): void {
+    const unread = this.mangaList.filter((m) => this.isUnread(m));
+    if (this.isMarkingAll || unread.length === 0) {
+      return;
+    }
+    this.isMarkingAll = true;
+    forkJoin(unread.map((m) => this.mangaService.markRead(m.id))).subscribe({
+      next: (updatedList) => {
+        updatedList.forEach((updated) => {
+          const local = this.mangaList.find((m) => m.id === updated.id);
+          if (local) {
+            local.currentChapter = updated.currentChapter;
+          }
+        });
+        this.isMarkingAll = false;
+      },
+      error: () => {
+        this.error = 'Failed to mark all as read. Please try again.';
+        this.isMarkingAll = false;
+      },
+    });
+  }
+
+  toggleNotifications(manga: Manga, event: Event): void {
     const checkbox = event.target as HTMLInputElement;
     const newValue = checkbox.checked;
 
-    this.togglingNotifications[manga.id] = true;
+    this.busy[manga.id] = true;
     this.mangaService.updateManga(manga.id, { notificationsEnabled: newValue }).subscribe({
       next: (updated) => {
         manga.notificationsEnabled = updated.notificationsEnabled;
-        this.togglingNotifications[manga.id] = false;
+        this.busy[manga.id] = false;
       },
       error: () => {
         checkbox.checked = manga.notificationsEnabled;
-        this.updateError[manga.id] = 'Failed to update notification setting.';
-        this.togglingNotifications[manga.id] = false;
+        this.actionError[manga.id] = 'Failed to update notifications.';
+        this.busy[manga.id] = false;
       },
     });
   }
 
   onDelete(manga: Manga): void {
     const confirmed = window.confirm(`Remove "${manga.title}" from your reading list?`);
-    if (!confirmed) return;
-
-    this.deletingState[manga.id] = true;
-
+    if (!confirmed) {
+      return;
+    }
+    this.busy[manga.id] = true;
     this.mangaService.deleteManga(manga.id).subscribe({
       next: () => {
         this.mangaList = this.mangaList.filter((m) => m.id !== manga.id);
-        this.deletingState[manga.id] = false;
       },
       error: () => {
-        this.updateError[manga.id] = 'Failed to delete. Please try again.';
-        this.deletingState[manga.id] = false;
+        this.actionError[manga.id] = 'Failed to delete. Please try again.';
+        this.busy[manga.id] = false;
       },
     });
+  }
+
+  onTestPush(manga: Manga): void {
+    this.busy[manga.id] = true;
+    this.actionError[manga.id] = null;
+    this.mangaService.testPush(manga.id).subscribe({
+      next: () => {
+        this.busy[manga.id] = false;
+      },
+      error: () => {
+        this.actionError[manga.id] = 'Failed to send test push. Please try again.';
+        this.busy[manga.id] = false;
+      },
+    });
+  }
+
+  getRelativeDate(dateString: string): string {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) {
+      return 'Latest chapter added today';
+    } else if (diffDays === 1) {
+      return 'Latest chapter added 1 day ago';
+    } else {
+      return `Latest chapter added ${diffDays} days ago`;
+    }
   }
 }

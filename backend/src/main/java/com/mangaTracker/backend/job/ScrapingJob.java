@@ -17,6 +17,11 @@ public class ScrapingJob {
 
   private static final Logger LOG = LoggerFactory.getLogger(ScrapingJob.class);
 
+  /** Every day at 08:00 in {@link #SCHEDULE_ZONE}. */
+  static final String DAILY_CHECK_CRON = "0 0 8 * * *";
+
+  static final String SCHEDULE_ZONE = "America/Sao_Paulo";
+
   private final MangaRepository mangaRepository;
   private final ScraperRegistry scraperRegistry;
   private final NotificationService notificationService;
@@ -30,10 +35,14 @@ public class ScrapingJob {
     this.notificationService = notificationService;
   }
 
-  // NOTE: This interval is resolved from application properties at startup.
-  // Changes to AppSettings.pollIntervalMinutes at runtime do NOT affect this schedule.
-  @Scheduled(fixedDelayString = "#{${app.scraper.poll-interval-minutes:30} * 60000}")
-  public void pollAllManga() {
+  /** Single scheduled check: once a day at 08:00 (America/Sao_Paulo). */
+  @Scheduled(cron = DAILY_CHECK_CRON, zone = SCHEDULE_ZONE)
+  public void runDailyCheck() {
+    LOG.info("ScrapingJob: running daily 08:00 check");
+    poll();
+  }
+
+  private void poll() {
     List<Manga> mangaList = mangaRepository.findAllByOrderByUpdatedAtDesc();
     LOG.info("ScrapingJob: polling {} manga entries", mangaList.size());
     for (Manga manga : mangaList) {
@@ -41,9 +50,13 @@ public class ScrapingJob {
         ScrapedManga scraped =
             scraperRegistry.resolve(manga.getSourceUrl()).scrape(manga.getSourceUrl());
         manga.setLastCheckedAt(LocalDateTime.now());
+        if (scraped.coverImageUrl() != null) {
+          manga.setCoverImageUrl(scraped.coverImageUrl());
+        }
         if (scraped.latestChapter() > manga.getLatestChapter()) {
           int newLatestChapter = scraped.latestChapter();
           manga.setLatestChapter(newLatestChapter);
+          manga.setLatestChapterAt(LocalDateTime.now());
           mangaRepository.save(manga);
           notificationService.notify(manga, newLatestChapter);
         } else {

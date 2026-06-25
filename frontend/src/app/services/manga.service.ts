@@ -9,6 +9,8 @@ export interface Manga {
   sourceUrl: string;
   currentChapter: number;
   latestChapter: number;
+  coverImageUrl: string | null;
+  latestChapterAt: string | null;
   notificationsEnabled: boolean;
   lastCheckedAt: string | null;
   createdAt: string;
@@ -16,7 +18,6 @@ export interface Manga {
 }
 
 export interface MangaPatch {
-  currentChapter?: number;
   notificationsEnabled?: boolean;
 }
 
@@ -39,7 +40,22 @@ export class MangaService {
     return this.http.patch<Manga>(`${this.apiUrl}/${id}`, patch);
   }
 
+  /** Mark a manga as fully read (caught up to its latest chapter). */
+  markRead(id: string): Observable<Manga> {
+    return this.http.post<Manga>(`${this.apiUrl}/${id}/read`, {});
+  }
+
+  /** Mark a manga unread again (undo a mark-read). */
+  markUnread(id: string): Observable<Manga> {
+    return this.http.post<Manga>(`${this.apiUrl}/${id}/unread`, {});
+  }
+
   deleteManga(id: string): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/${id}`);
+  }
+
+  /** Send a test/demo notification for the latest chapter of a manga. */
+  testPush(id: string): Observable<void> {
+    return this.http.post<void>(`${this.apiUrl}/${id}/test-push`, {});
   }
 }

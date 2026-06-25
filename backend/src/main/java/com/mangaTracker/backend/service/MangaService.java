@@ -7,6 +7,7 @@ import com.mangaTracker.backend.repository.MangaRepository;
 import com.mangaTracker.backend.scraper.MangaScraper;
 import com.mangaTracker.backend.scraper.ScrapedManga;
 import com.mangaTracker.backend.scraper.ScraperRegistry;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -38,6 +39,8 @@ public class MangaService {
             .sourceUrl(sourceUrl)
             .currentChapter(0)
             .latestChapter(scraped.latestChapter())
+            .coverImageUrl(scraped.coverImageUrl())
+            .latestChapterAt(LocalDateTime.now())
             .notificationsEnabled(true)
             .build();
     try {
@@ -53,21 +56,40 @@ public class MangaService {
     return mangaRepository.findAllByOrderByUpdatedAtDesc();
   }
 
-  public Manga updateManga(UUID id, Integer currentChapter, Boolean notificationsEnabled) {
+  @Transactional(readOnly = true)
+  public Manga getById(UUID id) {
+    return mangaRepository
+        .findById(id)
+        .orElseThrow(() -> new MangaNotFoundException("Manga not found: " + id));
+  }
+
+  public Manga updateManga(UUID id, Boolean notificationsEnabled) {
     Manga manga =
         mangaRepository
             .findById(id)
             .orElseThrow(() -> new MangaNotFoundException("Manga not found: " + id));
-    if (currentChapter != null) {
-      if (currentChapter < 0 || currentChapter > manga.getLatestChapter()) {
-        throw new IllegalArgumentException(
-            "currentChapter must be between 0 and " + manga.getLatestChapter());
-      }
-      manga.setCurrentChapter(currentChapter);
-    }
     if (notificationsEnabled != null) {
       manga.setNotificationsEnabled(notificationsEnabled);
     }
+    return mangaRepository.save(manga);
+  }
+
+  /** Mark a manga as fully read: caught up to its latest known chapter. */
+  public Manga markRead(UUID id) {
+    return setReadState(id, true);
+  }
+
+  /** Mark a manga as unread again (undo): resets progress so it shows as having new chapters. */
+  public Manga markUnread(UUID id) {
+    return setReadState(id, false);
+  }
+
+  private Manga setReadState(UUID id, boolean read) {
+    Manga manga =
+        mangaRepository
+            .findById(id)
+            .orElseThrow(() -> new MangaNotFoundException("Manga not found: " + id));
+    manga.setCurrentChapter(read ? manga.getLatestChapter() : 0);
     return mangaRepository.save(manga);
   }
 

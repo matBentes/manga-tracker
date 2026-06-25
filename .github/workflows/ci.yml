@@ -150,7 +150,7 @@ jobs:
     # The official Playwright image ships the matching browser preinstalled, so there is no flaky
     # `playwright install` download/extract step. Tag is pinned to the project's Playwright version.
     container:
-      image: mcr.microsoft.com/playwright:v1.58.2-jammy
+      image: mcr.microsoft.com/playwright:v1.61.1-jammy
     steps:
       - uses: actions/checkout@v4
 
@@ -189,7 +189,7 @@ jobs:
     # Run inside the Playwright image (browser preinstalled, no flaky install). Inside a container
     # job, service containers are reachable by their id as hostname (postgres), not localhost.
     container:
-      image: mcr.microsoft.com/playwright:v1.58.2-jammy
+      image: mcr.microsoft.com/playwright:v1.61.1-jammy
     services:
       postgres:
         image: postgres:16-alpine

@@ -19,16 +19,16 @@ manga-tracker/
 │       ├── main/
 │       │   ├── java/com/mangaTracker/backend/
 │       │   │   ├── BackendApplication.java
-│       │   │   ├── controller/  HTTP layer (MangaController, SettingsController, GlobalExceptionHandler)
-│       │   │   ├── service/     Business logic (MangaService, SettingsService, NotificationService)
+│       │   │   ├── controller/  HTTP layer (MangaController, PushController, GlobalExceptionHandler)
+│       │   │   ├── service/     Business logic (MangaService, NotificationService, PushNotificationService, PushSubscriptionService)
 │       │   │   ├── repository/  JPA repositories
-│       │   │   ├── model/       JPA entities (Manga, AppSettings, NotificationLog)
+│       │   │   ├── model/       JPA entities (Manga, NotificationLog, PushSubscription)
 │       │   │   ├── scraper/     MangaScraper interface, ScraperRegistry, SakuraMangasScraper
-│       │   │   ├── job/         ScrapingJob (@Scheduled)
+│       │   │   ├── job/         ScrapingJob (@Scheduled daily 08:00)
 │       │   │   └── exception/   Domain exceptions
 │       │   └── resources/
 │       │       ├── application.properties
-│       │       └── db/migration/ Flyway migrations (V1, V2, V3)
+│       │       └── db/migration/ Flyway migrations (V1–V8)
 │       └── test/                JUnit 5 unit and integration tests
 │
 └── frontend/                    Angular 18 application
@@ -41,10 +41,11 @@ manga-tracker/
     │   ├── app/
     │   │   ├── app.config.ts    Angular bootstrapping
     │   │   ├── app.routes.ts    Router config
-    │   │   ├── dashboard/       Reading list page
-    │   │   ├── settings/        Settings page
+    │   │   ├── dashboard/       Reading list page (card grid, mark-read)
+    │   │   ├── settings/        Settings page (push toggle + daily-08:00 note)
+    │   │   ├── open-manga/      Push-tap landing: mark read + redirect
     │   │   ├── add-manga/       Add manga form
-    │   │   └── services/        MangaService, SettingsService (HttpClient)
+    │   │   └── services/        MangaService, PushService (HttpClient)
     │   └── environments/        environment.ts / environment.prod.ts
     └── e2e/                     Playwright E2E tests
         ├── manga.spec.ts        Mocked unit-style E2E tests
@@ -147,8 +148,9 @@ To support a new manga site:
          Document doc = Jsoup.connect(url).timeout(10_000).get();
          String title = /* extract title from doc */;
          int latestChapter = /* extract chapter number from doc */;
+         String coverImageUrl = /* extract og:image, or null */;
          if (title == null || title.isBlank()) throw new ScrapingException("Title not found");
-         return new ScrapedManga(title, latestChapter);
+         return new ScrapedManga(title, latestChapter, coverImageUrl);
        } catch (IOException e) {
          throw new ScrapingException("Failed to fetch page: " + e.getMessage());
        }
@@ -229,14 +231,23 @@ ALLOW_MAIN_PUSH=1 git push origin main
 
 ---
 
-## Mailhog — Viewing Test Emails
+## Web Push notifications (VAPID)
 
-In Docker mode, email is routed to [Mailhog](https://github.com/mailhog/MailHog) instead of a real SMTP server.
+New chapters are delivered as Web Push notifications to subscribed browsers (installable PWA) —
+there is no email path. The backend signs pushes with a VAPID key pair supplied via env:
 
-- **SMTP (for backend):** `localhost:1025`
-- **Web UI (to read emails):** `http://localhost:8025`
+```
+VAPID_PUBLIC_KEY=...
+VAPID_PRIVATE_KEY=...      # secret — never commit; .env is gitignored
+VAPID_SUBJECT=mailto:you@example.com
+```
 
-Open `http://localhost:8025` in your browser after `docker compose up` to see all outgoing notifications.
+Generate a pair with `npx web-push generate-vapid-keys --json`. Copy `.env.example` to `.env`
+(auto-loaded by `docker compose`). The frontend fetches the public key from
+`GET /api/push/public-key`, subscribes via the service worker, and POSTs the subscription to
+`/api/push/subscribe`. Web Push requires HTTPS in production; `localhost` is exempt for dev. To
+test on a phone, expose the dev frontend over HTTPS (e.g. a cloudflared quick tunnel to
+`http://localhost:4200`).
 
 ---
 

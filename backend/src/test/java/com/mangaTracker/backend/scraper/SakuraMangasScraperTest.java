@@ -73,6 +73,48 @@ class SakuraMangasScraperTest {
     assertThat(scraperReturning(html).scrape(URL).title()).isEqualTo("Naruto");
   }
 
+  @Test
+  void scrape_extractsCoverImageFromOgImage() {
+    String html =
+        "<html><head><meta property=\"og:image\" content=\"https://img/cover.jpg\"></head>"
+            + "<body><h1>Gachiakuta</h1>"
+            + "<div class=\"chapter-list\"><a href=\"/o/10\">Cap. 10</a></div></body></html>";
+
+    assertThat(scraperReturning(html).scrape(URL).coverImageUrl())
+        .isEqualTo("https://img/cover.jpg");
+  }
+
+  @Test
+  void scrape_returnsNullCover_whenNoImageMeta() {
+    String html =
+        "<html><body><h1>Gachiakuta</h1>"
+            + "<div class=\"chapter-list\"><a href=\"/o/10\">Cap. 10</a></div></body></html>";
+
+    assertThat(scraperReturning(html).scrape(URL).coverImageUrl()).isNull();
+  }
+
+  @Test
+  void scrape_prefersPageCoverOverOgImageBanner() {
+    String html =
+        "<html><head><meta property=\"og:image\" content=\"https://site/og_banner.png\"></head>"
+            + "<body><h1>Gachiakuta</h1>"
+            + "<img class=\"img-fluid capa\" src=\"https://img/gachiakuta/thumb_256.jpg\">"
+            + "<div class=\"chapter-list\"><a href=\"/o/10\">Cap. 10</a></div></body></html>";
+
+    assertThat(scraperReturning(html).scrape(URL).coverImageUrl())
+        .isEqualTo("https://img/gachiakuta/thumb_256.jpg");
+  }
+
+  @Test
+  void scrape_fallsBackToTwitterImage_whenNoOgImage() {
+    String html =
+        "<html><head><meta name=\"twitter:image\" content=\"https://img/tw.jpg\"></head>"
+            + "<body><h1>Gachiakuta</h1>"
+            + "<div class=\"chapter-list\"><a href=\"/o/10\">Cap. 10</a></div></body></html>";
+
+    assertThat(scraperReturning(html).scrape(URL).coverImageUrl()).isEqualTo("https://img/tw.jpg");
+  }
+
   // ── scrape() error paths ─────────────────────────────────────────────────────────
 
   @Test

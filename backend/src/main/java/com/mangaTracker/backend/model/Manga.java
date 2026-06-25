@@ -42,6 +42,12 @@ public class Manga {
   @Column(name = "latest_chapter", nullable = false)
   private int latestChapter;
 
+  @Column(name = "cover_image_url", columnDefinition = "TEXT")
+  private String coverImageUrl;
+
+  @Column(name = "latest_chapter_at")
+  private LocalDateTime latestChapterAt;
+
   @Column(name = "notifications_enabled", nullable = false)
   private boolean notificationsEnabled;
 

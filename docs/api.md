@@ -22,7 +22,9 @@ Returns all tracked manga sorted by most recently updated first.
     "sourceUrl": "https://sakuramangas.org/manga/one-piece/",
     "currentChapter": 1095,
     "latestChapter": 1110,
+    "coverImageUrl": "https://sakuramangas.org/img/one-piece.jpg",
     "notificationsEnabled": true,
+    "latestChapterAt": "2024-01-15T10:30:00",
     "lastCheckedAt": "2024-01-15T10:30:00",
     "createdAt": "2024-01-01T09:00:00",
     "updatedAt": "2024-01-15T10:30:00"
@@ -56,31 +58,93 @@ Adds a new manga by source URL. The backend scrapes the page to extract the titl
 
 ### PATCH /api/manga/{id}
 
-Updates the reading progress or notification preference for a manga. All fields are optional — only supplied fields are changed.
+Updates the notification preference for a manga.
 
 **Path parameter:** `id` — UUID of the manga.
 
 **Request body**
 
 ```json
-{
-  "currentChapter": 1095,
-  "notificationsEnabled": false
-}
+{ "notificationsEnabled": false }
 ```
-
-**Validation rules**
-
-- `currentChapter` must be `>= 0` and `<= latestChapter`
 
 **Response `200 OK`** — the updated manga object.
 
 **Error responses**
 
-| Status | Condition                                               |
-|--------|---------------------------------------------------------|
-| 400    | `currentChapter` is negative or exceeds `latestChapter` |
-| 404    | Manga with the given `id` not found                     |
+| Status | Condition                           |
+|--------|-------------------------------------|
+| 404    | Manga with the given `id` not found |
+
+---
+
+### POST /api/manga/{id}/read
+
+Marks the manga as fully read — sets `currentChapter` to its `latestChapter`. The push
+notification's tap target uses this so opening a manga clears its unread state.
+
+**Path parameter:** `id` — UUID of the manga.
+
+**Response `200 OK`** — the updated manga object (now caught up).
+
+**Error responses**
+
+| Status | Condition                           |
+|--------|-------------------------------------|
+| 404    | Manga with the given `id` not found |
+
+---
+
+### POST /api/manga/{id}/unread
+
+Marks the manga as unread — resets `currentChapter` below `latestChapter` so the card shows
+the "New" badge again. Inverse of `/read`; used by the dashboard's read/unread toggle.
+
+**Path parameter:** `id` — UUID of the manga.
+
+**Response `200 OK`** — the updated manga object.
+
+**Error responses**
+
+| Status | Condition                           |
+|--------|-------------------------------------|
+| 404    | Manga with the given `id` not found |
+
+---
+
+### GET /api/manga/{id}/cover
+
+Streams the manga's cover image bytes. Covers are stored inline as `data:` URLs (base64, fetched
+past Cloudflare at scrape time), which exceed the ~4KB Web Push payload limit. This endpoint decodes
+the stored `data:` URL and serves it with the correct `Content-Type`, giving push notifications a
+fetchable URL for the icon and large image.
+
+**Path parameter:** `id` — UUID of the manga.
+
+**Response `200 OK`** — raw image bytes; `Content-Type` matches the stored media type (e.g. `image/jpeg`).
+
+**Error responses**
+
+| Status | Condition                                              |
+|--------|--------------------------------------------------------|
+| 404    | Manga not found, or it has no decodable `data:` cover  |
+
+---
+
+### POST /api/manga/{id}/test-push
+
+Sends a test Web Push notification for this manga to all subscribed browsers, so you can
+verify push works on a device. The payload uses the manga's latest chapter, title, and cover.
+
+**Path parameter:** `id` — UUID of the manga.
+
+**Response `200 OK`** — empty body.
+
+**Error responses**
+
+| Status | Condition                           |
+|--------|-------------------------------------|
+| 404    | Manga with the given `id` not found |
 
 ---
 
@@ -100,51 +164,53 @@ Removes a manga from the reading list. Associated notification log entries are d
 
 ---
 
-## Settings — `/api/settings`
+## Push notifications — `/api/push`
 
-### GET /api/settings
+New chapters are delivered as Web Push notifications to subscribed browsers (installable PWA).
+There is no email channel and no configurable poll interval — the scraper runs once a day at
+08:00 (`America/Sao_Paulo`).
 
-Returns the current application settings.
+### GET /api/push/public-key
+
+Returns the VAPID public key the browser needs to create a push subscription.
 
 **Response `200 OK`**
 
 ```json
-{
-  "id": 1,
-  "emailNotificationsEnabled": true,
-  "notificationEmail": "user@localhost",
-  "pollIntervalMinutes": 30
-}
+{ "publicKey": "BBV4dRDQ8s3tlGeJ..." }
 ```
 
 ---
 
-### PUT /api/settings
+### POST /api/push/subscribe
 
-Replaces the application settings. All fields are optional — only supplied fields are updated.
+Registers a browser push subscription (idempotent by `endpoint`). Body matches the browser's
+`PushSubscription.toJSON()` shape.
 
 **Request body**
 
 ```json
 {
-  "emailNotificationsEnabled": true,
-  "notificationEmail": "you@example.com",
-  "pollIntervalMinutes": 60
+  "endpoint": "https://fcm.googleapis.com/fcm/send/abc123",
+  "keys": { "p256dh": "BN...", "auth": "k9..." }
 }
 ```
 
-**Validation rules**
+**Response `201 Created`**
 
-- `notificationEmail` must be a non-blank string
-- `pollIntervalMinutes` must be a positive integer
+---
 
-**Response `200 OK`** — the updated settings object.
+### POST /api/push/unsubscribe
 
-**Error responses**
+Removes a subscription by endpoint.
 
-| Status | Condition                   |
-|--------|-----------------------------|
-| 400    | Validation failure (see above) |
+**Request body**
+
+```json
+{ "endpoint": "https://fcm.googleapis.com/fcm/send/abc123" }
+```
+
+**Response `204 No Content`**
 
 ---
 
@@ -157,21 +223,23 @@ Replaces the application settings. All fields are optional — only supplied fie
 | `id`                  | UUID      | Assigned on creation                       |
 | `title`               | string    | Scraped from source page                   |
 | `sourceUrl`           | string    | Must be unique; determines which scraper is used |
-| `currentChapter`      | integer   | Chapter the user has read up to; default 0 |
+| `currentChapter`      | integer   | Chapter read up to; 0 until marked read, set to `latestChapter` by `POST /read` |
 | `latestChapter`       | integer   | Latest chapter found by scraper            |
+| `coverImageUrl`       | string    | Cover scraped from the page's `og:image`; nullable |
 | `notificationsEnabled`| boolean   | Per-manga notification switch; default true |
 | `lastCheckedAt`       | datetime  | Timestamp of last scrape attempt; nullable |
 | `createdAt`           | datetime  | Set on creation                            |
 | `updatedAt`           | datetime  | Updated on any change                      |
 
-### AppSettings
+### PushSubscription
 
-| Field                      | Type    | Notes                              |
-|----------------------------|---------|------------------------------------|
-| `id`                       | integer | Always `1` (single-row table)      |
-| `emailNotificationsEnabled`| boolean | Global email notifications switch  |
-| `notificationEmail`        | string  | Address where notifications are sent |
-| `pollIntervalMinutes`      | integer | How often the scraping job runs    |
+| Field        | Type   | Notes                                           |
+|--------------|--------|-------------------------------------------------|
+| `id`         | UUID   | Assigned on creation                            |
+| `endpoint`   | string | Push service endpoint; unique                   |
+| `p256dh`     | string | Subscription public key (browser-provided)      |
+| `auth`       | string | Subscription auth secret (browser-provided)     |
+| `createdAt`  | datetime | Set on creation                               |
 
 ---
 
