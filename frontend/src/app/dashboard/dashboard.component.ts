@@ -133,4 +133,33 @@ export class DashboardComponent implements OnInit {
       },
     });
   }
+
+  onTestPush(manga: Manga): void {
+    this.busy[manga.id] = true;
+    this.actionError[manga.id] = null;
+    this.mangaService.testPush(manga.id).subscribe({
+      next: () => {
+        this.busy[manga.id] = false;
+      },
+      error: () => {
+        this.actionError[manga.id] = 'Failed to send test push. Please try again.';
+        this.busy[manga.id] = false;
+      },
+    });
+  }
+
+  getRelativeDate(dateString: string): string {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) {
+      return 'Latest chapter added today';
+    } else if (diffDays === 1) {
+      return 'Latest chapter added 1 day ago';
+    } else {
+      return `Latest chapter added ${diffDays} days ago`;
+    }
+  }
 }

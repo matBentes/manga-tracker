@@ -10,6 +10,7 @@ export interface Manga {
   currentChapter: number;
   latestChapter: number;
   coverImageUrl: string | null;
+  latestChapterAt: string | null;
   notificationsEnabled: boolean;
   lastCheckedAt: string | null;
   createdAt: string;
@@ -51,5 +52,10 @@ export class MangaService {
 
   deleteManga(id: string): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/${id}`);
+  }
+
+  /** Send a test/demo notification for the latest chapter of a manga. */
+  testPush(id: string): Observable<void> {
+    return this.http.post<void>(`${this.apiUrl}/${id}/test-push`, {});
   }
 }

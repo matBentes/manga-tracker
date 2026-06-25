@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -17,6 +18,7 @@ import com.mangaTracker.backend.exception.MangaNotFoundException;
 import com.mangaTracker.backend.exception.UnsupportedSourceException;
 import com.mangaTracker.backend.model.Manga;
 import com.mangaTracker.backend.service.MangaService;
+import com.mangaTracker.backend.service.PushNotificationService;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -32,6 +34,8 @@ class MangaControllerTest {
   @Autowired private MockMvc mockMvc;
 
   @MockBean private MangaService mangaService;
+
+  @MockBean private PushNotificationService pushNotificationService;
 
   @Test
   void listManga_returns200WithMangaList() throws Exception {
@@ -155,6 +159,62 @@ class MangaControllerTest {
         .perform(post("/api/manga/" + id + "/unread"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.currentChapter").value(0));
+  }
+
+  @Test
+  void testPush_returns200_andSendsNotification() throws Exception {
+    UUID id = UUID.randomUUID();
+    Manga manga = buildManga(id);
+    when(mangaService.getById(id)).thenReturn(manga);
+
+    mockMvc.perform(post("/api/manga/" + id + "/test-push")).andExpect(status().isOk());
+
+    org.mockito.Mockito.verify(pushNotificationService).send(any());
+  }
+
+  @Test
+  void testPush_returns404_onUnknownId() throws Exception {
+    UUID id = UUID.randomUUID();
+    when(mangaService.getById(id)).thenThrow(new MangaNotFoundException("Manga not found"));
+
+    mockMvc
+        .perform(post("/api/manga/" + id + "/test-push"))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.error").exists());
+  }
+
+  @Test
+  void getCover_returnsImageBytes_forDataUrlCover() throws Exception {
+    UUID id = UUID.randomUUID();
+    Manga manga = buildManga(id);
+    // 1x1 transparent PNG, base64
+    String pngBase64 =
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+    manga.setCoverImageUrl("data:image/png;base64," + pngBase64);
+    when(mangaService.getById(id)).thenReturn(manga);
+
+    mockMvc
+        .perform(get("/api/manga/" + id + "/cover"))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(MediaType.IMAGE_PNG));
+  }
+
+  @Test
+  void getCover_returns404_whenCoverMissing() throws Exception {
+    UUID id = UUID.randomUUID();
+    Manga manga = buildManga(id);
+    manga.setCoverImageUrl(null);
+    when(mangaService.getById(id)).thenReturn(manga);
+
+    mockMvc.perform(get("/api/manga/" + id + "/cover")).andExpect(status().isNotFound());
+  }
+
+  @Test
+  void getCover_returns404_onUnknownId() throws Exception {
+    UUID id = UUID.randomUUID();
+    when(mangaService.getById(id)).thenThrow(new MangaNotFoundException("Manga not found"));
+
+    mockMvc.perform(get("/api/manga/" + id + "/cover")).andExpect(status().isNotFound());
   }
 
   @Test

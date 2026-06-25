@@ -40,6 +40,9 @@ frontend/test-results/
 # ── Local helper scripts ────────────────────────────────────────────────────
 overnight.sh
 
+# ── Cloudflare quick-tunnel (ephemeral, random URL per restart) ──────────────
+tunnel-url.txt
+
 # ── Docker ───────────────────────────────────────────────────────────────────
 postgres_data/
 

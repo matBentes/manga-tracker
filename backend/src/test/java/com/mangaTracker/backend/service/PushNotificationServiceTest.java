@@ -75,14 +75,21 @@ class PushNotificationServiceTest {
   }
 
   @Test
-  void send_omitsDataUrlCover_toStayUnderPayloadLimit() {
+  void send_usesCoverEndpointUrl_forDataUrlCover_toStayUnderPayloadLimit() {
     PushSubscription a = buildSubscription("https://push.example/a");
     when(repository.findAll()).thenReturn(List.of(a));
     when(sender.send(any(), anyString())).thenReturn(201);
 
     service.send(message("data:image/jpeg;base64,QQQQ"));
 
-    verify(sender).send(eq(a), argThat(json -> !json.contains("data:image")));
+    // data: URL is tens of KB; reference the cover endpoint instead so we stay under the limit.
+    verify(sender)
+        .send(
+            eq(a),
+            argThat(
+                json ->
+                    !json.contains("data:image")
+                        && json.contains("/api/manga/" + MANGA_ID + "/cover")));
   }
 
   @Test

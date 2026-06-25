@@ -97,6 +97,25 @@ class MangaServiceTest {
   }
 
   @Test
+  void getById_returnsManga_whenFound() {
+    UUID id = UUID.randomUUID();
+    Manga manga = buildManga(id, 100);
+    when(mangaRepository.findById(id)).thenReturn(Optional.of(manga));
+
+    Manga result = mangaService.getById(id);
+
+    assertThat(result).isSameAs(manga);
+  }
+
+  @Test
+  void getById_throwsMangaNotFoundException_forUnknownId() {
+    UUID id = UUID.randomUUID();
+    when(mangaRepository.findById(id)).thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> mangaService.getById(id)).isInstanceOf(MangaNotFoundException.class);
+  }
+
+  @Test
   void updateManga_updatesNotificationsEnabled() {
     UUID id = UUID.randomUUID();
     Manga manga = buildManga(id, 100);

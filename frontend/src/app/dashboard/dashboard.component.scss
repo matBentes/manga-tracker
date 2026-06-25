@@ -6,8 +6,8 @@ $green: #00b341;
 
 .dashboard {
   max-width: 980px;
-  margin: 2rem auto;
-  padding: 0 1rem;
+  margin: clamp(1rem, 4vw, 2rem) auto;
+  padding: 0 clamp(0.75rem, 3vw, 1rem);
   font-family: 'Arial Black', Inter, sans-serif;
 }
 
@@ -21,7 +21,7 @@ $green: #00b341;
 }
 
 .dashboard-title {
-  font-size: 1.9rem;
+  font-size: clamp(1.5rem, 5vw, 1.9rem);
   font-weight: 800;
   letter-spacing: -0.5px;
   text-transform: uppercase;
@@ -76,25 +76,22 @@ $green: #00b341;
 }
 
 .manga-card {
+  container-type: inline-size;
   display: flex;
-  gap: 18px;
-  background: #fff;
+  gap: clamp(12px, 4cqi, 18px);
+  background: $accent;
   border: 3px solid $ink;
-  box-shadow: 8px 8px 0 $ink;
-  padding: 18px;
-
-  &.is-unread {
-    background: $accent;
-  }
+  box-shadow: clamp(5px, 2cqi, 8px) clamp(5px, 2cqi, 8px) 0 $ink;
+  padding: clamp(12px, 4cqi, 18px);
 }
 
 .cover {
-  flex: 0 0 110px;
+  flex: 0 0 clamp(80px, 28cqi, 110px);
 
   img,
   .cover-placeholder {
-    width: 110px;
-    height: 160px;
+    width: 100%;
+    aspect-ratio: 11 / 16;
     border: 3px solid $ink;
     object-fit: cover;
     display: block;
@@ -106,7 +103,7 @@ $green: #00b341;
     justify-content: center;
     background: #fff;
     color: $ink;
-    font-size: 3rem;
+    font-size: clamp(2rem, 12cqi, 3rem);
     font-weight: 800;
   }
 }
@@ -119,21 +116,34 @@ $green: #00b341;
 }
 
 .manga-title {
-  font-size: 1.3rem;
+  font-size: clamp(1.05rem, 7cqi, 1.3rem);
   font-weight: 800;
   text-transform: uppercase;
   line-height: 1.05;
   margin: 0 0 8px;
   color: $ink;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
 }
 
 .chapter-line {
-  margin: 0 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 0 0 6px;
   font-size: 0.85rem;
   font-weight: 800;
+}
+
+.latest-chapter-date {
+  margin: 0 0 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: $ink;
+  opacity: 0.7;
 }
 
 .badge-new {
@@ -160,10 +170,17 @@ $green: #00b341;
 
 .card-actions {
   display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.action-row {
+  display: flex;
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
-  margin-top: auto;
 }
 
 @mixin brutal-btn($bg, $fg) {
@@ -199,9 +216,14 @@ $green: #00b341;
   @include brutal-btn(#fff, $ink);
 }
 
+.test-push-btn {
+  @include brutal-btn(#fff, $ink);
+  font-size: 0.62rem;
+  padding: 4px 7px;
+}
+
 .delete-btn {
   @include brutal-btn(#fff, $danger);
-  margin-left: auto;
 }
 
 .notify-toggle {

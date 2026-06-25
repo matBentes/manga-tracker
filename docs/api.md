@@ -24,6 +24,7 @@ Returns all tracked manga sorted by most recently updated first.
     "latestChapter": 1110,
     "coverImageUrl": "https://sakuramangas.org/img/one-piece.jpg",
     "notificationsEnabled": true,
+    "latestChapterAt": "2024-01-15T10:30:00",
     "lastCheckedAt": "2024-01-15T10:30:00",
     "createdAt": "2024-01-01T09:00:00",
     "updatedAt": "2024-01-15T10:30:00"
@@ -85,6 +86,59 @@ notification's tap target uses this so opening a manga clears its unread state.
 **Path parameter:** `id` — UUID of the manga.
 
 **Response `200 OK`** — the updated manga object (now caught up).
+
+**Error responses**
+
+| Status | Condition                           |
+|--------|-------------------------------------|
+| 404    | Manga with the given `id` not found |
+
+---
+
+### POST /api/manga/{id}/unread
+
+Marks the manga as unread — resets `currentChapter` below `latestChapter` so the card shows
+the "New" badge again. Inverse of `/read`; used by the dashboard's read/unread toggle.
+
+**Path parameter:** `id` — UUID of the manga.
+
+**Response `200 OK`** — the updated manga object.
+
+**Error responses**
+
+| Status | Condition                           |
+|--------|-------------------------------------|
+| 404    | Manga with the given `id` not found |
+
+---
+
+### GET /api/manga/{id}/cover
+
+Streams the manga's cover image bytes. Covers are stored inline as `data:` URLs (base64, fetched
+past Cloudflare at scrape time), which exceed the ~4KB Web Push payload limit. This endpoint decodes
+the stored `data:` URL and serves it with the correct `Content-Type`, giving push notifications a
+fetchable URL for the icon and large image.
+
+**Path parameter:** `id` — UUID of the manga.
+
+**Response `200 OK`** — raw image bytes; `Content-Type` matches the stored media type (e.g. `image/jpeg`).
+
+**Error responses**
+
+| Status | Condition                                              |
+|--------|--------------------------------------------------------|
+| 404    | Manga not found, or it has no decodable `data:` cover  |
+
+---
+
+### POST /api/manga/{id}/test-push
+
+Sends a test Web Push notification for this manga to all subscribed browsers, so you can
+verify push works on a device. The payload uses the manga's latest chapter, title, and cover.
+
+**Path parameter:** `id` — UUID of the manga.
+
+**Response `200 OK`** — empty body.
 
 **Error responses**
 

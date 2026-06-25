@@ -7,6 +7,7 @@ import com.mangaTracker.backend.repository.MangaRepository;
 import com.mangaTracker.backend.scraper.MangaScraper;
 import com.mangaTracker.backend.scraper.ScrapedManga;
 import com.mangaTracker.backend.scraper.ScraperRegistry;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -39,6 +40,7 @@ public class MangaService {
             .currentChapter(0)
             .latestChapter(scraped.latestChapter())
             .coverImageUrl(scraped.coverImageUrl())
+            .latestChapterAt(LocalDateTime.now())
             .notificationsEnabled(true)
             .build();
     try {
@@ -52,6 +54,13 @@ public class MangaService {
   @Transactional(readOnly = true)
   public List<Manga> listManga() {
     return mangaRepository.findAllByOrderByUpdatedAtDesc();
+  }
+
+  @Transactional(readOnly = true)
+  public Manga getById(UUID id) {
+    return mangaRepository
+        .findById(id)
+        .orElseThrow(() -> new MangaNotFoundException("Manga not found: " + id));
   }
 
   public Manga updateManga(UUID id, Boolean notificationsEnabled) {

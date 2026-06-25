@@ -56,6 +56,7 @@ public class ScrapingJob {
         if (scraped.latestChapter() > manga.getLatestChapter()) {
           int newLatestChapter = scraped.latestChapter();
           manga.setLatestChapter(newLatestChapter);
+          manga.setLatestChapterAt(LocalDateTime.now());
           mangaRepository.save(manga);
           notificationService.notify(manga, newLatestChapter);
         } else {

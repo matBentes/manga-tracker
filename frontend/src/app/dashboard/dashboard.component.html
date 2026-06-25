@@ -36,28 +36,40 @@
               } @else {
                 <span class="caught-up">Caught up · Ch {{ manga.latestChapter }}</span>
               }
+              <button class="test-push-btn" [disabled]="busy[manga.id]" (click)="onTestPush(manga)">
+                Test push
+              </button>
             </p>
+
+            @if (manga.latestChapterAt) {
+              <p class="latest-chapter-date">{{ getRelativeDate(manga.latestChapterAt) }}</p>
+            }
 
             @if (actionError[manga.id]) {
               <p class="card-error">{{ actionError[manga.id] }}</p>
             }
 
             <div class="card-actions">
-              <a
-                [href]="manga.sourceUrl"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="open-btn"
-              >
-                Open
-              </a>
-              <button class="read-btn" [disabled]="busy[manga.id]" (click)="toggleRead(manga)">
-                @if (busy[manga.id]) {
-                  …
-                } @else {
-                  {{ isUnread(manga) ? 'Mark read' : 'Mark unread' }}
-                }
-              </button>
+              <div class="action-row">
+                <a
+                  [href]="manga.sourceUrl"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="open-btn"
+                >
+                  Open
+                </a>
+                <button class="read-btn" [disabled]="busy[manga.id]" (click)="toggleRead(manga)">
+                  @if (busy[manga.id]) {
+                    …
+                  } @else {
+                    {{ isUnread(manga) ? 'Mark read' : 'Mark unread' }}
+                  }
+                </button>
+                <button class="delete-btn" [disabled]="busy[manga.id]" (click)="onDelete(manga)">
+                  Delete
+                </button>
+              </div>
               <label class="notify-toggle" title="Notify on new chapters">
                 <input
                   type="checkbox"
@@ -67,9 +79,6 @@
                 />
                 <span>Notify</span>
               </label>
-              <button class="delete-btn" [disabled]="busy[manga.id]" (click)="onDelete(manga)">
-                Delete
-              </button>
             </div>
           </div>
         </article>

@@ -1,66 +1,102 @@
 # MangaTracker
 
-A web application to track manga reading progress and receive email notifications when new chapters are released. Add manga by URL, mark chapters as read, and get notified automatically whenever a new chapter drops.
+Track the manga you read, and get a **push notification on your phone** the moment a new chapter drops.
+
+Add a manga by pasting its URL. The backend scrapes the source once a day, detects new chapters, and pushes a notification to every device you've subscribed. A neo-brutalist dashboard shows what's new at a glance.
+
+![Dashboard](docs/images/dashboard.png)
 
 ## Features
 
-- Add manga to your reading list by pasting a source URL
-- Automatic title and chapter detection via web scraper
-- Visual indicator for manga with unread chapters
-- Update your reading progress (current chapter) per title
-- Per-manga and global email notification toggles
-- Configurable polling interval for chapter checks
-- Email notifications via Mailhog (local) or any SMTP server
+- **Add manga by URL** — paste a source link, the scraper fetches the title, cover, and latest chapter.
+- **Web push notifications** — real browser/phone push (no email). Works on Android and installed iOS PWAs.
+- **Daily chapter check** — scheduled scrape every day at 08:00 (America/São_Paulo); new chapters trigger a push.
+- **Per-manga notify toggle** — mute titles you don't care about.
+- **Read / unread tracking** — mark chapters read, "NEW" badge for anything you haven't caught up on.
+- **Test push** — one button per card to verify notifications reach your device.
+- **Installable PWA** — add to home screen, launches like a native app.
 
 ## Tech Stack
 
-| Layer     | Technology                                     |
-|-----------|------------------------------------------------|
-| Backend   | Spring Boot 3.4.4 · Java 21 · Gradle           |
-| Frontend  | Angular 18 · TypeScript · nginx                |
-| Database  | PostgreSQL 16 · Flyway migrations              |
-| Email     | Spring Mail · Mailhog (local dev)              |
-| Testing   | JUnit 5 · Mockito · Testcontainers · Playwright|
-| CI        | GitHub Actions · SonarCloud                    |
-| Container | Docker · docker compose                        |
-
-## Prerequisites
-
-- [Docker](https://docs.docker.com/get-docker/) with the `docker compose` plugin
-- Ports 4200, 8080, 5432, 1025, and 8025 available on your machine
+| Layer     | Technology                                        |
+|-----------|---------------------------------------------------|
+| Backend   | Spring Boot 3.4 · Java 21 · Gradle · Jakarta EE 10|
+| Frontend  | Angular 18 · TypeScript · SCSS · Service Worker    |
+| Database  | PostgreSQL 16 · Flyway migrations                 |
+| Push      | Web Push (VAPID) · `nl.martijndwars:web-push`     |
+| Scraping  | Playwright (stealth) · rendered-DOM scrape        |
+| Testing   | JUnit 5 · Mockito · Testcontainers · Playwright    |
+| Container | Docker · docker compose                           |
 
 ## Quick Start
 
 ```bash
 git clone <repo-url>
 cd manga-tracker
+
+# 1. generate VAPID keys for web push (see below) and put them in .env
+cp .env.example .env
+# edit .env with your generated keys
+
+# 2. start the stack
 docker compose up
 ```
 
-The app is available at **http://localhost:4200** once all services are healthy.
-View test emails at **http://localhost:8025** (Mailhog web UI).
+App: **http://localhost:4200** once all services report healthy.
 
-> First startup may take a few minutes while Docker builds the images.
+> First startup builds the images and downloads Playwright's browser — give it a few minutes.
+
+## Web Push Setup (VAPID)
+
+Push notifications are signed with a **VAPID key pair**. Generate one once:
+
+```bash
+npx web-push generate-vapid-keys
+```
+
+Put the output in `.env` at the repo root:
+
+```dotenv
+VAPID_PUBLIC_KEY=<public key>
+VAPID_PRIVATE_KEY=<private key>
+VAPID_SUBJECT=mailto:you@example.com
+```
+
+docker compose passes these to the backend automatically. Without them the app still
+runs, but the push endpoints return an error when you try to subscribe.
+
+> **Keep the private key secret.** Never commit `.env`. The public key is safe to expose.
+
+## Testing Push on Your Phone
+
+Service workers require a **secure (HTTPS) context** — `localhost` is exempt, but a
+phone on your LAN hitting `http://<your-ip>:4200` is **not**, so push won't work there.
+Expose the app over HTTPS with a quick tunnel:
+
+```bash
+cloudflared tunnel --url http://localhost:4200
+```
+
+This prints a temporary `https://<random>.trycloudflare.com` URL. Then on your phone:
+
+1. Open that URL in **Chrome (Android)** or **Safari (iOS 16.4+)**.
+2. *(iOS only)* **Add to Home Screen** and open the app from there — iOS only allows
+   push from an installed PWA.
+3. Tap **Notify** on a manga card and grant the notification permission.
+4. Tap **Test push** — a notification should appear on your phone.
 
 ## Local Development (Without Docker)
 
-### Backend
-
-Requirements: Java 21
+**Backend** (Java 21) — needs a local PostgreSQL:
 
 ```bash
 cd backend
 ./gradlew bootRun
 ```
 
-The API server starts on **http://localhost:8080**.
+API on **http://localhost:8080**.
 
-You will need a local PostgreSQL instance and a running Mailhog container, or override the
-environment variables below with your own values.
-
-### Frontend
-
-Requirements: Node 20
+**Frontend** (Node 20):
 
 ```bash
 cd frontend
@@ -68,24 +104,35 @@ npm install
 npm start
 ```
 
-The dev server starts on **http://localhost:4200** and proxies `/api` requests to `localhost:8080`.
+Dev server on **http://localhost:4200**, proxies `/api` to `localhost:8080`.
 
 ## Environment Variables
 
-The backend reads the following environment variables (with defaults shown):
+| Variable             | Default                                          | Description                          |
+|----------------------|--------------------------------------------------|--------------------------------------|
+| `DB_URL`             | `jdbc:postgresql://localhost:5432/manga_tracker` | JDBC connection URL                  |
+| `DB_USERNAME`        | `manga_tracker`                                  | PostgreSQL username                  |
+| `DB_PASSWORD`        | `manga_tracker`                                  | PostgreSQL password                  |
+| `VAPID_PUBLIC_KEY`   | *(empty)*                                        | VAPID public key for web push        |
+| `VAPID_PRIVATE_KEY`  | *(empty)*                                        | VAPID private key (keep secret)      |
+| `VAPID_SUBJECT`      | `mailto:…`                                       | VAPID subject (contact mailto/URL)   |
+| `SCRAPER_TIMEOUT_MS` | `10000`                                          | Per-request scraper timeout (ms)     |
 
-| Variable                  | Default                                         | Description                               |
-|---------------------------|-------------------------------------------------|-------------------------------------------|
-| `DB_URL`                  | `jdbc:postgresql://localhost:5432/manga_tracker`| JDBC connection URL for PostgreSQL        |
-| `DB_USERNAME`             | `manga_tracker`                                 | PostgreSQL username                       |
-| `DB_PASSWORD`             | `manga_tracker`                                 | PostgreSQL password                       |
-| `MAIL_HOST`               | `localhost`                                     | SMTP host                                 |
-| `MAIL_PORT`               | `1025`                                          | SMTP port                                 |
-| `NOTIFICATION_FROM_EMAIL` | `tracker@localhost`                             | From address used for notification emails |
-| `POLL_INTERVAL_MINUTES`   | `30`                                            | How often (in minutes) to scrape for new chapters (configurable in UI) |
+In docker compose, DB vars are set automatically and VAPID vars come from `.env`.
 
-In docker compose these are set automatically. For local dev without Docker, set them as shell
-environment variables or edit `backend/src/main/resources/application.properties`.
+## Quality Gates
+
+```bash
+# backend
+cd backend
+./gradlew spotlessApply             # format
+./gradlew test jacocoTestReport     # tests + coverage (needs Docker for Testcontainers)
+
+# frontend
+cd frontend
+npm run format && npm test && npm run lint
+npm run e2e                         # Playwright, mocked backend
+```
 
 ## Documentation
 

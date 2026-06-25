@@ -53,7 +53,7 @@
 | Service      | `service`                                    | Business logic, validation, transaction management          |
 | Repository   | `repository`                                 | JPA data access; extends `JpaRepository`                    |
 | Scraper      | `scraper`                                    | Web scraping; pluggable via `MangaScraper` interface        |
-| Job          | `job`                                        | Scheduled background polling; calls scraper + notification  |
+| Job          | `job`                                        | Daily scheduled scrape (08:00); calls scraper + push notify |
 | Exception    | `exception`                                  | Domain exception classes mapped to HTTP status codes        |
 
 ### Exception → HTTP Mapping

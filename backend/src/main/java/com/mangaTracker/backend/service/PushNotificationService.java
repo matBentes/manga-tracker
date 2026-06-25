@@ -35,6 +35,13 @@ public class PushNotificationService {
   private static final String READ_ROUTE = "/open/";
   private static final String SOURCE_URL_PARAM = "?u=";
 
+  // Backend endpoint that streams a manga's cover bytes. Relative so the browser resolves it
+  // against the PWA origin (nginx proxies /api/* to the backend).
+  private static final String COVER_ROUTE_PREFIX = "/api/manga/";
+  private static final String COVER_ROUTE_SUFFIX = "/cover";
+  // Static PWA icon used as the notification badge and as a fallback when no cover is available.
+  private static final String DEFAULT_ICON = "/icons/icon-192.png";
+
   private final PushSubscriptionRepository repository;
   private final WebPushSender sender;
   private final ObjectMapper objectMapper = new ObjectMapper();
@@ -79,13 +86,21 @@ public class PushNotificationService {
     notification.put("title", message.title());
     notification.put("body", message.body());
     notification.put("data", data);
-    // Only embed an http(s) cover. Inlined data: URLs are tens of KB and would blow the ~4KB Web
-    // Push payload limit, so they are dropped from the notification (the dashboard still shows
-    // them).
+    notification.put("badge", DEFAULT_ICON);
+    // The cover drives both the small icon and the large expanded image (rich push). An http(s)
+    // cover is embedded directly. An inlined data: URL is tens of KB and would blow the ~4KB Web
+    // Push payload limit, so we point at the cover endpoint, which the browser fetches and which
+    // decodes the stored data: URL to bytes. Otherwise fall back to the static PWA icon.
     String cover = message.coverImageUrl();
     if (cover != null && (cover.startsWith("http://") || cover.startsWith("https://"))) {
       notification.put("icon", cover);
       notification.put("image", cover);
+    } else if (cover != null && cover.startsWith("data:")) {
+      String coverUrl = COVER_ROUTE_PREFIX + message.mangaId() + COVER_ROUTE_SUFFIX;
+      notification.put("icon", coverUrl);
+      notification.put("image", coverUrl);
+    } else {
+      notification.put("icon", DEFAULT_ICON);
     }
 
     try {
