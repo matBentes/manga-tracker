@@ -12,6 +12,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfToken;
+import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -75,14 +77,13 @@ public class SecurityConfig {
       HttpSecurity http, CorsConfigurationSource corsConfigurationSource) throws Exception {
     http.cors(cors -> cors.configurationSource(corsConfigurationSource))
         .csrf(
-            csrf ->
-                csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
-                    // Pre-authentication endpoints: the CSRF cookie is not yet available when the
-                    // browser calls these for the first time, so the double-submit pattern cannot
-                    // apply. Login is safe without CSRF because an attacker cannot read the
-                    // response (which sets the httpOnly auth cookie) or forge valid credentials.
-                    // NOSONAR: intentional exemption — see justification above.
-                    .ignoringRequestMatchers("/api/auth/login", "/api/auth/demo-login"))
+            csrf -> {
+              CsrfTokenRequestAttributeHandler requestHandler =
+                  new CsrfTokenRequestAttributeHandler();
+              requestHandler.setCsrfRequestAttributeName(CsrfToken.class.getName());
+              csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                  .csrfTokenRequestHandler(requestHandler);
+            })
         .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .authorizeHttpRequests(
             auth ->
