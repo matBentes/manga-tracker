@@ -1,0 +1,107 @@
+$ink: #111111;
+$accent: #ffe600;
+$danger: #ff3b30;
+
+.login-page {
+  display: flex;
+  justify-content: center;
+  padding: 3rem 1rem;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 360px;
+  background: #fff;
+  border: 3px solid $ink;
+  box-shadow: 6px 6px 0 $ink;
+  padding: 1.5rem 1.5rem 1.75rem;
+}
+
+.login-title {
+  font-size: 1.4rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: $ink;
+  margin: 0 0 1.25rem;
+}
+
+.login-label {
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: $ink;
+  margin-bottom: 0.35rem;
+}
+
+.login-input {
+  padding: 0.55rem 0.75rem;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  border: 3px solid $ink;
+  outline: none;
+  font-family: inherit;
+  background: #fff;
+  color: $ink;
+
+  &:focus {
+    background: lighten($accent, 30%);
+  }
+  &:disabled {
+    opacity: 0.6;
+  }
+}
+
+.login-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.1rem;
+  background: $accent;
+  color: $ink;
+  border: 3px solid $ink;
+  box-shadow: 4px 4px 0 $ink;
+  font-size: 0.85rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  cursor: pointer;
+  font-family: inherit;
+
+  &:active:not(:disabled) {
+    transform: translate(2px, 2px);
+    box-shadow: 2px 2px 0 $ink;
+  }
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.btn-spinner {
+  display: inline-block;
+  width: 0.875rem;
+  height: 0.875rem;
+  border: 2px solid rgba(17, 17, 17, 0.3);
+  border-top-color: $ink;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.login-error {
+  margin-top: 1rem;
+  padding: 0.5rem 0.75rem;
+  border: 3px solid $ink;
+  background: $danger;
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}

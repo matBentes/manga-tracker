@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "portfolio-astro",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "../portfolio", "run", "dev"],
+      "port": 4321
+    },
+    {
+      "name": "manga-frontend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "frontend", "start"],
+      "port": 4200
+    }
+  ]
+}

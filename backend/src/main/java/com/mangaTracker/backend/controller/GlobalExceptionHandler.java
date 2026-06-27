@@ -2,6 +2,7 @@ package com.mangaTracker.backend.controller;
 
 import com.mangaTracker.backend.exception.DuplicateMangaException;
 import com.mangaTracker.backend.exception.MangaNotFoundException;
+import com.mangaTracker.backend.exception.RateLimitExceededException;
 import com.mangaTracker.backend.exception.ScrapingException;
 import com.mangaTracker.backend.exception.UnsupportedSourceException;
 import java.util.Map;
@@ -32,6 +33,11 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(ScrapingException.class)
   public ResponseEntity<Map<String, String>> handleScraping(ScrapingException ex) {
     return errorResponse(HttpStatus.UNPROCESSABLE_ENTITY, ex);
+  }
+
+  @ExceptionHandler(RateLimitExceededException.class)
+  public ResponseEntity<Map<String, String>> handleRateLimit(RateLimitExceededException ex) {
+    return errorResponse(HttpStatus.TOO_MANY_REQUESTS, ex);
   }
 
   @ExceptionHandler(IllegalArgumentException.class)

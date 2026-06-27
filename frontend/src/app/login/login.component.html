@@ -1,0 +1,36 @@
+<div class="login-page">
+  <form class="login-form" (ngSubmit)="onSubmit()">
+    <h1 class="login-title">Sign In</h1>
+    <label class="login-label" for="username">Username</label>
+    <input
+      id="username"
+      class="login-input"
+      type="text"
+      [(ngModel)]="username"
+      name="username"
+      autocomplete="username"
+      [disabled]="isSubmitting"
+    />
+    <label class="login-label" for="password">Password</label>
+    <input
+      id="password"
+      class="login-input"
+      type="password"
+      [(ngModel)]="password"
+      name="password"
+      autocomplete="current-password"
+      [disabled]="isSubmitting"
+    />
+    <button class="login-btn" type="submit" [disabled]="isSubmitting || !isValid">
+      @if (isSubmitting) {
+        <span class="btn-spinner"></span>
+        Signing in...
+      } @else {
+        Sign In
+      }
+    </button>
+    @if (error) {
+      <div class="login-error">{{ error }}</div>
+    }
+  </form>
+</div>

@@ -17,18 +17,21 @@ import com.mangaTracker.backend.exception.DuplicateMangaException;
 import com.mangaTracker.backend.exception.MangaNotFoundException;
 import com.mangaTracker.backend.exception.UnsupportedSourceException;
 import com.mangaTracker.backend.model.Manga;
+import com.mangaTracker.backend.security.JwtService;
 import com.mangaTracker.backend.service.MangaService;
 import com.mangaTracker.backend.service.PushNotificationService;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(MangaController.class)
+@AutoConfigureMockMvc(addFilters = false)
 class MangaControllerTest {
 
   @Autowired private MockMvc mockMvc;
@@ -36,6 +39,9 @@ class MangaControllerTest {
   @MockBean private MangaService mangaService;
 
   @MockBean private PushNotificationService pushNotificationService;
+
+  // Required by JwtCookieAuthFilter (a @Component picked up by the web slice).
+  @MockBean private JwtService jwtService;
 
   @Test
   void listManga_returns200WithMangaList() throws Exception {
