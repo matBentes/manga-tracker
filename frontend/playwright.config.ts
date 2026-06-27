@@ -13,8 +13,13 @@ export default defineConfig({
   },
   projects: [
     {
+      name: 'setup',
+      testMatch: '**/setup-global-mock.spec.ts',
+    },
+    {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
+      dependencies: ['setup'],
     },
   ],
   webServer: {
