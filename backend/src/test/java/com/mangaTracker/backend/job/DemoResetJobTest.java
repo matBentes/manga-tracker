@@ -59,10 +59,15 @@ class DemoResetJobTest {
 
     List<Manga> seeded = captureSaved();
     assertThat(seeded).isNotEmpty();
-    assertThat(seeded).allMatch(m -> demoId.equals(m.getOwnerId()));
-    assertThat(seeded).allMatch(m -> m.getSourceUrl() != null && !m.getSourceUrl().isBlank());
-    assertThat(seeded).allMatch(m -> m.getTitle() != null && !m.getTitle().isBlank());
-    assertThat(seeded).allMatch(m -> m.getLatestChapter() >= m.getCurrentChapter());
+    assertThat(seeded)
+        .allMatch(
+            m ->
+                demoId.equals(m.getOwnerId())
+                    && m.getSourceUrl() != null
+                    && !m.getSourceUrl().isBlank()
+                    && m.getTitle() != null
+                    && !m.getTitle().isBlank()
+                    && m.getLatestChapter() >= m.getCurrentChapter());
   }
 
   @Test

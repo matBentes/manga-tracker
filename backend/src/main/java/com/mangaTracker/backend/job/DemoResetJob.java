@@ -112,8 +112,7 @@ public class DemoResetJob implements ApplicationRunner {
    * {@link #resetDemoData()} this never purges, so a restart mid-day preserves a visitor's edits;
    * the nightly cron is responsible for resetting them.
    */
-  @Transactional
-  public void seedDemoLibraryIfEmpty() {
+  void seedDemoLibraryIfEmpty() {
     UUID demoId = appUserRepository.findByUsername(DEMO_USERNAME).map(AppUser::getId).orElse(null);
     if (demoId == null) {
       LOG.warn("DemoResetJob: no '{}' account found, skipping startup seed", DEMO_USERNAME);
@@ -136,8 +135,7 @@ public class DemoResetJob implements ApplicationRunner {
    * Purges and reseeds the demo account's library. Idempotent: the resulting library is always the
    * fixed {@link #DEMO_LIBRARY}. No-op (with a warning) when the demo account is not seeded.
    */
-  @Transactional
-  public void resetDemoData() {
+  void resetDemoData() {
     UUID demoId = appUserRepository.findByUsername(DEMO_USERNAME).map(AppUser::getId).orElse(null);
     if (demoId == null) {
       LOG.warn("DemoResetJob: no '{}' account found, skipping reset", DEMO_USERNAME);

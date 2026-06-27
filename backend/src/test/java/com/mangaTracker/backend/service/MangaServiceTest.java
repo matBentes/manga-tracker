@@ -129,16 +129,9 @@ class MangaServiceTest {
   }
 
   @Test
-  void getById_throwsMangaNotFoundException_forUnknownId() {
-    UUID id = UUID.randomUUID();
-    when(mangaRepository.findByIdAndOwnerId(id, USER_ID)).thenReturn(Optional.empty());
-
-    assertThatThrownBy(() -> mangaService.getById(id)).isInstanceOf(MangaNotFoundException.class);
-  }
-
-  @Test
-  void getById_throwsMangaNotFoundException_whenOwnedByAnotherUser() {
-    // Another user's manga is invisible: the owner-scoped query returns empty, so 404 (not 403).
+  void getById_throwsMangaNotFoundException_forUnknownOrUnownedId() {
+    // Owner-scoped query returns empty both when the ID doesn't exist and when the manga
+    // belongs to another user — so the result is always 404 (not 403).
     UUID id = UUID.randomUUID();
     when(mangaRepository.findByIdAndOwnerId(id, USER_ID)).thenReturn(Optional.empty());
 

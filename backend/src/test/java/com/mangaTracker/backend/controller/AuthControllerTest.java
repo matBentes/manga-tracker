@@ -22,6 +22,7 @@ import com.mangaTracker.backend.security.JwtService;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -42,6 +43,11 @@ class AuthControllerTest {
   @MockBean private PasswordEncoder passwordEncoder;
   @MockBean private JwtService jwtService;
   @MockBean private CurrentUser currentUser;
+
+  @BeforeEach
+  void setUpDummyHash() {
+    when(passwordEncoder.encode(any())).thenReturn("$2a$10$dummy.timing.attack.hash");
+  }
 
   @Test
   void login_returns200WithCookieAndNoTokenInBody_onValidCredentials() throws Exception {
@@ -66,9 +72,7 @@ class AuthControllerTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.username").value("owner"))
         .andExpect(jsonPath("$.role").value("OWNER"))
-        // No token leaked in the response body.
         .andExpect(jsonPath("$.token").doesNotExist())
-        // httpOnly, Secure, SameSite=Strict cookie set.
         .andExpect(
             header().string(HttpHeaders.SET_COOKIE, containsString("auth_token=signed.jwt.token")))
         .andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("HttpOnly")))
@@ -100,7 +104,6 @@ class AuthControllerTest {
                 .content("{\"username\":\"ghost\",\"password\":\"secret\"}"))
         .andExpect(status().isUnauthorized());
 
-    // BCrypt comparison must still run (against a decoy hash) so timing does not leak existence.
     verify(passwordEncoder).matches(eq("secret"), anyString());
   }
 
@@ -162,7 +165,6 @@ class AuthControllerTest {
         .andExpect(status().isNoContent())
         .andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("auth_token=")))
         .andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("Max-Age=0")))
-        // Cleared cookie carries no token value.
         .andExpect(
             header().string(HttpHeaders.SET_COOKIE, not(containsString("auth_token=signed"))));
   }
