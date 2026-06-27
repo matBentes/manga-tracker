@@ -81,7 +81,12 @@ public class SecurityConfig {
               CsrfTokenRequestAttributeHandler requestHandler =
                   new CsrfTokenRequestAttributeHandler();
               requestHandler.setCsrfRequestAttributeName(CsrfToken.class.getName());
-              csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+              csrf.csrfTokenRepository(
+                      CookieCsrfTokenRepository
+                          .withHttpOnlyFalse()) // NOSONAR: CSRF token cookie must be readable by
+                  // Angular's XSRF protection (which reads the cookie
+                  // via JS and sends it back as X-XSRF-TOKEN header);
+                  // HttpOnly would prevent this.
                   .csrfTokenRequestHandler(requestHandler);
             })
         .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

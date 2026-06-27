@@ -147,6 +147,29 @@ class DemoResetJobTest {
   }
 
   @Test
+  void runDailyReset_delegatesToResetDemoData() {
+    UUID demoId = UUID.randomUUID();
+    demoExists(demoId);
+
+    job().runDailyReset();
+
+    verify(mangaRepository).deleteByOwnerId(demoId);
+    verify(mangaRepository).saveAll(any());
+  }
+
+  @Test
+  void run_delegatesToSeedDemoLibraryIfEmpty() {
+    UUID demoId = UUID.randomUUID();
+    demoExists(demoId);
+    when(mangaRepository.countByOwnerId(demoId)).thenReturn(0L);
+
+    job().run(null);
+
+    verify(mangaRepository).saveAll(any());
+    verify(mangaRepository, never()).deleteByOwnerId(any());
+  }
+
+  @Test
   void seedDemoLibraryIfEmpty_doesNothing_whenDemoAccountMissing() {
     when(appUserRepository.findByUsername("demo")).thenReturn(Optional.empty());
 
