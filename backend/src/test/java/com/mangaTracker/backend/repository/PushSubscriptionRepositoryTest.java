@@ -3,7 +3,10 @@ package com.mangaTracker.backend.repository;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.mangaTracker.backend.model.AppUser;
 import com.mangaTracker.backend.model.PushSubscription;
+import com.mangaTracker.backend.model.Role;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
@@ -24,11 +27,12 @@ class PushSubscriptionRepositoryTest {
 
   @Autowired private PushSubscriptionRepository repository;
 
+  @Autowired private AppUserRepository appUserRepository;
+
   @Test
   void save_persistsSubscription() {
     PushSubscription saved =
-        repository.save(
-            PushSubscription.builder().endpoint("https://push/a").p256dh("k").auth("s").build());
+        repository.save(buildSubscription("https://push/a", createOwner("owner-a")));
 
     assertThat(repository.findById(saved.getId())).isPresent();
     assertThat(repository.findByEndpoint("https://push/a")).isPresent();
@@ -36,35 +40,62 @@ class PushSubscriptionRepositoryTest {
 
   @Test
   void existsByEndpoint_returnsTrue_whenPresent() {
-    repository.save(
-        PushSubscription.builder().endpoint("https://push/b").p256dh("k").auth("s").build());
+    repository.save(buildSubscription("https://push/b", createOwner("owner-b")));
 
     assertThat(repository.existsByEndpoint("https://push/b")).isTrue();
   }
 
   @Test
-  void deleteByEndpoint_removesSubscription() {
-    repository.saveAndFlush(
-        PushSubscription.builder().endpoint("https://push/c").p256dh("k").auth("s").build());
+  void deleteByEndpointAndOwnerId_removesOnlyOwnedSubscription() {
+    UUID ownerId = createOwner("owner-c");
+    repository.saveAndFlush(buildSubscription("https://push/c", ownerId));
 
-    repository.deleteByEndpoint("https://push/c");
+    repository.deleteByEndpointAndOwnerId("https://push/c", ownerId);
 
     assertThat(repository.existsByEndpoint("https://push/c")).isFalse();
   }
 
   @Test
+  void findAllByOwnerId_returnsOnlyOwnedSubscriptions() {
+    UUID ownerId = createOwner("owner-d");
+    UUID otherOwnerId = createOwner("owner-e");
+    repository.save(buildSubscription("https://push/d", ownerId));
+    repository.save(buildSubscription("https://push/e", otherOwnerId));
+
+    assertThat(repository.findAllByOwnerId(ownerId))
+        .extracting(PushSubscription::getEndpoint)
+        .containsExactly("https://push/d");
+  }
+
+  @Test
   void save_throwsOnDuplicateEndpoint() {
-    repository.saveAndFlush(
-        PushSubscription.builder().endpoint("https://push/d").p256dh("k").auth("s").build());
+    UUID ownerId = createOwner("owner-f");
+    repository.saveAndFlush(buildSubscription("https://push/f", ownerId));
 
     assertThatThrownBy(
             () ->
                 repository.saveAndFlush(
                     PushSubscription.builder()
-                        .endpoint("https://push/d")
+                        .endpoint("https://push/f")
                         .p256dh("k2")
                         .auth("s2")
+                        .ownerId(ownerId)
                         .build()))
         .isInstanceOf(DataIntegrityViolationException.class);
+  }
+
+  private UUID createOwner(String username) {
+    return appUserRepository
+        .save(AppUser.builder().username(username).passwordHash("hash").role(Role.OWNER).build())
+        .getId();
+  }
+
+  private static PushSubscription buildSubscription(String endpoint, UUID ownerId) {
+    return PushSubscription.builder()
+        .endpoint(endpoint)
+        .p256dh("k")
+        .auth("s")
+        .ownerId(ownerId)
+        .build();
   }
 }

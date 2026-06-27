@@ -47,6 +47,7 @@ public class NotificationService {
             manga.getTitle(),
             "New chapter " + newLatestChapter + " is out",
             manga.getId(),
+            manga.getOwnerId(),
             manga.getSourceUrl(),
             manga.getCoverImageUrl());
     pushNotificationService.send(message);

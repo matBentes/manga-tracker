@@ -9,13 +9,13 @@
 
 ## What This Project Is
 
-A manga reading tracker: users add manga URLs, the backend scrapes for new chapters, and the frontend shows a reading dashboard. Stack: **Spring Boot 3 + Angular 18 + PostgreSQL**, deployed via Docker Compose.
+A manga reading tracker: users add manga URLs, the backend scrapes for new chapters, and the frontend shows a reading dashboard. Stack: **Spring Boot 3 + Angular 22 + PostgreSQL**, deployed via Docker Compose.
 
 ## Directory Map
 
 ```
 backend/        Spring Boot 3 (Gradle, Java 21, Jakarta EE 10)
-frontend/       Angular 18 (standalone components, SCSS, Playwright E2E)
+frontend/       Angular 22 (standalone components, SCSS, Playwright E2E)
 docs/           API reference, architecture, developer guide, workflow, change log
 ralph/          Ralph autonomous agent system (PRD-driven iteration)
 skills/         Project-specific skills and repo-owned workflows
@@ -100,4 +100,3 @@ For any UI change, verify in browser using Playwright MCP tools:
 2. Navigate to the affected page
 3. Interact with the feature and take a screenshot
 4. Save screenshot to `/tmp/<description>.png`
-

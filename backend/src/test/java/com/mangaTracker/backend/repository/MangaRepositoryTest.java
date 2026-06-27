@@ -2,9 +2,12 @@ package com.mangaTracker.backend.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.mangaTracker.backend.model.AppUser;
 import com.mangaTracker.backend.model.Manga;
+import com.mangaTracker.backend.model.Role;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
@@ -24,6 +27,8 @@ class MangaRepositoryTest {
   static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16");
 
   @Autowired private MangaRepository mangaRepository;
+
+  @Autowired private AppUserRepository appUserRepository;
 
   @Autowired private TestEntityManager entityManager;
 
@@ -72,6 +77,19 @@ class MangaRepositoryTest {
   }
 
   @Test
+  void save_allowsSameSourceUrlForDifferentOwners() {
+    String sourceUrl = "https://sakuramangas.org/manga/shared/";
+    UUID ownerA = createOwner("owner-a");
+    UUID ownerB = createOwner("owner-b");
+
+    mangaRepository.save(buildManga(sourceUrl, ownerA));
+    mangaRepository.saveAndFlush(buildManga(sourceUrl, ownerB));
+
+    assertThat(mangaRepository.findAllByOwnerIdOrderByUpdatedAtDesc(ownerA)).hasSize(1);
+    assertThat(mangaRepository.findAllByOwnerIdOrderByUpdatedAtDesc(ownerB)).hasSize(1);
+  }
+
+  @Test
   void deleteById_removesEntity() {
     Manga saved = mangaRepository.save(buildManga("https://sakuramangas.org/manga/one-piece/"));
 
@@ -81,12 +99,23 @@ class MangaRepositoryTest {
   }
 
   private static Manga buildManga(String sourceUrl) {
+    return buildManga(sourceUrl, null);
+  }
+
+  private static Manga buildManga(String sourceUrl, UUID ownerId) {
     return Manga.builder()
         .title("One Piece")
         .sourceUrl(sourceUrl)
         .currentChapter(0)
         .latestChapter(100)
         .notificationsEnabled(true)
+        .ownerId(ownerId)
         .build();
+  }
+
+  private UUID createOwner(String username) {
+    return appUserRepository
+        .save(AppUser.builder().username(username).passwordHash("hash").role(Role.OWNER).build())
+        .getId();
   }
 }

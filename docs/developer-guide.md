@@ -31,7 +31,7 @@ manga-tracker/
 │       │       └── db/migration/ Flyway migrations (V1–V8)
 │       └── test/                JUnit 5 unit and integration tests
 │
-└── frontend/                    Angular 18 application
+└── frontend/                    Angular 22 application
     ├── Dockerfile
     ├── nginx.conf
     ├── angular.json

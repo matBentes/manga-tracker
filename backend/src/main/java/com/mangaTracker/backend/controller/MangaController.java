@@ -88,6 +88,7 @@ public class MangaController {
             "Chapter " + manga.getLatestChapter(),
             "Test notification for " + manga.getTitle(),
             manga.getId(),
+            manga.getOwnerId(),
             manga.getSourceUrl(),
             manga.getCoverImageUrl());
     pushNotificationService.send(message);

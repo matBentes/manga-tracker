@@ -1,5 +1,10 @@
 package com.mangaTracker.backend.security;
 
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
@@ -12,11 +17,14 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfFilter;
 import org.springframework.security.web.csrf.CsrfToken;
+import org.springframework.security.web.csrf.CsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
  * Stateless JWT-cookie security. Authenticated endpoints require a valid auth cookie; login/logout
@@ -34,6 +42,10 @@ public class SecurityConfig {
    * http://localhost:4200}.
    */
   private final List<String> allowedOrigins;
+
+  private static final String AUTH_LOGIN = "/api/auth/login";
+  private static final String AUTH_LOGOUT = "/api/auth/logout";
+  private static final String AUTH_DEMO_LOGIN = "/api/auth/demo-login";
 
   public SecurityConfig(
       JwtCookieAuthFilter jwtCookieAuthFilter,
@@ -75,37 +87,67 @@ public class SecurityConfig {
   @Bean
   public SecurityFilterChain securityFilterChain(
       HttpSecurity http, CorsConfigurationSource corsConfigurationSource) throws Exception {
+    CookieCsrfTokenRepository csrfTokenRepository = CookieCsrfTokenRepository.withHttpOnlyFalse();
     http.cors(cors -> cors.configurationSource(corsConfigurationSource))
         .csrf(
             csrf -> {
               CsrfTokenRequestAttributeHandler requestHandler =
                   new CsrfTokenRequestAttributeHandler();
-              requestHandler.setCsrfRequestAttributeName(CsrfToken.class.getName());
+              requestHandler.setCsrfRequestAttributeName(null);
               csrf.csrfTokenRepository(
-                      CookieCsrfTokenRepository
-                          .withHttpOnlyFalse()) // NOSONAR: CSRF token cookie must be readable by
+                      csrfTokenRepository) // NOSONAR: CSRF token cookie must be readable by
                   // Angular's XSRF protection (which reads the cookie
                   // via JS and sends it back as X-XSRF-TOKEN header);
                   // HttpOnly would prevent this.
-                  .csrfTokenRequestHandler(requestHandler);
+                  .csrfTokenRequestHandler(requestHandler)
+                  .ignoringRequestMatchers(AUTH_LOGIN, AUTH_LOGOUT, AUTH_DEMO_LOGIN);
             })
         .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .authorizeHttpRequests(
             auth ->
-                auth.requestMatchers("/api/auth/login", "/api/auth/logout", "/api/auth/demo-login")
+                auth.requestMatchers(AUTH_LOGIN, AUTH_LOGOUT, AUTH_DEMO_LOGIN)
                     .permitAll()
                     .requestMatchers("/actuator/health", "/actuator/info")
+                    .permitAll()
+                    .requestMatchers("/api/push/public-key")
                     .permitAll()
                     .requestMatchers("/api/auth/me")
                     .authenticated()
                     .requestMatchers("/api/manga/**")
+                    .authenticated()
+                    .requestMatchers("/api/push/**")
                     .authenticated()
                     .anyRequest()
                     .permitAll())
         .formLogin(form -> form.disable())
         .httpBasic(basic -> basic.disable())
         .logout(logout -> logout.disable())
+        .addFilterAfter(new CsrfCookieFilter(csrfTokenRepository), CsrfFilter.class)
         .addFilterBefore(jwtCookieAuthFilter, UsernamePasswordAuthenticationFilter.class);
     return http.build();
+  }
+
+  /** Forces Spring's deferred CSRF token to materialize so the SPA receives XSRF-TOKEN. */
+  private static final class CsrfCookieFilter extends OncePerRequestFilter {
+
+    private final CsrfTokenRepository csrfTokenRepository;
+
+    private CsrfCookieFilter(CsrfTokenRepository csrfTokenRepository) {
+      this.csrfTokenRepository = csrfTokenRepository;
+    }
+
+    @Override
+    protected void doFilterInternal(
+        HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+        throws ServletException, IOException {
+      CsrfToken csrfToken = csrfTokenRepository.loadToken(request);
+      if (csrfToken != null) {
+        csrfToken.getToken();
+      } else {
+        csrfToken = csrfTokenRepository.generateToken(request);
+        csrfTokenRepository.saveToken(csrfToken, request, response);
+      }
+      filterChain.doFilter(request, response);
+    }
   }
 }

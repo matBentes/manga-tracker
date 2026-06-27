@@ -15,7 +15,8 @@ There is no `Authorization` header flow. Two seeded roles exist:
 
 `/api/manga/**` and `/api/auth/me` require a valid auth cookie (`401` otherwise).
 `/api/manga` is **owner-scoped**: each request only sees and mutates manga owned by the
-authenticated user. `/api/push/**` and `/actuator/health|info` are unauthenticated.
+authenticated user. `/api/push/public-key` and `/actuator/health|info` are unauthenticated;
+push subscribe/unsubscribe require the auth cookie and are scoped to that user.
 
 CSRF protection uses a double-submit cookie (`XSRF-TOKEN`): for state-changing requests
 to protected endpoints, echo the cookie value back in the `X-XSRF-TOKEN` header. The
@@ -279,8 +280,8 @@ Returns the VAPID public key the browser needs to create a push subscription.
 
 ### POST /api/push/subscribe
 
-Registers a browser push subscription (idempotent by `endpoint`). Body matches the browser's
-`PushSubscription.toJSON()` shape.
+Registers a browser push subscription for the authenticated user (idempotent by `endpoint`). Body
+matches the browser's `PushSubscription.toJSON()` shape.
 
 **Request body**
 
@@ -293,11 +294,17 @@ Registers a browser push subscription (idempotent by `endpoint`). Body matches t
 
 **Response `201 Created`**
 
+**Error responses**
+
+| Status | Condition                                |
+|--------|------------------------------------------|
+| 401    | No cookie, or the JWT is invalid/expired |
+
 ---
 
 ### POST /api/push/unsubscribe
 
-Removes a subscription by endpoint.
+Removes the authenticated user's subscription by endpoint.
 
 **Request body**
 
@@ -306,6 +313,12 @@ Removes a subscription by endpoint.
 ```
 
 **Response `204 No Content`**
+
+**Error responses**
+
+| Status | Condition                                |
+|--------|------------------------------------------|
+| 401    | No cookie, or the JWT is invalid/expired |
 
 ---
 
@@ -317,7 +330,7 @@ Removes a subscription by endpoint.
 |-----------------------|-----------|--------------------------------------------|
 | `id`                  | UUID      | Assigned on creation                       |
 | `title`               | string    | Scraped from source page                   |
-| `sourceUrl`           | string    | Must be unique; determines which scraper is used |
+| `sourceUrl`           | string    | Must be unique per user; determines which scraper is used |
 | `currentChapter`      | integer   | Chapter read up to; 0 until marked read, set to `latestChapter` by `POST /read` |
 | `latestChapter`       | integer   | Latest chapter found by scraper            |
 | `coverImageUrl`       | string    | Cover scraped from the page's `og:image`; nullable |
@@ -334,6 +347,7 @@ Removes a subscription by endpoint.
 | `endpoint`   | string | Push service endpoint; unique                   |
 | `p256dh`     | string | Subscription public key (browser-provided)      |
 | `auth`       | string | Subscription auth secret (browser-provided)     |
+| `ownerId`    | UUID   | Authenticated user that owns the subscription   |
 | `createdAt`  | datetime | Set on creation                               |
 
 ---

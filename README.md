@@ -21,7 +21,7 @@ Add a manga by pasting its URL. The backend scrapes the source once a day, detec
 | Layer     | Technology                                        |
 |-----------|---------------------------------------------------|
 | Backend   | Spring Boot 3.4 · Java 21 · Gradle · Jakarta EE 10|
-| Frontend  | Angular 18 · TypeScript · SCSS · Service Worker    |
+| Frontend  | Angular 22 · TypeScript · SCSS · Service Worker    |
 | Database  | PostgreSQL 16 · Flyway migrations                 |
 | Push      | Web Push (VAPID) · `nl.martijndwars:web-push`     |
 | Scraping  | Playwright (stealth) · rendered-DOM scrape        |
@@ -36,7 +36,7 @@ cd manga-tracker
 
 # 1. generate VAPID keys for web push (see below) and put them in .env
 cp .env.example .env
-# edit .env with your generated keys
+# edit .env with your generated keys, JWT_SECRET, and account passwords
 
 # 2. start the stack
 docker compose up
@@ -96,7 +96,7 @@ cd backend
 
 API on **http://localhost:8080**.
 
-**Frontend** (Node 20):
+**Frontend** (Node 24.15+):
 
 ```bash
 cd frontend
@@ -113,6 +113,7 @@ Dev server on **http://localhost:4200**, proxies `/api` to `localhost:8080`.
 | `DB_URL`             | `jdbc:postgresql://localhost:5432/manga_tracker` | JDBC connection URL                  |
 | `DB_USERNAME`        | `manga_tracker`                                  | PostgreSQL username                  |
 | `DB_PASSWORD`        | `manga_tracker`                                  | PostgreSQL password                  |
+| `JWT_SECRET`         | *(required)*                                     | JWT signing secret, at least 32 bytes|
 | `VAPID_PUBLIC_KEY`   | *(empty)*                                        | VAPID public key for web push        |
 | `VAPID_PRIVATE_KEY`  | *(empty)*                                        | VAPID private key (keep secret)      |
 | `VAPID_SUBJECT`      | `mailto:…`                                       | VAPID subject (contact mailto/URL)   |

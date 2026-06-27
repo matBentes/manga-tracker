@@ -2,6 +2,8 @@ package com.mangaTracker.backend.service;
 
 import com.mangaTracker.backend.model.PushSubscription;
 import com.mangaTracker.backend.repository.PushSubscriptionRepository;
+import com.mangaTracker.backend.security.CurrentUser;
+import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -11,9 +13,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class PushSubscriptionService {
 
   private final PushSubscriptionRepository repository;
+  private final CurrentUser currentUser;
 
-  public PushSubscriptionService(PushSubscriptionRepository repository) {
+  public PushSubscriptionService(PushSubscriptionRepository repository, CurrentUser currentUser) {
     this.repository = repository;
+    this.currentUser = currentUser;
   }
 
   /**
@@ -21,6 +25,7 @@ public class PushSubscriptionService {
    * than creating a duplicate (endpoint is unique).
    */
   public PushSubscription subscribe(String endpoint, String p256dh, String auth) {
+    UUID ownerId = currentUser.requireId();
     if (endpoint == null || endpoint.isBlank()) {
       throw new IllegalArgumentException("endpoint must not be blank");
     }
@@ -31,15 +36,17 @@ public class PushSubscriptionService {
         repository
             .findByEndpoint(endpoint)
             .orElseGet(() -> PushSubscription.builder().endpoint(endpoint).build());
+    subscription.setOwnerId(ownerId);
     subscription.setP256dh(p256dh);
     subscription.setAuth(auth);
     return repository.save(subscription);
   }
 
   public void unsubscribe(String endpoint) {
+    UUID ownerId = currentUser.requireId();
     if (endpoint == null || endpoint.isBlank()) {
       throw new IllegalArgumentException("endpoint must not be blank");
     }
-    repository.deleteByEndpoint(endpoint);
+    repository.deleteByEndpointAndOwnerId(endpoint, ownerId);
   }
 }

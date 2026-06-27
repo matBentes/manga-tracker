@@ -38,6 +38,9 @@ public class PushSubscription {
   @Column(name = "auth", nullable = false, columnDefinition = "TEXT")
   private String auth;
 
+  @Column(name = "owner_id", nullable = false)
+  private UUID ownerId;
+
   @CreationTimestamp
   @Column(name = "created_at", nullable = false, updatable = false)
   private LocalDateTime createdAt;

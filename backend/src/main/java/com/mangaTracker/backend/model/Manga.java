@@ -33,7 +33,7 @@ public class Manga {
   @Column(nullable = false)
   private String title;
 
-  @Column(name = "source_url", nullable = false, unique = true)
+  @Column(name = "source_url", nullable = false)
   private String sourceUrl;
 
   @Column(name = "current_chapter", nullable = false)

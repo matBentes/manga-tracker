@@ -4,8 +4,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mangaTracker.backend.model.PushSubscription;
 import com.mangaTracker.backend.repository.PushSubscriptionRepository;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,7 +31,6 @@ public class PushNotificationService {
   // browser resolves it against the PWA origin.
   private static final String OPEN_WINDOW_OPERATION = "openWindow";
   private static final String READ_ROUTE = "/open/";
-  private static final String SOURCE_URL_PARAM = "?u=";
 
   // Backend endpoint that streams a manga's cover bytes. Relative so the browser resolves it
   // against the PWA origin (nginx proxies /api/* to the backend).
@@ -53,7 +50,7 @@ public class PushNotificationService {
 
   /** Push a message to every subscription, pruning the ones the push service reports as dead. */
   public void send(PushMessage message) {
-    List<PushSubscription> subscriptions = repository.findAll();
+    List<PushSubscription> subscriptions = repository.findAllByOwnerId(message.ownerId());
     if (subscriptions.isEmpty()) {
       return;
     }
@@ -79,7 +76,6 @@ public class PushNotificationService {
   private String toPayload(PushMessage message) {
     Map<String, Object> data = new HashMap<>();
     data.put("mangaId", message.mangaId().toString());
-    data.put("url", message.sourceUrl());
     data.put("onActionClick", Map.of("default", openReadRoute(message)));
 
     Map<String, Object> notification = new HashMap<>();
@@ -111,8 +107,7 @@ public class PushNotificationService {
   }
 
   private static Map<String, String> openReadRoute(PushMessage message) {
-    String encodedSource = URLEncoder.encode(message.sourceUrl(), StandardCharsets.UTF_8);
-    String url = READ_ROUTE + message.mangaId() + SOURCE_URL_PARAM + encodedSource;
+    String url = READ_ROUTE + message.mangaId();
     return Map.of("operation", OPEN_WINDOW_OPERATION, "url", url);
   }
 }

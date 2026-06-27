@@ -18,6 +18,7 @@ import com.mangaTracker.backend.exception.MangaNotFoundException;
 import com.mangaTracker.backend.exception.UnsupportedSourceException;
 import com.mangaTracker.backend.model.Manga;
 import com.mangaTracker.backend.service.MangaService;
+import com.mangaTracker.backend.service.PushMessage;
 import com.mangaTracker.backend.service.PushNotificationService;
 import java.util.List;
 import java.util.UUID;
@@ -174,11 +175,15 @@ class MangaControllerTest {
   void testPush_returns200_andSendsNotification() throws Exception {
     UUID id = UUID.randomUUID();
     Manga manga = buildManga(id);
+    manga.setOwnerId(UUID.randomUUID());
     when(mangaService.getById(id)).thenReturn(manga);
 
     mockMvc.perform(post("/api/manga/" + id + "/test-push")).andExpect(status().isOk());
 
-    org.mockito.Mockito.verify(pushNotificationService).send(any());
+    var captor = org.mockito.ArgumentCaptor.forClass(PushMessage.class);
+    org.mockito.Mockito.verify(pushNotificationService).send(captor.capture());
+    org.assertj.core.api.Assertions.assertThat(captor.getValue().ownerId())
+        .isEqualTo(manga.getOwnerId());
   }
 
   @Test

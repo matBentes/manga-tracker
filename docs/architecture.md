@@ -106,7 +106,7 @@ JwtCookieAuthFilter validates JWT → SecurityContext authentication
   user's id, so one user never sees another's manga (cross-owner access returns `404`).
 - **CSRF:** double-submit cookie (`XSRF-TOKEN` / `X-XSRF-TOKEN`), with login/logout/demo-login exempt.
 - **CORS:** disabled (same-origin) unless `app.auth.allowed-origins` is set.
-- **Public endpoints:** `/api/auth/login|logout|demo-login`, `/api/push/**`, `/actuator/health|info`.
+- **Public endpoints:** `/api/auth/login|logout|demo-login`, `/api/push/public-key`, `/actuator/health|info`.
 
 ---
 
@@ -178,7 +178,7 @@ Seeded at startup by `UserSeeder` from `OWNER_PASSWORD` / `DEMO_PASSWORD` (added
 |-----------------------|---------------|------------------------------------------|
 | `id`                  | UUID          | PK, default `gen_random_uuid()`          |
 | `title`               | VARCHAR(255)  | NOT NULL                                 |
-| `source_url`          | TEXT          | NOT NULL, UNIQUE                         |
+| `source_url`          | TEXT          | NOT NULL, UNIQUE per non-null `owner_id` |
 | `current_chapter`     | INTEGER       | NOT NULL, DEFAULT 0                      |
 | `latest_chapter`      | INTEGER       | NOT NULL, DEFAULT 0                      |
 | `cover_image_url`     | TEXT          | NULLABLE                                 |
@@ -207,10 +207,12 @@ Unique constraint on `(manga_id, chapter_number)` prevents duplicate notificatio
 | `endpoint`    | TEXT      | NOT NULL, UNIQUE                |
 | `p256dh`      | TEXT      | NOT NULL                        |
 | `auth`        | TEXT      | NOT NULL                        |
+| `owner_id`    | UUID      | NOT NULL, FK → `app_user(id)`, indexed |
 | `created_at`  | TIMESTAMP | NOT NULL                        |
 
-One row per subscribed browser. The `app_settings` table was removed (V8) along with the email
-and poll-interval settings.
+One row per subscribed browser, scoped to the authenticated user so private owner notifications are
+not delivered to demo/public subscribers. The `app_settings` table was removed (V8) along with the
+email and poll-interval settings.
 
 ---
 

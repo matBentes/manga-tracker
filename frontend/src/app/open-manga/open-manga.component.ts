@@ -1,7 +1,14 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, InjectionToken, OnInit, inject } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 
 import { MangaService } from '../services/manga.service';
+
+export const REDIRECT_TO_URL = new InjectionToken<(url: string) => void>('REDIRECT_TO_URL', {
+  providedIn: 'root',
+  factory: () => (url: string) => {
+    window.location.href = url;
+  },
+});
 
 /**
  * Landing route the push notification opens. It marks the manga as read (the user is opening it, so
@@ -26,24 +33,22 @@ import { MangaService } from '../services/manga.service';
 export class OpenMangaComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly mangaService = inject(MangaService);
-
-  private static readonly SOURCE_URL_PARAM = 'u';
+  private readonly redirectToUrl = inject(REDIRECT_TO_URL);
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
-    const sourceUrl = this.route.snapshot.queryParamMap.get(OpenMangaComponent.SOURCE_URL_PARAM);
 
     if (!id) {
-      this.redirect(sourceUrl);
+      this.redirect('/');
       return;
     }
     this.mangaService.markRead(id).subscribe({
-      next: () => this.redirect(sourceUrl),
-      error: () => this.redirect(sourceUrl),
+      next: (manga) => this.redirect(manga.sourceUrl),
+      error: () => this.redirect('/'),
     });
   }
 
-  private redirect(sourceUrl: string | null): void {
-    window.location.href = sourceUrl ?? '/';
+  private redirect(url: string): void {
+    this.redirectToUrl(url);
   }
 }
