@@ -74,7 +74,15 @@ public class SecurityConfig {
   public SecurityFilterChain securityFilterChain(
       HttpSecurity http, CorsConfigurationSource corsConfigurationSource) throws Exception {
     http.cors(cors -> cors.configurationSource(corsConfigurationSource))
-        .csrf(csrf -> csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()))
+        .csrf(
+            csrf ->
+                csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                    // Pre-authentication endpoints: the CSRF cookie is not yet available when the
+                    // browser calls these for the first time, so the double-submit pattern cannot
+                    // apply. Login is safe without CSRF because an attacker cannot read the
+                    // response
+                    // (which sets the httpOnly auth cookie) or forge valid credentials.
+                    .ignoringRequestMatchers("/api/auth/login", "/api/auth/demo-login"))
         .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .authorizeHttpRequests(
             auth ->
