@@ -76,13 +76,7 @@ public class SecurityConfig {
     http.cors(cors -> cors.configurationSource(corsConfigurationSource))
         .csrf(
             csrf ->
-                csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
-                    // Login/logout establish the session; they are exempt from CSRF since the
-                    // attacker cannot read the response or forge valid credentials.
-                    // NOSONAR: Login/logout/demo-login must be CSRF-exempt — an attacker cannot
-                    // read the response or forge valid credentials, so CSRF offers no protection.
-                    .ignoringRequestMatchers(
-                        "/api/auth/login", "/api/auth/logout", "/api/auth/demo-login"))
+                csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()))
         .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .authorizeHttpRequests(
             auth ->
