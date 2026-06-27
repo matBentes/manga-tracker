@@ -248,6 +248,8 @@ jobs:
             --spring.datasource.url=jdbc:postgresql://postgres:5432/manga_tracker \
             --spring.datasource.username=manga_tracker \
             --spring.datasource.password=manga_tracker \
+            --app.auth.demo-password=demo \
+            --app.auth.owner-password=owner \
             --management.health.mail.enabled=false \
             --scraper.sakura.playwright.enabled=false &
           echo $! > /tmp/backend.pid
