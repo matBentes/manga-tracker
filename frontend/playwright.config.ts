@@ -13,15 +13,11 @@ export default defineConfig({
   },
   projects: [
     {
-      name: 'setup',
-      testMatch: '**/setup-global-mock.spec.ts',
-    },
-    {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
-      dependencies: ['setup'],
     },
   ],
+  globalSetup: './global-setup',
   webServer: {
     command: 'ng serve',
     url: 'http://localhost:4200',
