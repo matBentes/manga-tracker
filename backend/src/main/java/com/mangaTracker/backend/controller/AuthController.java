@@ -9,6 +9,7 @@ import com.mangaTracker.backend.security.JwtService;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -54,7 +55,7 @@ public class AuthController {
 
   private String getDummyHash() {
     if (dummyHash == null) {
-      dummyHash = passwordEncoder.encode("timing-attack-decoy");
+      dummyHash = passwordEncoder.encode(UUID.randomUUID().toString());
     }
     return dummyHash;
   }

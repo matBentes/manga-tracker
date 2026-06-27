@@ -53,7 +53,7 @@ class JwtCookieAuthFilterTest {
   }
 
   @Test
-  void filter_leavesContextEmpty_whenNoCookiePresent() throws Exception {
+  void filter_leavesContextEmpty_whenNoCookiePresentOrNoCookies() throws Exception {
     MockHttpServletRequest request = new MockHttpServletRequest();
     MockHttpServletResponse response = new MockHttpServletResponse();
     MockFilterChain chain = new MockFilterChain();
@@ -79,17 +79,6 @@ class JwtCookieAuthFilterTest {
   void filter_leavesContextEmpty_whenBlankTokenInCookie() throws Exception {
     MockHttpServletRequest request = new MockHttpServletRequest();
     request.setCookies(new Cookie(JwtCookieAuthFilter.COOKIE_NAME, "  "));
-    MockHttpServletResponse response = new MockHttpServletResponse();
-    MockFilterChain chain = new MockFilterChain();
-
-    filter.doFilterInternal(request, response, chain);
-
-    assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
-  }
-
-  @Test
-  void filter_leavesContextEmpty_whenNoCookies() throws Exception {
-    MockHttpServletRequest request = new MockHttpServletRequest();
     MockHttpServletResponse response = new MockHttpServletResponse();
     MockFilterChain chain = new MockFilterChain();
 

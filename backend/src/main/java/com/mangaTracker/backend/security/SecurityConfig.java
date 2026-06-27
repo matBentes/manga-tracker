@@ -80,8 +80,8 @@ public class SecurityConfig {
                     // Pre-authentication endpoints: the CSRF cookie is not yet available when the
                     // browser calls these for the first time, so the double-submit pattern cannot
                     // apply. Login is safe without CSRF because an attacker cannot read the
-                    // response
-                    // (which sets the httpOnly auth cookie) or forge valid credentials.
+                    // response (which sets the httpOnly auth cookie) or forge valid credentials.
+                    // NOSONAR: intentional exemption — see justification above.
                     .ignoringRequestMatchers("/api/auth/login", "/api/auth/demo-login"))
         .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .authorizeHttpRequests(
