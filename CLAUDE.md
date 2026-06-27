@@ -26,14 +26,15 @@ tasks/          PRD outputs and techdebt reports
 
 | Skill | Purpose |
 |-------|---------|
-| `/prd` | Generate a structured PRD for a new feature |
-| `/ralph` | Convert PRD to Ralph JSON for autonomous execution |
-| `/techdebt` | Scan for tech debt and inconsistencies |
-| `/review` | Pre-push review against **project conventions** (jakarta, Flyway, inject, etc.) |
-| `/prioritize-features` | Rank candidate work by value, effort, and delivery risk |
-| `/pre-mortem` | Identify likely failure modes before implementation or release |
-| `/outcome-roadmap` | Group future work into outcome-based roadmap themes |
-| `/supervise` | Independent second review against a plan; verify, agree/disagree, then fix only if requested |
+| `domain-modeling` | Actively maintain the project's domain model — challenge terms, invent edge cases, record ADRs |
+| `grill-with-docs` | Relentless interview to sharpen a plan/design while generating ADRs + glossary |
+| `handoff` | Compact the current conversation into a handoff doc for a fresh agent to continue |
+| `improve-codebase-architecture` | Scan for shallow-module refactors (deepening opportunities) aligned with the domain model |
+| `teach` | Stateful, multi-session learning workspace (missions, glossary, learning records) |
+| `thermo-nuclear-code-quality-review` | Extremely strict maintainability review: abstraction quality, giant files, spaghetti conditions |
+
+> The earlier planning/review skills (`/prd`, `/ralph`, `/techdebt`, `/review`, `/supervise`, etc.)
+> were moved out of this repo. Use the equivalents from your global skill set when referenced below.
 
 ## Two-Agent Loop
 

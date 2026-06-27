@@ -4,13 +4,107 @@ Base URL: `http://localhost:8080` (direct) or `http://localhost:4200` (via nginx
 
 All request and response bodies use `Content-Type: application/json`.
 
+## Authentication
+
+Auth is **cookie-based JWT**. A successful login sets an `httpOnly`, `SameSite=Strict`
+cookie holding a signed JWT; the browser sends it automatically on subsequent requests.
+There is no `Authorization` header flow. Two seeded roles exist:
+
+- **OWNER** — the private account; sees and manages its own manga library.
+- **DEMO** — a public, passwordless account for recruiters; its library is reset nightly.
+
+`/api/manga/**` and `/api/auth/me` require a valid auth cookie (`401` otherwise).
+`/api/manga` is **owner-scoped**: each request only sees and mutates manga owned by the
+authenticated user. `/api/push/**` and `/actuator/health|info` are unauthenticated.
+
+CSRF protection uses a double-submit cookie (`XSRF-TOKEN`): for state-changing requests
+to protected endpoints, echo the cookie value back in the `X-XSRF-TOKEN` header. The
+login, logout, and demo-login endpoints are exempt.
+
+---
+
+## Auth — `/api/auth`
+
+### POST /api/auth/login
+
+Authenticates with username + password and sets the auth cookie. Uses a constant-time
+path (a decoy hash is verified even when the user does not exist) so timing cannot reveal
+whether a username is registered.
+
+**Request body**
+
+```json
+{ "username": "owner", "password": "••••••••" }
+```
+
+**Response `200 OK`** — sets the auth cookie and returns the identity:
+
+```json
+{ "username": "owner", "role": "OWNER" }
+```
+
+**Error responses**
+
+| Status | Condition                                         |
+|--------|---------------------------------------------------|
+| 400    | `username` or `password` missing                  |
+| 401    | Invalid credentials (generic; never reveals which)|
+
+---
+
+### POST /api/auth/demo-login
+
+Logs in to the public **DEMO** account without a password and sets the auth cookie.
+
+**Response `200 OK`**
+
+```json
+{ "username": "demo", "role": "DEMO" }
+```
+
+**Error responses**
+
+| Status | Condition                                        |
+|--------|--------------------------------------------------|
+| 404    | Demo account is not seeded (`DEMO_PASSWORD` unset)|
+
+---
+
+### POST /api/auth/logout
+
+Clears the auth cookie. Always succeeds, even without a current session.
+
+**Response `204 No Content`**
+
+---
+
+### GET /api/auth/me
+
+Returns the currently authenticated identity from the auth cookie.
+
+**Response `200 OK`**
+
+```json
+{ "username": "owner", "role": "OWNER" }
+```
+
+**Error responses**
+
+| Status | Condition                                |
+|--------|------------------------------------------|
+| 401    | No cookie, or the JWT is invalid/expired |
+
 ---
 
 ## Manga — `/api/manga`
 
+All `/api/manga` endpoints require authentication and are scoped to the authenticated
+owner: a manga owned by another user responds `404` (not `403`) to avoid leaking
+existence.
+
 ### GET /api/manga
 
-Returns all tracked manga sorted by most recently updated first.
+Returns the authenticated user's tracked manga sorted by most recently updated first.
 
 **Response `200 OK`**
 
@@ -53,6 +147,7 @@ Adds a new manga by source URL. The backend scrapes the page to extract the titl
 | 400    | URL is blank, malformed, or from an unsupported source |
 | 409    | The URL is already tracked                      |
 | 422    | The scraper could not extract title or chapter  |
+| 429    | Per-user add rate limit exceeded (default 20 adds / 60s) |
 
 ---
 
@@ -254,6 +349,8 @@ All error responses use a consistent body:
 | HTTP Status | Meaning                              |
 |-------------|--------------------------------------|
 | 400         | Bad request / validation failure     |
+| 401         | Missing or invalid auth cookie       |
 | 404         | Resource not found                   |
 | 409         | Conflict (e.g. duplicate URL)        |
 | 422         | Unprocessable entity (scraping error)|
+| 429         | Rate limit exceeded                  |
