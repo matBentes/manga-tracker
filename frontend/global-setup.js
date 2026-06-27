@@ -1,8 +1,8 @@
-import { chromium, GlobalSetup, FullConfig } from '@playwright/test';
-import * as fs from 'fs';
-import * as path from 'path';
+const { chromium } = require('@playwright/test');
+const fs = require('fs');
+const path = require('path');
 
-const globalSetup: GlobalSetup = async (config: FullConfig) => {
+async function globalSetup(config) {
   const browser = await chromium.launch();
   const context = await browser.newContext();
   const page = await context.newPage();
@@ -14,7 +14,7 @@ const globalSetup: GlobalSetup = async (config: FullConfig) => {
     await route.fulfill({ json: { username: 'demo', role: 'DEMO' } });
   });
 
-  await page.goto(config.projects[0].use!.baseURL! + '/');
+  await page.goto(config.projects[0].use.baseURL + '/');
   await page.waitForLoadState('networkidle');
 
   const storageState = path.join(process.cwd(), 'playwright', '.auth', 'user.json');
@@ -22,6 +22,6 @@ const globalSetup: GlobalSetup = async (config: FullConfig) => {
   await context.storageState({ path: storageState });
 
   await browser.close();
-};
+}
 
-export default globalSetup;
+module.exports = globalSetup;

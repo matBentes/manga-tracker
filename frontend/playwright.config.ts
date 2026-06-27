@@ -20,7 +20,7 @@ export default defineConfig({
       },
     },
   ],
-  globalSetup: './global-setup',
+  globalSetup: './global-setup.js',
   webServer: {
     command: 'ng serve',
     url: 'http://localhost:4200',
