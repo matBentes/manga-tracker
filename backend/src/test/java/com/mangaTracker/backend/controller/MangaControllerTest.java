@@ -17,31 +17,35 @@ import com.mangaTracker.backend.exception.DuplicateMangaException;
 import com.mangaTracker.backend.exception.MangaNotFoundException;
 import com.mangaTracker.backend.exception.UnsupportedSourceException;
 import com.mangaTracker.backend.model.Manga;
-import com.mangaTracker.backend.security.JwtService;
 import com.mangaTracker.backend.service.MangaService;
 import com.mangaTracker.backend.service.PushNotificationService;
 import java.util.List;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-@WebMvcTest(MangaController.class)
-@AutoConfigureMockMvc(addFilters = false)
+@ExtendWith(MockitoExtension.class)
 class MangaControllerTest {
 
-  @Autowired private MockMvc mockMvc;
+  private MockMvc mockMvc;
 
-  @MockBean private MangaService mangaService;
+  @Mock private MangaService mangaService;
+  @Mock private PushNotificationService pushNotificationService;
 
-  @MockBean private PushNotificationService pushNotificationService;
-
-  // Required by JwtCookieAuthFilter (a @Component picked up by the web slice).
-  @MockBean private JwtService jwtService;
+  @BeforeEach
+  void setUp() {
+    MangaController controller = new MangaController(mangaService, pushNotificationService);
+    mockMvc =
+        MockMvcBuilders.standaloneSetup(controller)
+            .setControllerAdvice(new GlobalExceptionHandler())
+            .build();
+  }
 
   @Test
   void listManga_returns200WithMangaList() throws Exception {
@@ -158,7 +162,6 @@ class MangaControllerTest {
   void markUnread_returns200WithResetManga() throws Exception {
     UUID id = UUID.randomUUID();
     Manga manga = buildManga(id);
-    manga.setCurrentChapter(0);
     when(mangaService.markUnread(id)).thenReturn(manga);
 
     mockMvc
@@ -193,7 +196,6 @@ class MangaControllerTest {
   void getCover_returnsImageBytes_forDataUrlCover() throws Exception {
     UUID id = UUID.randomUUID();
     Manga manga = buildManga(id);
-    // 1x1 transparent PNG, base64
     String pngBase64 =
         "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
     manga.setCoverImageUrl("data:image/png;base64," + pngBase64);

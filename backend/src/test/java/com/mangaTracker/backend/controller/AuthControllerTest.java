@@ -24,28 +24,33 @@ import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-@WebMvcTest(AuthController.class)
-@AutoConfigureMockMvc(addFilters = false)
+@ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class AuthControllerTest {
 
-  @Autowired private MockMvc mockMvc;
+  private MockMvc mockMvc;
 
-  @MockBean private AppUserRepository appUserRepository;
-  @MockBean private PasswordEncoder passwordEncoder;
-  @MockBean private JwtService jwtService;
-  @MockBean private CurrentUser currentUser;
+  @Mock private AppUserRepository appUserRepository;
+  @Mock private PasswordEncoder passwordEncoder;
+  @Mock private JwtService jwtService;
+  @Mock private CurrentUser currentUser;
 
   @BeforeEach
-  void setUpDummyHash() {
+  void setUp() {
+    AuthController controller =
+        new AuthController(appUserRepository, passwordEncoder, jwtService, currentUser, false);
+    mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
     when(passwordEncoder.encode(any())).thenReturn("$2a$10$dummy.timing.attack.hash");
   }
 
