@@ -8,6 +8,13 @@
     </li>
     <li><a routerLink="/settings" routerLinkActive="active">Settings</a></li>
   </ul>
+  <div class="auth-control">
+    @if (!user() || user()?.role === 'DEMO') {
+      <a routerLink="/login" class="login-link">Login</a>
+    } @else if (user()?.role === 'OWNER') {
+      <button class="logout-btn" (click)="logout()">Logout</button>
+    }
+  </div>
 </nav>
 <main class="app-main">
   <router-outlet />

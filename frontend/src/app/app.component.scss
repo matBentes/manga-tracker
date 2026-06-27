@@ -46,6 +46,45 @@ $accent: #ffe600;
   }
 }
 
+.auth-control {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+
+  .login-link {
+    color: #fff;
+    text-decoration: none;
+    font-size: clamp(0.72rem, 3vw, 0.8rem);
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0.2rem 0;
+    border-bottom: 4px solid transparent;
+
+    &:hover {
+      color: $accent;
+    }
+  }
+
+  .logout-btn {
+    background: transparent;
+    border: none;
+    color: #fff;
+    text-decoration: none;
+    font-size: clamp(0.72rem, 3vw, 0.8rem);
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0.2rem 0;
+    cursor: pointer;
+    border-bottom: 4px solid transparent;
+
+    &:hover {
+      color: $accent;
+    }
+  }
+}
+
 .app-main {
   min-height: calc(100vh - 3.5rem);
 }
