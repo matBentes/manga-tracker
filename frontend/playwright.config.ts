@@ -14,9 +14,13 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: './playwright/.auth/user.json',
+      },
     },
   ],
+  globalSetup: './global-setup.js',
   webServer: {
     command: 'ng serve',
     url: 'http://localhost:4200',

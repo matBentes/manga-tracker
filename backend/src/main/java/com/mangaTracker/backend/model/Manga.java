@@ -54,6 +54,9 @@ public class Manga {
   @Column(name = "last_checked_at")
   private LocalDateTime lastCheckedAt;
 
+  @Column(name = "owner_id")
+  private UUID ownerId;
+
   @CreationTimestamp
   @Column(name = "created_at", nullable = false, updatable = false)
   private LocalDateTime createdAt;

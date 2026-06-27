@@ -33,6 +33,56 @@ class SakuraMangasScraperTest {
     assertThat(scraperReturning("<html></html>").supports(null)).isFalse();
   }
 
+  @Test
+  void supports_trueForSubdomain() {
+    assertThat(scraperReturning("<html></html>").supports("https://www.sakuramangas.org/obras/x"))
+        .isTrue();
+  }
+
+  @Test
+  void supports_trueForHttp() {
+    assertThat(scraperReturning("<html></html>").supports("http://sakuramangas.org/obras/x"))
+        .isTrue();
+  }
+
+  // ── supports() SSRF allowlist (US-006) ──────────────────────────────────────────
+
+  @Test
+  void supports_falseWhenHostOnlyInQueryString() {
+    assertThat(scraperReturning("<html></html>").supports("https://evil.com/?x=sakuramangas.org"))
+        .isFalse();
+  }
+
+  @Test
+  void supports_falseForLookalikeSuffix() {
+    // Host ends with the allowlisted string but is a different registrable domain.
+    assertThat(scraperReturning("<html></html>").supports("https://evilsakuramangas.org/x"))
+        .isFalse();
+  }
+
+  @Test
+  void supports_falseForAllowlistedHostAsSubdomainOfAttacker() {
+    assertThat(scraperReturning("<html></html>").supports("https://sakuramangas.org.evil.com/x"))
+        .isFalse();
+  }
+
+  @Test
+  void supports_falseForFileScheme() {
+    assertThat(scraperReturning("<html></html>").supports("file:///etc/passwd")).isFalse();
+  }
+
+  @Test
+  void supports_falseForInternalMetadataIp() {
+    assertThat(
+            scraperReturning("<html></html>").supports("http://169.254.169.254/latest/meta-data"))
+        .isFalse();
+  }
+
+  @Test
+  void supports_falseForMalformedUrl() {
+    assertThat(scraperReturning("<html></html>").supports("not a url")).isFalse();
+  }
+
   // ── scrape() happy path ─────────────────────────────────────────────────────────
 
   @Test

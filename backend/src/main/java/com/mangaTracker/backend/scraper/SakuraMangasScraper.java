@@ -86,9 +86,34 @@ public class SakuraMangasScraper implements MangaScraper {
 
   // ── MangaScraper API ─────────────────────────────────────────────────────────
 
+  /**
+   * Accepts a URL only when it is an http/https URL whose host is exactly the allowlisted host or a
+   * subdomain of it. Parsing (rather than substring matching) defends against SSRF: it rejects
+   * non-http schemes ({@code file://}, etc.), internal IPs, and look-alike hosts that merely
+   * contain the allowlisted string in the path, query, userinfo, or a different registrable domain.
+   */
   @Override
   public boolean supports(String url) {
-    return url != null && url.contains(SUPPORTED_HOST);
+    if (url == null) {
+      return false;
+    }
+    final java.net.URI uri;
+    try {
+      uri = new java.net.URI(url);
+    } catch (java.net.URISyntaxException e) {
+      return false;
+    }
+    String scheme = uri.getScheme();
+    String host = uri.getHost();
+    if (scheme == null || host == null) {
+      return false;
+    }
+    scheme = scheme.toLowerCase(java.util.Locale.ROOT);
+    if (!scheme.equals("http") && !scheme.equals("https")) {
+      return false;
+    }
+    host = host.toLowerCase(java.util.Locale.ROOT);
+    return host.equals(SUPPORTED_HOST) || host.endsWith("." + SUPPORTED_HOST);
   }
 
   @Override

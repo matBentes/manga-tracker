@@ -15,6 +15,15 @@ const sampleManga = {
   updatedAt: '2024-01-01T00:00:00',
 };
 
+test.beforeEach(async ({ page }) => {
+  await page.route('**/api/auth/me', async (route) => {
+    await route.fulfill({ json: { username: 'demo', role: 'DEMO' } });
+  });
+  await page.route('**/api/auth/demo-login', async (route) => {
+    await route.fulfill({ json: { username: 'demo', role: 'DEMO' } });
+  });
+});
+
 test('add manga by URL - appears in reading list with detected title', async ({ page }) => {
   // Initially no manga
   await page.route(`${API_BASE}/api/manga`, async (route) => {

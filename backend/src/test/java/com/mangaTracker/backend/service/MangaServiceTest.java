@@ -3,7 +3,9 @@ package com.mangaTracker.backend.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -11,13 +13,18 @@ import com.mangaTracker.backend.exception.DuplicateMangaException;
 import com.mangaTracker.backend.exception.MangaNotFoundException;
 import com.mangaTracker.backend.exception.UnsupportedSourceException;
 import com.mangaTracker.backend.model.Manga;
+import com.mangaTracker.backend.model.Role;
 import com.mangaTracker.backend.repository.MangaRepository;
 import com.mangaTracker.backend.scraper.MangaScraper;
 import com.mangaTracker.backend.scraper.ScrapedManga;
 import com.mangaTracker.backend.scraper.ScraperRegistry;
+import com.mangaTracker.backend.security.AddMangaRateLimiter;
+import com.mangaTracker.backend.security.AuthenticatedUser;
+import com.mangaTracker.backend.security.CurrentUser;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -28,20 +35,32 @@ import org.springframework.dao.DataIntegrityViolationException;
 @ExtendWith(MockitoExtension.class)
 class MangaServiceTest {
 
+  private static final UUID USER_ID = UUID.randomUUID();
+
   @Mock private MangaRepository mangaRepository;
 
   @Mock private ScraperRegistry scraperRegistry;
 
+  @Mock private CurrentUser currentUser;
+
+  @Mock private AddMangaRateLimiter addMangaRateLimiter;
+
   @InjectMocks private MangaService mangaService;
 
+  @BeforeEach
+  void stubCurrentUser() {
+    lenient().when(currentUser.requireId()).thenReturn(USER_ID);
+    lenient().when(currentUser.require()).thenReturn(new AuthenticatedUser(USER_ID, Role.OWNER));
+  }
+
   @Test
-  void addManga_savesAndReturnsManga() {
+  void addManga_savesAndReturnsManga_stampedWithOwner() {
     String url = "https://sakuramangas.org/manga/one-piece/";
     MangaScraper scraper = mock(MangaScraper.class);
     when(scraperRegistry.resolve(url)).thenReturn(scraper);
     when(scraper.scrape(url))
         .thenReturn(new ScrapedManga("One Piece", 1000, "https://img/one-piece.jpg"));
-    when(mangaRepository.existsBySourceUrl(url)).thenReturn(false);
+    when(mangaRepository.existsBySourceUrlAndOwnerId(url, USER_ID)).thenReturn(false);
     when(mangaRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
     Manga result = mangaService.addManga(url);
@@ -51,13 +70,14 @@ class MangaServiceTest {
     assertThat(result.getCurrentChapter()).isEqualTo(0);
     assertThat(result.getCoverImageUrl()).isEqualTo("https://img/one-piece.jpg");
     assertThat(result.isNotificationsEnabled()).isTrue();
+    assertThat(result.getOwnerId()).isEqualTo(USER_ID);
     verify(mangaRepository).save(any(Manga.class));
   }
 
   @Test
-  void addManga_throwsDuplicateMangaException_whenUrlAlreadyExists() {
+  void addManga_throwsDuplicateMangaException_whenUrlAlreadyExistsForUser() {
     String url = "https://sakuramangas.org/manga/one-piece/";
-    when(mangaRepository.existsBySourceUrl(url)).thenReturn(true);
+    when(mangaRepository.existsBySourceUrlAndOwnerId(url, USER_ID)).thenReturn(true);
 
     assertThatThrownBy(() -> mangaService.addManga(url))
         .isInstanceOf(DuplicateMangaException.class);
@@ -67,7 +87,7 @@ class MangaServiceTest {
   void addManga_throwsDuplicateMangaException_onConcurrentInsert() {
     String url = "https://sakuramangas.org/manga/one-piece/";
     MangaScraper scraper = mock(MangaScraper.class);
-    when(mangaRepository.existsBySourceUrl(url)).thenReturn(false);
+    when(mangaRepository.existsBySourceUrlAndOwnerId(url, USER_ID)).thenReturn(false);
     when(scraperRegistry.resolve(url)).thenReturn(scraper);
     when(scraper.scrape(url)).thenReturn(new ScrapedManga("One Piece", 1000, null));
     when(mangaRepository.save(any())).thenThrow(new DataIntegrityViolationException("duplicate"));
@@ -79,6 +99,7 @@ class MangaServiceTest {
   @Test
   void addManga_throwsUnsupportedSourceException_forUnsupportedUrl() {
     String url = "https://unknown.com/manga/test/";
+    when(mangaRepository.existsBySourceUrlAndOwnerId(url, USER_ID)).thenReturn(false);
     when(scraperRegistry.resolve(url))
         .thenThrow(new UnsupportedSourceException("No scraper found for URL: " + url));
 
@@ -87,9 +108,9 @@ class MangaServiceTest {
   }
 
   @Test
-  void listManga_returnsAllSortedByUpdatedAtDesc() {
+  void listManga_returnsOnlyCurrentUsersManga() {
     List<Manga> expected = List.of(buildManga(UUID.randomUUID(), 10));
-    when(mangaRepository.findAllByOrderByUpdatedAtDesc()).thenReturn(expected);
+    when(mangaRepository.findAllByOwnerIdOrderByUpdatedAtDesc(USER_ID)).thenReturn(expected);
 
     List<Manga> result = mangaService.listManga();
 
@@ -97,10 +118,10 @@ class MangaServiceTest {
   }
 
   @Test
-  void getById_returnsManga_whenFound() {
+  void getById_returnsManga_whenOwnedByUser() {
     UUID id = UUID.randomUUID();
     Manga manga = buildManga(id, 100);
-    when(mangaRepository.findById(id)).thenReturn(Optional.of(manga));
+    when(mangaRepository.findByIdAndOwnerId(id, USER_ID)).thenReturn(Optional.of(manga));
 
     Manga result = mangaService.getById(id);
 
@@ -108,9 +129,11 @@ class MangaServiceTest {
   }
 
   @Test
-  void getById_throwsMangaNotFoundException_forUnknownId() {
+  void getById_throwsMangaNotFoundException_forUnknownOrUnownedId() {
+    // Owner-scoped query returns empty both when the ID doesn't exist and when the manga
+    // belongs to another user — so the result is always 404 (not 403).
     UUID id = UUID.randomUUID();
-    when(mangaRepository.findById(id)).thenReturn(Optional.empty());
+    when(mangaRepository.findByIdAndOwnerId(id, USER_ID)).thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> mangaService.getById(id)).isInstanceOf(MangaNotFoundException.class);
   }
@@ -119,7 +142,7 @@ class MangaServiceTest {
   void updateManga_updatesNotificationsEnabled() {
     UUID id = UUID.randomUUID();
     Manga manga = buildManga(id, 100);
-    when(mangaRepository.findById(id)).thenReturn(Optional.of(manga));
+    when(mangaRepository.findByIdAndOwnerId(id, USER_ID)).thenReturn(Optional.of(manga));
     when(mangaRepository.save(manga)).thenReturn(manga);
 
     Manga result = mangaService.updateManga(id, false);
@@ -128,12 +151,13 @@ class MangaServiceTest {
   }
 
   @Test
-  void updateManga_throwsMangaNotFoundException_forUnknownId() {
+  void updateManga_throwsMangaNotFoundException_forCrossUserId() {
     UUID id = UUID.randomUUID();
-    when(mangaRepository.findById(id)).thenReturn(Optional.empty());
+    when(mangaRepository.findByIdAndOwnerId(id, USER_ID)).thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> mangaService.updateManga(id, false))
         .isInstanceOf(MangaNotFoundException.class);
+    verify(mangaRepository, never()).save(any());
   }
 
   @Test
@@ -141,7 +165,7 @@ class MangaServiceTest {
     UUID id = UUID.randomUUID();
     Manga manga = buildManga(id, 100);
     manga.setCurrentChapter(40);
-    when(mangaRepository.findById(id)).thenReturn(Optional.of(manga));
+    when(mangaRepository.findByIdAndOwnerId(id, USER_ID)).thenReturn(Optional.of(manga));
     when(mangaRepository.save(manga)).thenReturn(manga);
 
     Manga result = mangaService.markRead(id);
@@ -154,7 +178,7 @@ class MangaServiceTest {
     UUID id = UUID.randomUUID();
     Manga manga = buildManga(id, 100);
     manga.setCurrentChapter(100);
-    when(mangaRepository.findById(id)).thenReturn(Optional.of(manga));
+    when(mangaRepository.findByIdAndOwnerId(id, USER_ID)).thenReturn(Optional.of(manga));
     when(mangaRepository.save(manga)).thenReturn(manga);
 
     Manga result = mangaService.markUnread(id);
@@ -165,16 +189,16 @@ class MangaServiceTest {
   @Test
   void markRead_throwsMangaNotFoundException_forUnknownId() {
     UUID id = UUID.randomUUID();
-    when(mangaRepository.findById(id)).thenReturn(Optional.empty());
+    when(mangaRepository.findByIdAndOwnerId(id, USER_ID)).thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> mangaService.markRead(id)).isInstanceOf(MangaNotFoundException.class);
   }
 
   @Test
-  void deleteManga_deletesById() {
+  void deleteManga_deletesOwnedManga() {
     UUID id = UUID.randomUUID();
     Manga manga = buildManga(id, 100);
-    when(mangaRepository.findById(id)).thenReturn(Optional.of(manga));
+    when(mangaRepository.findByIdAndOwnerId(id, USER_ID)).thenReturn(Optional.of(manga));
 
     mangaService.deleteManga(id);
 
@@ -182,12 +206,13 @@ class MangaServiceTest {
   }
 
   @Test
-  void deleteManga_throwsMangaNotFoundException_forUnknownId() {
+  void deleteManga_throwsMangaNotFoundException_forCrossUserId() {
     UUID id = UUID.randomUUID();
-    when(mangaRepository.findById(id)).thenReturn(Optional.empty());
+    when(mangaRepository.findByIdAndOwnerId(id, USER_ID)).thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> mangaService.deleteManga(id))
         .isInstanceOf(MangaNotFoundException.class);
+    verify(mangaRepository, never()).delete(any());
   }
 
   private static Manga buildManga(UUID id, int latestChapter) {
@@ -198,6 +223,7 @@ class MangaServiceTest {
         .currentChapter(0)
         .latestChapter(latestChapter)
         .notificationsEnabled(true)
+        .ownerId(USER_ID)
         .build();
   }
 }

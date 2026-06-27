@@ -18,6 +18,8 @@ $accent: #ffe600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: $accent;
+  text-decoration: none;
+  cursor: pointer;
 }
 
 .nav-links {
@@ -42,6 +44,45 @@ $accent: #ffe600;
     }
     &.active {
       border-bottom-color: $accent;
+    }
+  }
+}
+
+.auth-control {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+
+  .login-link {
+    color: #fff;
+    text-decoration: none;
+    font-size: clamp(0.72rem, 3vw, 0.8rem);
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0.2rem 0;
+    border-bottom: 4px solid transparent;
+
+    &:hover {
+      color: $accent;
+    }
+  }
+
+  .logout-btn {
+    background: transparent;
+    border: none;
+    color: #fff;
+    text-decoration: none;
+    font-size: clamp(0.72rem, 3vw, 0.8rem);
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0.2rem 0;
+    cursor: pointer;
+    border-bottom: 4px solid transparent;
+
+    &:hover {
+      color: $accent;
     }
   }
 }

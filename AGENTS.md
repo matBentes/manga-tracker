@@ -22,14 +22,12 @@ Read these in order:
 - `~/.codex/skills`: personal/global Codex skills outside this repository
 
 Current repo-local skills in `skills/`:
-- `prd`
-- `ralph`
-- `review`
-- `supervise`
-- `techdebt`
-- `prioritize-features`
-- `pre-mortem`
-- `outcome-roadmap`
+- `domain-modeling`
+- `grill-with-docs`
+- `handoff`
+- `improve-codebase-architecture`
+- `teach`
+- `thermo-nuclear-code-quality-review`
 
 ### Codex Operating Profile
 
