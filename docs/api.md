@@ -18,13 +18,29 @@ There is no `Authorization` header flow. Two seeded roles exist:
 authenticated user. `/api/push/public-key` and `/actuator/health|info` are unauthenticated;
 push subscribe/unsubscribe require the auth cookie and are scoped to that user.
 
-CSRF protection uses a double-submit cookie (`XSRF-TOKEN`): for state-changing requests
-to protected endpoints, echo the cookie value back in the `X-XSRF-TOKEN` header. The
-login, logout, and demo-login endpoints are exempt.
+CSRF protection uses an `HttpOnly` token cookie (`XSRF-TOKEN`) plus an explicit
+same-origin bootstrap endpoint: call `GET /api/auth/csrf`, then send the returned token
+in the `X-XSRF-TOKEN` header for state-changing API requests, including login, logout,
+and demo-login.
 
 ---
 
 ## Auth — `/api/auth`
+
+### GET /api/auth/csrf
+
+Issues the CSRF cookie and returns the token that the SPA must echo in the
+`X-XSRF-TOKEN` header on state-changing requests.
+
+**Response `200 OK`**
+
+```json
+{ "token": "csrf-token" }
+```
+
+Also sets the `X-XSRF-TOKEN` response header to the same token value.
+
+---
 
 ### POST /api/auth/login
 

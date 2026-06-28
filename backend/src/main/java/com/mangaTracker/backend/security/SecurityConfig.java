@@ -28,8 +28,8 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
  * Stateless JWT-cookie security. Authenticated endpoints require a valid auth cookie; login/logout
- * are public. CSRF protection uses a double-submit cookie (readable by JS) for state-changing
- * requests, matching the SPA's needs while keeping the auth token httpOnly.
+ * are public but still CSRF-protected. The SPA fetches a same-origin CSRF token and echoes it in
+ * the X-XSRF-TOKEN header while both auth and CSRF cookies remain httpOnly.
  */
 @Configuration
 public class SecurityConfig {
@@ -46,6 +46,7 @@ public class SecurityConfig {
   private static final String AUTH_LOGIN = "/api/auth/login";
   private static final String AUTH_LOGOUT = "/api/auth/logout";
   private static final String AUTH_DEMO_LOGIN = "/api/auth/demo-login";
+  private static final String AUTH_CSRF = "/api/auth/csrf";
 
   public SecurityConfig(
       JwtCookieAuthFilter jwtCookieAuthFilter,
@@ -85,27 +86,31 @@ public class SecurityConfig {
   }
 
   @Bean
+  public CsrfTokenRepository csrfTokenRepository() {
+    CookieCsrfTokenRepository csrfTokenRepository = new CookieCsrfTokenRepository();
+    csrfTokenRepository.setCookieCustomizer(
+        cookie -> cookie.httpOnly(true).sameSite("Strict").path("/"));
+    return csrfTokenRepository;
+  }
+
+  @Bean
   public SecurityFilterChain securityFilterChain(
-      HttpSecurity http, CorsConfigurationSource corsConfigurationSource) throws Exception {
-    CookieCsrfTokenRepository csrfTokenRepository = CookieCsrfTokenRepository.withHttpOnlyFalse();
+      HttpSecurity http,
+      CorsConfigurationSource corsConfigurationSource,
+      CsrfTokenRepository csrfTokenRepository)
+      throws Exception {
     http.cors(cors -> cors.configurationSource(corsConfigurationSource))
         .csrf(
             csrf -> {
               CsrfTokenRequestAttributeHandler requestHandler =
                   new CsrfTokenRequestAttributeHandler();
               requestHandler.setCsrfRequestAttributeName(null);
-              csrf.csrfTokenRepository(
-                      csrfTokenRepository) // NOSONAR: CSRF token cookie must be readable by
-                  // Angular's XSRF protection (which reads the cookie
-                  // via JS and sends it back as X-XSRF-TOKEN header);
-                  // HttpOnly would prevent this.
-                  .csrfTokenRequestHandler(requestHandler)
-                  .ignoringRequestMatchers(AUTH_LOGIN, AUTH_LOGOUT, AUTH_DEMO_LOGIN);
+              csrf.csrfTokenRepository(csrfTokenRepository).csrfTokenRequestHandler(requestHandler);
             })
         .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .authorizeHttpRequests(
             auth ->
-                auth.requestMatchers(AUTH_LOGIN, AUTH_LOGOUT, AUTH_DEMO_LOGIN)
+                auth.requestMatchers(AUTH_LOGIN, AUTH_LOGOUT, AUTH_DEMO_LOGIN, AUTH_CSRF)
                     .permitAll()
                     .requestMatchers("/actuator/health", "/actuator/info")
                     .permitAll()
@@ -140,6 +145,11 @@ public class SecurityConfig {
     protected void doFilterInternal(
         HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
         throws ServletException, IOException {
+      if (AUTH_CSRF.equals(request.getRequestURI())) {
+        filterChain.doFilter(request, response);
+        return;
+      }
+
       CsrfToken csrfToken = csrfTokenRepository.loadToken(request);
       if (csrfToken != null) {
         csrfToken.getToken();

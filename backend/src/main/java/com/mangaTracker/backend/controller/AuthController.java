@@ -6,6 +6,8 @@ import com.mangaTracker.backend.security.AuthenticatedUser;
 import com.mangaTracker.backend.security.CurrentUser;
 import com.mangaTracker.backend.security.JwtCookieAuthFilter;
 import com.mangaTracker.backend.security.JwtService;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
@@ -16,6 +18,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.csrf.CsrfToken;
+import org.springframework.security.web.csrf.CsrfTokenRepository;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -29,6 +33,7 @@ public class AuthController {
   private static final String KEY_USERNAME = "username";
   private static final String KEY_ROLE = "role";
   private static final String KEY_ERROR = "error";
+  private static final String KEY_CSRF_TOKEN = "token";
 
   private static final String DEMO_USERNAME = "demo";
 
@@ -36,6 +41,7 @@ public class AuthController {
   private final PasswordEncoder passwordEncoder;
   private final JwtService jwtService;
   private final CurrentUser currentUser;
+  private final CsrfTokenRepository csrfTokenRepository;
   private final boolean cookieSecure;
 
   private volatile String dummyHash;
@@ -45,11 +51,13 @@ public class AuthController {
       PasswordEncoder passwordEncoder,
       JwtService jwtService,
       CurrentUser currentUser,
+      CsrfTokenRepository csrfTokenRepository,
       @Value("${app.auth.cookie-secure:true}") boolean cookieSecure) {
     this.appUserRepository = appUserRepository;
     this.passwordEncoder = passwordEncoder;
     this.jwtService = jwtService;
     this.currentUser = currentUser;
+    this.csrfTokenRepository = csrfTokenRepository;
     this.cookieSecure = cookieSecure;
   }
 
@@ -103,6 +111,19 @@ public class AuthController {
                 ResponseEntity.ok()
                     .body(Map.of(KEY_USERNAME, u.getUsername(), KEY_ROLE, u.getRole().name())))
         .orElseGet(() -> ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
+  }
+
+  @GetMapping("/csrf")
+  public ResponseEntity<Map<String, String>> csrf(
+      HttpServletRequest request, HttpServletResponse response) {
+    CsrfToken csrfToken = csrfTokenRepository.loadToken(request);
+    if (csrfToken == null) {
+      csrfToken = csrfTokenRepository.generateToken(request);
+      csrfTokenRepository.saveToken(csrfToken, request, response);
+    }
+    return ResponseEntity.ok()
+        .header(csrfToken.getHeaderName(), csrfToken.getToken())
+        .body(Map.of(KEY_CSRF_TOKEN, csrfToken.getToken()));
   }
 
   private ResponseEntity<Map<String, String>> authResponse(AppUser user) {

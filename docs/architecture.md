@@ -104,9 +104,12 @@ JwtCookieAuthFilter validates JWT → SecurityContext authentication
 - **Roles:** `OWNER` (private library) and `DEMO` (public, passwordless; nightly reset by `DemoResetJob`).
 - **Owner scoping:** `manga.owner_id` FKs to `app_user`; queries filter by the authenticated
   user's id, so one user never sees another's manga (cross-owner access returns `404`).
-- **CSRF:** double-submit cookie (`XSRF-TOKEN` / `X-XSRF-TOKEN`), with login/logout/demo-login exempt.
+- **CSRF:** `HttpOnly` CSRF cookie (`XSRF-TOKEN`) plus same-origin token bootstrap
+  (`GET /api/auth/csrf`); all state-changing API requests, including login/logout/demo-login,
+  must send `X-XSRF-TOKEN`.
 - **CORS:** disabled (same-origin) unless `app.auth.allowed-origins` is set.
-- **Public endpoints:** `/api/auth/login|logout|demo-login`, `/api/push/public-key`, `/actuator/health|info`.
+- **Public endpoints:** `/api/auth/csrf`, `/api/auth/login|logout|demo-login`,
+  `/api/push/public-key`, `/actuator/health|info`.
 
 ---
 

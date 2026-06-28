@@ -26,6 +26,14 @@ async function mockApi(page: Page, handleManga: ApiHandler): Promise<void> {
       return;
     }
 
+    if (pathname === '/api/auth/csrf') {
+      await route.fulfill({
+        headers: { 'X-XSRF-TOKEN': 'csrf-token' },
+        json: { token: 'csrf-token' },
+      });
+      return;
+    }
+
     if (pathname.startsWith('/api/manga')) {
       if (await handleManga(route, pathname)) {
         return;

@@ -2,6 +2,7 @@ package com.mangaTracker.backend.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -73,26 +74,48 @@ class SecurityConfigTest {
   }
 
   @Test
-  void safePublicRequest_emitsXsrfCookie_forSpaMutations() throws Exception {
+  void safePublicRequest_emitsHttpOnlyXsrfCookie_forSpaMutations() throws Exception {
     when(vapidKeys.getPublicKey()).thenReturn("BPublicKey123");
 
     mockMvc
         .perform(get("/api/push/public-key"))
         .andExpect(status().isOk())
-        .andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("XSRF-TOKEN=")));
+        .andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("XSRF-TOKEN=")))
+        .andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("HttpOnly")));
   }
 
   @Test
-  void authEndpoints_doNotRequireCsrf() throws Exception {
+  void csrfEndpoint_exposesTokenForSpaHeader() throws Exception {
+    mockMvc
+        .perform(get("/api/auth/csrf"))
+        .andExpect(status().isOk())
+        .andExpect(header().string("X-XSRF-TOKEN", not("")))
+        .andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("XSRF-TOKEN=")))
+        .andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("HttpOnly")));
+  }
+
+  @Test
+  void authEndpoints_requireCsrf() throws Exception {
     mockMvc
         .perform(
             post("/api/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"username\":\"owner\",\"password\":\"secret\"}"))
+        .andExpect(status().isForbidden());
+
+    mockMvc.perform(post("/api/auth/demo-login")).andExpect(status().isForbidden());
+    mockMvc.perform(post("/api/auth/logout")).andExpect(status().isForbidden());
+
+    mockMvc
+        .perform(
+            post("/api/auth/login")
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"username\":\"owner\",\"password\":\"secret\"}"))
         .andExpect(status().isUnauthorized());
 
-    mockMvc.perform(post("/api/auth/demo-login")).andExpect(status().isNotFound());
-    mockMvc.perform(post("/api/auth/logout")).andExpect(status().isNoContent());
+    mockMvc.perform(post("/api/auth/demo-login").with(csrf())).andExpect(status().isNotFound());
+    mockMvc.perform(post("/api/auth/logout").with(csrf())).andExpect(status().isNoContent());
   }
 
   @Test
