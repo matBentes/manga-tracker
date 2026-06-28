@@ -13,6 +13,9 @@ async function globalSetup(config) {
   await page.route(/\/api\/auth\/demo-login/, async (route) => {
     await route.fulfill({ json: { username: 'demo', role: 'DEMO' } });
   });
+  await page.route(/\/api\/manga(?:[/?#].*)?$/, async (route) => {
+    await route.fulfill({ json: [] });
+  });
 
   await page.goto(config.projects[0].use.baseURL + '/');
   await page.waitForLoadState('networkidle');
