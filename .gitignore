@@ -40,7 +40,6 @@ test-results/
 .claude/skills/
 .claude/skills.link-backup
 .opencode/
-openspec/
 
 # ── Playwright MCP ──────────────────────────────────────────────────────────
 .playwright-mcp/

@@ -3,6 +3,7 @@
 This is the compact Claude Code entrypoint for this repository.
 
 Read these in order:
+
 1. `docs/agent-workflow.md` (shared agent rules and dual-agent workflow)
 2. `docs/developer-guide.md` (project structure, tests, quality gates)
 3. `docs/architecture.md` and `docs/api.md` (system behavior and contracts)
@@ -12,13 +13,14 @@ Read these in order:
 
 - Manga reading tracker: users add manga URLs, backend scrapes for new chapters, frontend shows the reading dashboard.
 - Stack: Spring Boot 3, Java 21, Angular 22, PostgreSQL, Docker Compose.
-- Main directories: `backend/`, `frontend/`, `docs/`, `tasks/`.
+- Main directories: `backend/`, `frontend/`, `docs/`, `openspec/`.
 
 ## Agent Setup
 
 - Reusable dual-agent workflow templates and shared review skills live at `https://github.com/matBentes/agent-workflows`.
 - Install `/dual-opus`, `/dual-gpt`, OpenSpec bootstrap files, and `thermo-nuclear-code-quality-review` from that repo; do not vendor them here.
-- Do not commit generated `.claude/commands/`, `.claude/skills/`, `.opencode/`, `openspec/`, or local `skills/` artifacts unless the team explicitly decides to vendor them.
+- Do not commit generated `.claude/commands/`, `.claude/skills/`, `.opencode/`, or local `skills/` artifacts unless the team explicitly decides to vendor them.
+- `openspec/` is vendored and canonical: it is the main planning system (proposals, specs, tasks). Retired pre-OpenSpec plans live under `openspec/deprecated-tasks/` for reference only.
 
 ## Claude Role
 
