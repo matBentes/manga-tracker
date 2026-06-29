@@ -11,8 +11,10 @@ Read these in order:
 ## Agent Setup
 
 - Reusable dual-agent workflow templates and shared review skills live at `https://github.com/matBentes/agent-workflows`.
-- Install `/dual-opus`, `/dual-gpt`, OpenSpec bootstrap files, and `thermo-nuclear-code-quality-review` from that repo; do not vendor them here.
-- Do not commit generated `.claude/commands/`, `.claude/skills/`, `.opencode/`, `openspec/`, or local `skills/` artifacts unless the team explicitly decides to vendor them.
+- Install `/dual-opus`, `/dual-gpt`, OpenSpec command bootstrap files, and `thermo-nuclear-code-quality-review` from that repo; do not vendor them here.
+- During plan review, install/use Matt Pocock's `grill-with-docs` skill with `npx skills add https://github.com/mattpocock/skills --skill grill-with-docs` when available.
+- Do not commit generated `.claude/commands/`, `.claude/skills/`, `.opencode/`, or local `skills/` artifacts.
+- `openspec/` is vendored and canonical: use it for durable proposals, specs, tasks, reviews, sync, and archive state. Retired pre-OpenSpec plans live under `openspec/deprecated-tasks/` for reference only.
 
 ## Operating Defaults
 
