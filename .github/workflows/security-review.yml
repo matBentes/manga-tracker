@@ -6,6 +6,12 @@ on:
   pull_request:
     branches: ['**']
 
+# Cancel an in-progress run when a newer commit is pushed to the same ref.
+# Only cancel on pull_request events so main-branch runs always finish.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   actions: read
   contents: read
