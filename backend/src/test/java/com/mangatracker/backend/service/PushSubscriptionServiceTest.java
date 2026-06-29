@@ -63,14 +63,16 @@ class PushSubscriptionServiceTest {
 
   @Test
   void subscribe_rejectsBlankEndpoint() {
-    assertThatThrownBy(() -> service().subscribe("  ", "k", "a"))
+    var service = service();
+    assertThatThrownBy(() -> service.subscribe("  ", "k", "a"))
         .isInstanceOf(IllegalArgumentException.class);
     verify(repository, never()).save(any());
   }
 
   @Test
   void subscribe_rejectsMissingKeys() {
-    assertThatThrownBy(() -> service().subscribe("https://push/a", "", "a"))
+    var service = service();
+    assertThatThrownBy(() -> service.subscribe("https://push/a", "", "a"))
         .isInstanceOf(IllegalArgumentException.class);
   }
 
@@ -82,7 +84,7 @@ class PushSubscriptionServiceTest {
 
   @Test
   void unsubscribe_rejectsBlankEndpoint() {
-    assertThatThrownBy(() -> service().unsubscribe(""))
-        .isInstanceOf(IllegalArgumentException.class);
+    var service = service();
+    assertThatThrownBy(() -> service.unsubscribe("")).isInstanceOf(IllegalArgumentException.class);
   }
 }

@@ -58,8 +58,8 @@ class DemoResetJobTest {
     order.verify(mangaRepository).saveAll(any());
 
     List<Manga> seeded = captureSaved();
-    assertThat(seeded).isNotEmpty();
     assertThat(seeded)
+        .isNotEmpty()
         .allMatch(
             m ->
                 demoId.equals(m.getOwnerId())
@@ -130,8 +130,7 @@ class DemoResetJobTest {
     // Startup seed never purges; it only fills an empty library.
     verify(mangaRepository, never()).deleteByOwnerId(any());
     List<Manga> seeded = captureSaved();
-    assertThat(seeded).isNotEmpty();
-    assertThat(seeded).allMatch(m -> demoId.equals(m.getOwnerId()));
+    assertThat(seeded).isNotEmpty().allMatch(m -> demoId.equals(m.getOwnerId()));
   }
 
   @Test

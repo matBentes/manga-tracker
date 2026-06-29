@@ -23,12 +23,12 @@ import com.mangatracker.backend.service.VapidKeys;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.cors.CorsConfigurationSource;
 
@@ -42,13 +42,13 @@ class SecurityConfigTest {
   @Autowired private CorsConfigurationSource corsConfigurationSource;
   @Autowired private JwtCookieAuthFilter jwtCookieAuthFilter;
 
-  @MockBean private AppUserRepository appUserRepository;
-  @MockBean private CurrentUser currentUser;
-  @MockBean private JwtService jwtService;
-  @MockBean private MangaService mangaService;
-  @MockBean private PushNotificationService pushNotificationService;
-  @MockBean private PushSubscriptionService pushSubscriptionService;
-  @MockBean private VapidKeys vapidKeys;
+  @MockitoBean private AppUserRepository appUserRepository;
+  @MockitoBean private CurrentUser currentUser;
+  @MockitoBean private JwtService jwtService;
+  @MockitoBean private MangaService mangaService;
+  @MockitoBean private PushNotificationService pushNotificationService;
+  @MockitoBean private PushSubscriptionService pushSubscriptionService;
+  @MockitoBean private VapidKeys vapidKeys;
 
   @Test
   void passwordEncoder_isBCrypt() {
