@@ -1,6 +1,8 @@
 # manga-tracker — Agent Briefing (Codex + Claude)
 
 This repository is configured to work with both Codex and Claude Code.
+Reusable dual-agent workflow templates and shared review skills live outside this
+repo at `https://github.com/matBentes/agent-workflows`.
 
 Read these in order:
 1. `docs/agent-workflow.md` (shared rules for both agents)
@@ -11,23 +13,15 @@ Read these in order:
 ## Codex Notes
 
 - Use `AGENTS.md` as the entrypoint (this file).
-- Project-specific reusable workflows live in `skills/` and are the canonical place for repo-owned skills.
-- Community-installed skills live in `.agents/skills/`.
+- Reusable workflow commands and shared skills should be installed from `matBentes/agent-workflows`, not committed here.
+- Community-installed skills live outside this repo unless explicitly needed for project behavior.
 - Recommended split: Claude for PRD/scope and independent second review, Codex for implementation/testing/fixes.
 
-### Project Skill Split
+### Agent Workflow Setup
 
-- `skills/`: repo-specific workflows and conventions for manga-tracker
-- `.agents/skills/`: broader imported toolbox skills
-- `~/.codex/skills`: personal/global Codex skills outside this repository
-
-Current repo-local skills in `skills/`:
-- `domain-modeling`
-- `grill-with-docs`
-- `handoff`
-- `improve-codebase-architecture`
-- `teach`
-- `thermo-nuclear-code-quality-review`
+- Keep agent workflow commands, OpenSpec bootstrap files, and shared review skills local/global.
+- Use `matBentes/agent-workflows` as the source of truth for `/dual-opus`, `/dual-gpt`, and `thermo-nuclear-code-quality-review`.
+- Do not commit generated `.claude/commands/`, `.claude/skills/`, `.opencode/`, or `openspec/` setup artifacts unless the team explicitly decides to vendor them.
 
 ### Codex Operating Profile
 
