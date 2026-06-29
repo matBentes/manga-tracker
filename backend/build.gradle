@@ -8,7 +8,7 @@ plugins {
     id 'org.sonarqube' version '5.1.0.4882'
 }
 
-group = 'com.mangaTracker'
+group = 'com.mangatracker'
 version = '0.0.1-SNAPSHOT'
 
 java {
@@ -87,7 +87,7 @@ jacocoTestCoverageVerification {
     dependsOn jacocoTestReport
     violationRules {
         rule {
-            excludes = ['com.mangaTracker.backend.BackendApplication']
+            excludes = ['com.mangatracker.backend.BackendApplication']
             limit {
                 minimum = 0.70
             }
