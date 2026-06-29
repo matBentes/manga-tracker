@@ -1,6 +1,4 @@
-$ink: #111111;
-$accent: #ffe600;
-$danger: #ff3b30;
+@use '../../styles/tokens' as *;
 
 .settings {
   max-width: 640px;
@@ -22,7 +20,7 @@ $danger: #ff3b30;
 .schedule-card {
   border: 3px solid $ink;
   box-shadow: 6px 6px 0 $ink;
-  background: #fff;
+  background: $white;
   padding: 1.1rem;
   margin-bottom: 1.5rem;
 }
@@ -66,7 +64,7 @@ $danger: #ff3b30;
 
   &.enabled {
     background: $ink;
-    color: #fff;
+    color: $white;
   }
   &:active {
     transform: translate(2px, 2px);
