@@ -21,8 +21,8 @@ import org.springframework.transaction.annotation.Transactional;
  * a visitor makes during the day are wiped overnight; the owner's private library is never touched.
  *
  * <p>Seed URLs point at the real {@code sakuramangas.org} pages so a visitor who opens a demo card
- * lands on the actual manga. Because {@code manga.source_url} is globally unique, the owner must
- * not track these same URLs in their private library, or one of the two inserts will conflict.
+ * lands on the actual manga. Uniqueness is per-owner (see V12 migration), so the owner may track
+ * these same URLs in their private library without conflicting with the demo account's copies.
  */
 @Component
 @Order(1) // run after UserSeeder (@Order(0)) so the demo account exists before we seed its library
@@ -36,8 +36,8 @@ public class DemoResetJob implements ApplicationRunner {
   static final String SCHEDULE_ZONE = "America/Sao_Paulo";
 
   /**
-   * Fixed demo library pointing at real {@code sakuramangas.org} pages. {@code manga.source_url} is
-   * globally unique, so the owner must not track these same URLs in their private library.
+   * Fixed demo library pointing at real {@code sakuramangas.org} pages. Uniqueness is per-owner
+   * (V12), so these URLs may coexist with the same URLs tracked in another user's library.
    */
   private static final List<DemoEntry> DEMO_LIBRARY =
       List.of(

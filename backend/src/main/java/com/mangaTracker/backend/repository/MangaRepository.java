@@ -13,8 +13,6 @@ public interface MangaRepository extends JpaRepository<Manga, UUID> {
 
   List<Manga> findAllByOrderByUpdatedAtDesc();
 
-  boolean existsBySourceUrl(String sourceUrl);
-
   /** Owner-scoped listing: only the given user's manga, newest-updated first. */
   List<Manga> findAllByOwnerIdOrderByUpdatedAtDesc(UUID ownerId);
 

@@ -63,20 +63,6 @@ class MangaRepositoryTest {
   }
 
   @Test
-  void existsBySourceUrl_returnsTrue_whenUrlExists() {
-    mangaRepository.save(buildManga("https://sakuramangas.org/manga/one-piece/"));
-
-    assertThat(mangaRepository.existsBySourceUrl("https://sakuramangas.org/manga/one-piece/"))
-        .isTrue();
-  }
-
-  @Test
-  void existsBySourceUrl_returnsFalse_whenUrlDoesNotExist() {
-    assertThat(mangaRepository.existsBySourceUrl("https://sakuramangas.org/manga/not-found/"))
-        .isFalse();
-  }
-
-  @Test
   void save_allowsSameSourceUrlForDifferentOwners() {
     String sourceUrl = "https://sakuramangas.org/manga/shared/";
     UUID ownerA = createOwner("owner-a");

@@ -43,11 +43,12 @@ public class MangaService {
 
   public Manga addManga(String sourceUrl) {
     UUID ownerId = currentUser.requireId();
-    addMangaRateLimiter.check(ownerId);
-    // Check duplicate (scoped to this user) before resolving scraper to give accurate error
+    // Reject duplicates (scoped to this user) before consuming rate-limit quota, so retrying an
+    // already-tracked URL doesn't burn the limiter, and so the error is accurate.
     if (mangaRepository.existsBySourceUrlAndOwnerId(sourceUrl, ownerId)) {
       throw new DuplicateMangaException("Manga already tracked: " + sourceUrl);
     }
+    addMangaRateLimiter.check(ownerId);
     MangaScraper scraper = scraperRegistry.resolve(sourceUrl);
     ScrapedManga scraped = scraper.scrape(sourceUrl);
     Manga manga =

@@ -2,6 +2,8 @@ import {
   HttpBackend,
   HttpClient,
   HttpErrorResponse,
+  HttpEvent,
+  HttpHandlerFn,
   HttpInterceptorFn,
   HttpRequest,
 } from '@angular/common/http';
@@ -42,9 +44,17 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const authReq = req.clone({ withCredentials: true });
 
   if (requiresCsrf(req)) {
-    return loadCsrfToken(httpBackend).pipe(
-      switchMap((token) => next(authReq.clone({ setHeaders: { [CSRF_HEADER]: token } }))),
-      catchError((err: HttpErrorResponse) => handleAuthError(err, router, req.url)),
+    return sendWithCsrf(authReq, next, httpBackend).pipe(
+      catchError((err: HttpErrorResponse) => {
+        // A 403 usually means the cached CSRF token rotated server-side. loadCsrfToken already
+        // cleared it (via handleAuthError), so retry once with a freshly fetched token.
+        if (err.status === 403) {
+          return sendWithCsrf(authReq, next, httpBackend).pipe(
+            catchError((retryErr: HttpErrorResponse) => handleAuthError(retryErr, router, req.url)),
+          );
+        }
+        return handleAuthError(err, router, req.url);
+      }),
     );
   }
 
@@ -54,6 +64,24 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
     }),
   );
 };
+
+function sendWithCsrf(
+  authReq: HttpRequest<unknown>,
+  next: HttpHandlerFn,
+  httpBackend: HttpBackend,
+): Observable<HttpEvent<unknown>> {
+  return loadCsrfToken(httpBackend).pipe(
+    switchMap((token) => next(authReq.clone({ setHeaders: { [CSRF_HEADER]: token } }))),
+    tap({
+      error: (err: HttpErrorResponse) => {
+        // Drop the cached token on 403 so the retry (and future requests) re-fetch a fresh one.
+        if (err.status === 403) {
+          csrfToken = null;
+        }
+      },
+    }),
+  );
+}
 
 function requiresCsrf(req: HttpRequest<unknown>): boolean {
   return isApiRequest(req.url) && !SAFE_METHODS.has(req.method.toUpperCase());
