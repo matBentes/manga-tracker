@@ -95,6 +95,34 @@ class SecurityConfigTest {
   }
 
   @Test
+  void swaggerDocsPaths_areReachableWithoutAuthentication() throws Exception {
+    mockMvc
+        .perform(get("/swagger-ui.html"))
+        .andExpect(result -> assertThat(result.getResponse().getStatus()).isNotEqualTo(401));
+    mockMvc
+        .perform(get("/swagger-ui/index.html"))
+        .andExpect(result -> assertThat(result.getResponse().getStatus()).isNotEqualTo(401));
+    mockMvc
+        .perform(get("/v3/api-docs"))
+        .andExpect(result -> assertThat(result.getResponse().getStatus()).isNotEqualTo(401));
+  }
+
+  @Test
+  void explicitlyProtectedPaths_requireAuthentication() throws Exception {
+    mockMvc.perform(get("/api/auth/me")).andExpect(status().isUnauthorized());
+    mockMvc.perform(get("/api/manga")).andExpect(status().isUnauthorized());
+
+    mockMvc
+        .perform(
+            post("/api/push/subscribe")
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"endpoint\":\"https://push/a\",\"keys\":{\"p256dh\":\"k\",\"auth\":\"a\"}}"))
+        .andExpect(status().isUnauthorized());
+  }
+
+  @Test
   void authEndpoints_requireCsrf() throws Exception {
     mockMvc
         .perform(
@@ -138,7 +166,7 @@ class SecurityConfigTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     "{\"endpoint\":\"https://push/a\",\"keys\":{\"p256dh\":\"k\",\"auth\":\"a\"}}"))
-        .andExpect(status().isForbidden());
+        .andExpect(status().isUnauthorized());
 
     mockMvc
         .perform(

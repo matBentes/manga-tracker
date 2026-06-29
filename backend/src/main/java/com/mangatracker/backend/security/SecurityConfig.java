@@ -108,6 +108,11 @@ public class SecurityConfig {
               csrf.csrfTokenRepository(csrfTokenRepository).csrfTokenRequestHandler(requestHandler);
             })
         .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+        .exceptionHandling(
+            exceptions ->
+                exceptions.authenticationEntryPoint(
+                    (request, response, authException) ->
+                        response.sendError(HttpServletResponse.SC_UNAUTHORIZED)))
         .authorizeHttpRequests(
             auth ->
                 auth.requestMatchers(AUTH_LOGIN, AUTH_LOGOUT, AUTH_DEMO_LOGIN, AUTH_CSRF)
@@ -115,6 +120,8 @@ public class SecurityConfig {
                     .requestMatchers("/actuator/health", "/actuator/info")
                     .permitAll()
                     .requestMatchers("/api/push/public-key")
+                    .permitAll()
+                    .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**")
                     .permitAll()
                     .requestMatchers("/api/auth/me")
                     .authenticated()

@@ -137,7 +137,7 @@ npm run e2e                         # Playwright, mocked backend
 
 ## Documentation
 
-- [API Reference](docs/api.md)
+- [API Concepts](docs/api.md) — auth, CSRF, demo behavior, rate limits, and error format. Full endpoint reference is generated at `http://localhost:8080/swagger-ui.html`.
 - [Architecture Overview](docs/architecture.md)
 - [Developer Guide](docs/developer-guide.md)
 - [Agent Workflow (Codex + Claude)](docs/agent-workflow.md)
