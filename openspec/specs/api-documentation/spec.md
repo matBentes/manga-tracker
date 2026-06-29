@@ -1,7 +1,7 @@
 # api-documentation Specification
 
 ## Purpose
-TBD - created by archiving change add-springdoc-openapi. Update Purpose after archive.
+Define how the backend's HTTP API is documented: an auto-generated, always-current OpenAPI 3 specification and interactive Swagger UI sourced from the live controllers and DTOs, so the per-endpoint contract cannot drift from the code. This capability owns the machine-readable spec, the unauthenticated docs endpoints, the documented cookie-JWT/CSRF authentication scheme, and the shared error-envelope schema; `docs/api.md` is reduced to cross-cutting concepts that point readers to Swagger for the endpoint reference.
 ## Requirements
 ### Requirement: Auto-generated OpenAPI specification
 The backend SHALL publish a machine-readable OpenAPI 3 specification generated from the live controllers and DTOs, so the per-endpoint contract cannot drift from the code.
