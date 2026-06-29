@@ -1,9 +1,8 @@
-$ink: #111111;
-$accent: #ffe600;
+@use '../styles/tokens' as *;
 
 .app-nav {
   background: $ink;
-  color: #fff;
+  color: $white;
   display: flex;
   align-items: center;
   padding: 0 clamp(0.85rem, 4vw, 1.5rem);
@@ -30,7 +29,7 @@ $accent: #ffe600;
   gap: clamp(0.85rem, 3vw, 1.25rem);
 
   a {
-    color: #fff;
+    color: $white;
     text-decoration: none;
     font-size: clamp(0.72rem, 3vw, 0.8rem);
     font-weight: 800;
@@ -54,7 +53,7 @@ $accent: #ffe600;
   align-items: center;
 
   .login-link {
-    color: #fff;
+    color: $white;
     text-decoration: none;
     font-size: clamp(0.72rem, 3vw, 0.8rem);
     font-weight: 800;
@@ -71,7 +70,7 @@ $accent: #ffe600;
   .logout-btn {
     background: transparent;
     border: none;
-    color: #fff;
+    color: $white;
     text-decoration: none;
     font-size: clamp(0.72rem, 3vw, 0.8rem);
     font-weight: 800;

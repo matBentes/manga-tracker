@@ -61,32 +61,6 @@ to the image keeps the local container workflow aligned
 with CI and reuses the developer's existing Codex auth,
 config, and skills inside the container.
 
-## 2026-03-05 — Skills: Install community skills and simplify all project skills
-
-**Files:** `CLAUDE.md`, `skills/*/SKILL.md`,
-`.agents/skills/`
-
-**What changed:**
-
-- Installed 11 community skills at project level
-  (not global)
-- Simplified all 4 project skills using skill-creator
-  patterns (822 to 548 lines, -33%)
-- Fixed stale references (`dev-browser skill` to
-  `Playwright MCP`, `Amp` to `Claude Code`)
-- Fixed wrong commands (`npx ng lint` to
-  `npm run lint`)
-- Added skill discovery instruction to CLAUDE.md
-
-**Why:**
-Skills were verbose with duplicated content (checklists
-restating the body, 4-story examples where 2 suffice,
-repeated convention rules across files). The
-skill-creator's guidance says: explain "why" not just
-rules, keep SKILL.md lean, and make descriptions
-"pushy" so Claude triggers them more reliably. Detailed
-breakdown in [skills.md](skills.md).
-
 ## 2026-03-04 — Dockerfile: Replace openjdk-21-jdk with Adoptium Temurin 21
 
 **File:** `.devcontainer/.devcontainer/Dockerfile`

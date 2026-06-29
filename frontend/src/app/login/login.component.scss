@@ -1,6 +1,4 @@
-$ink: #111111;
-$accent: #ffe600;
-$danger: #ff3b30;
+@use '../../styles/tokens' as *;
 
 .login-page {
   display: flex;
@@ -13,7 +11,7 @@ $danger: #ff3b30;
   flex-direction: column;
   width: 100%;
   max-width: 360px;
-  background: #fff;
+  background: $white;
   border: 3px solid $ink;
   box-shadow: 6px 6px 0 $ink;
   padding: 1.5rem 1.5rem 1.75rem;
@@ -42,7 +40,7 @@ $danger: #ff3b30;
   border: 3px solid $ink;
   outline: none;
   font-family: inherit;
-  background: #fff;
+  background: $white;
   color: $ink;
 
   &:focus {
@@ -100,7 +98,7 @@ $danger: #ff3b30;
   padding: 0.5rem 0.75rem;
   border: 3px solid $ink;
   background: $danger;
-  color: #fff;
+  color: $white;
   font-size: 0.8rem;
   font-weight: 800;
   text-transform: uppercase;

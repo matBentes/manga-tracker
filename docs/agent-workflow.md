@@ -9,12 +9,13 @@ Shared operating rules for AI agents in this repository.
 - Agent-specific wrappers:
   - Codex: `AGENTS.md`
   - Claude: `CLAUDE.md`
+- Reusable dual-agent workflows: `https://github.com/matBentes/agent-workflows`
 
 ## Practical Split (Recommended)
 
 Use this default split for faster delivery with clearer responsibilities:
 
-1. Claude: idea shaping, PRD creation, and story breakdown.
+1. Claude: idea shaping, proposal creation, and story breakdown.
 2. Codex: implementation, test execution, and the first self-review.
 3. Claude: independent second review against the plan and verification commands.
 4. Implementing agent: fixes agreed findings, then hands back for re-review.
@@ -49,31 +50,32 @@ If the change touches cross-service behavior, also run:
 ./run-e2e-integration.sh --down
 ```
 
-## Skills
+## Reusable Workflow Setup
 
-- Project skills: `skills/` (`prd`, `ralph`, `review`, `supervise`, `techdebt`)
-- Community skills: `.agents/skills/`
-- Use the minimum set of skills needed for the task; avoid broad, unfocused runs.
+- Keep reusable commands, OpenSpec bootstrap files, and shared review skills local/global.
+- Use `matBentes/agent-workflows` as the source of truth for `/dual-opus`, `/dual-gpt`, and `thermo-nuclear-code-quality-review`.
+- Do not commit generated `.claude/commands/`, `.claude/skills/`, `.opencode/`, `openspec/`, or `skills/` artifacts unless the team explicitly decides to vendor them.
+- Use the minimum workflow or skill needed for the task; avoid broad, unfocused runs.
 
 ## Planning Artifacts
 
-- Use `/prd` for medium/large features, ambiguous scope, or multi-story work.
-- Use `tasks/plan-template.md` for the implementation handoff that Codex builds and both agents review.
-- Task plans should reference the source PRD and the specific story IDs or requirements in scope.
+- Use `/dual-opus propose` for medium/large features, ambiguous scope, or multi-story work when the external workflow is installed.
+- Use `tasks/plan-template.md` only when a local implementation handoff artifact is needed.
+- Task plans should reference the approved proposal/plan and the specific story IDs or requirements in scope.
 - Task plans should also record manual verification and review evidence when the task needs them.
 - By default, keep task plans, fix docs, and review records in a local untracked path such as `.local/agent-artifacts/`; only commit them when explicitly requested.
-- Small bug fixes or obvious refactors can skip the PRD if the scope is already clear.
+- Small bug fixes or obvious refactors can skip a durable planning artifact if the scope is already clear.
 
 ## Canonical Handoff
 
 For medium/large work, use this explicit handoff:
 
-1. Claude creates the PRD in a local task artifact unless the user explicitly wants it committed.
-2. The PRD is reviewed and approved before implementation starts.
-3. Claude or the user creates a local task artifact from `tasks/plan-template.md`, linking the approved PRD and the exact stories/requirements in scope.
-4. Codex implements from the task plan, not directly from the PRD or ad hoc chat context.
-5. Codex runs the implementer self-review and records it in the local task artifact.
-6. Claude runs `/supervise` against the task plan and linked PRD.
+1. Claude creates or updates the proposal/plan artifact unless the user explicitly wants only chat-based planning.
+2. The plan is reviewed and approved before implementation starts.
+3. Claude or the user creates a local task artifact from `tasks/plan-template.md` when a durable handoff is needed.
+4. OpenCode/Codex implements from the approved plan, not ad hoc chat context.
+5. OpenCode/Codex runs the implementer self-review and records relevant evidence.
+6. Claude runs `/dual-opus review-impl` against the plan and implementation.
 7. Record the final review outcome in the same local artifact (`## Agreement`: implementer verdict, independent verdict, final status).
 8. Any fix requires both agents to review again before push and update the agreement record.
 
@@ -87,9 +89,3 @@ For medium/large work, use this explicit handoff:
 - Do not revert unrelated local changes.
 - Call out assumptions and any unexecuted checks.
 - For UI changes, validate behavior with Playwright and capture evidence when relevant.
-
-Emergency override (explicit and intentional only):
-
-```bash
-ALLOW_MAIN_PUSH=1 git push origin main
-```

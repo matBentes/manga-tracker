@@ -223,11 +223,7 @@ To reduce accidental bypass of failing CI, this repository enforces a local Git 
 
 - `.githooks/pre-push` blocks direct pushes to `main` by default.
 - Expected flow: feature branch -> pull request -> CI green -> merge.
-- Emergency override (intentional only):
-
-```bash
-ALLOW_MAIN_PUSH=1 git push origin main
-```
+- Direct pushes to `main` are not part of the documented workflow.
 
 ---
 

@@ -1,0 +1,12 @@
+// Shared design tokens — single source of truth for color literals.
+// The pre-commit linter (frontend/tools/lint-design-tokens.js) forbids
+// hardcoded hex outside this file, so add new shared colors here and
+// consume them via `@use '...tokens' as *;`.
+
+$ink: #111111; // primary text / borders
+$paper: #f5f5f0; // page background
+$accent: #ffe600; // brand yellow
+$danger: #ff3b30; // errors / destructive
+$ok: #00a152; // success (forms)
+$green: #00b341; // "new chapter" badge
+$white: #fff; // surfaces / inverted text
