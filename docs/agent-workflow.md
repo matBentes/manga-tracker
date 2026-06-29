@@ -15,7 +15,7 @@ Shared operating rules for AI agents in this repository.
 
 Use this default split for faster delivery with clearer responsibilities:
 
-1. Claude: idea shaping, PRD creation, and story breakdown.
+1. Claude: idea shaping, proposal creation, and story breakdown.
 2. Codex: implementation, test execution, and the first self-review.
 3. Claude: independent second review against the plan and verification commands.
 4. Implementing agent: fixes agreed findings, then hands back for re-review.

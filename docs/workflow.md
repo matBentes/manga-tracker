@@ -1,231 +1,62 @@
-# Good Practices: Human + AI Agent Workflow
+# Human + AI Agent Workflow
 
-How to run this project effectively with either Claude Code or Codex.
+Use this guide for day-to-day collaboration between the human developer, Claude Code, and OpenCode/Codex.
 
 ## Start Here
 
-1. Read the shared rules: `docs/agent-workflow.md`
-2. Use your agent entrypoint:
-   - Codex: `AGENTS.md`
-   - Claude: `CLAUDE.md`
-3. Use `docs/developer-guide.md` for detailed project conventions
+1. Read `docs/agent-workflow.md` for shared agent rules.
+2. Use the compact agent entrypoint for the tool in use:
+   - OpenCode/Codex: `AGENTS.md`
+   - Claude Code: `CLAUDE.md`
+3. Use `docs/developer-guide.md` for project structure, test commands, and quality gates.
 
-## Practical Split That Works Well
+## Reusable Workflow Source
 
-1. Use Claude for feature discovery:
-   - scope clarification
-   - PRD generation
-   - story slicing and acceptance criteria
-2. Use Codex for delivery:
-   - implement stories
-   - run tests and linting
-   - do the first findings-first self-review
-3. Use Claude for the independent second review:
-   - compare implementation against the plan
-   - run verification commands
-   - agree or disagree with the implementer review
-4. Use the implementing agent for fixes:
-   - address agreed findings
-   - hand back for re-review before push
+Reusable dual-agent workflow templates and shared review skills are not vendored in this repo.
 
-## Session Structure
+- Source of truth: `https://github.com/matBentes/agent-workflows`
+- Install from there when needed: `/dual-opus`, `/dual-gpt`, OpenSpec bootstrap files, and `thermo-nuclear-code-quality-review`
+- Do not commit generated `.claude/commands/`, `.claude/skills/`, `.opencode/`, `openspec/`, or local `skills/` artifacts unless the team explicitly decides to vendor them.
 
-Every non-trivial session should follow this pattern:
+## Practical Split
 
-1. **Orient**: Load shared conventions from `docs/agent-workflow.md`
-2. **Plan**: Explore code and agree an approach before broad edits
-3. **Implement**: Make targeted changes with tests
-4. **Self-Review**: Implementing agent runs a findings-first review
-5. **Second Review**: The other agent independently reviews and verifies
-6. **Fix Doc**: If blocked, the reviewer writes a focused fix doc (`tasks/fix-*.md`) for the implementer
-7. **Fix**: The implementing agent fixes from the fix doc
-8. **Re-review**: Both agents confirm the fix set or explicitly disagree
-9. **Record Agreement**: Append the final review outcome to the local task artifact as `## Agreement`
-10. **Capture**: Record notable process updates in docs when needed
+1. Claude owns exploration, proposal shaping, plan confirmation, implementation review, final approval, sync, and archive.
+2. OpenCode/Codex owns implementation, accepted fixes, PR warning fixes, and CI fixes.
+3. The user resolves disagreements and approves scope changes.
 
-If both reviews pass on the first check, skip directly from Step 5 to Step 9.
+## Standard Flow
 
-### Codex Rule Mapping (Claude-like behavior)
+When the external dual-agent workflow is installed, use this sequence:
 
-To emulate a Claude-style disciplined loop in Codex, use:
+1. Claude explores with `/dual-opus explore`.
+2. Claude proposes scope with `/dual-opus propose`.
+3. OpenCode reviews the plan with `/dual-gpt review-plan`.
+4. Claude confirms the plan with `/dual-opus confirm-plan`.
+5. OpenCode implements with `/dual-gpt apply`.
+6. Claude reviews implementation with `/dual-opus review-impl`.
+7. OpenCode applies accepted fixes with `/dual-gpt fix`.
+8. Claude runs final approval with `/dual-opus final-review`.
+9. After PR checks and accepted review comments are handled, Claude runs `/dual-opus sync` and `/dual-opus archive` when appropriate.
 
-- `plan first`: Codex explores and proposes a plan before editing
-- `implement now`: Codex executes immediately without a separate planning pause
-- `review this`: Codex performs the first findings-first self-review before the second agent checks. Appends the review to the local task plan (`## Implementer Review`) or local fix doc.
-- After the independent review, append `## Agreement` to the same local task artifact with the implementer verdict, independent verdict, and final status (`agree-pass`, `agree-fail`, or `disagree`).
-- `tech debt scan`: Codex runs the project tech debt workflow
+For small, obvious fixes, keep the plan brief and implement directly. Still report the checks run and any checks skipped.
 
-Recommended default for non-trivial tasks: start with `plan first`.
+## PR And CI Loop
 
-## Planning Artifacts
+- Use `/dual-gpt pr-fix` for accepted Codex PR review comments, Sonar annotations, or non-failing PR warnings.
+- Use `/dual-gpt ci-fix` for failed required checks or a failed Sonar quality gate.
+- Do not sync/archive until PR review comments, required checks, and final Claude approval are complete.
 
-Use two different planning artifacts, with a clear handoff between them:
+## Local Artifacts
 
-1. **PRD** (`/prd`, usually `tasks/prd-*.md`)
-   - Use for medium/large features, ambiguous scope, or multi-story work
-   - Captures goals, user stories, requirements, non-goals, and success criteria
-2. **Task plan** (`tasks/plan-template.md`)
-   - Use for the next implementation slice that an agent will actually build
-   - References the source PRD and selected story IDs in `## Source`
-   - Carries the `## Verification` and `## Review Gate` sections used by both reviewers
+Keep transient plans, fix notes, and review evidence local by default.
 
-By default, execution artifacts stay local and untracked:
-- put active task plans, fix docs, and review records under `.local/agent-artifacts/`
-- only commit a task or fix artifact when the user explicitly wants it tracked in the repository
+- Preferred location: `.local/agent-artifacts/`
+- Commit task artifacts only when explicitly requested.
+- If a durable handoff is useful, start from `tasks/plan-template.md` and adapt it to the current workflow.
 
-Use both for medium/large work.
-Use only a task plan for small bug fixes or straightforward refactors where scope is already clear.
-
-Important handoff rule:
-- Approve the PRD before creating the task plan.
-- Treat the task plan as the implementation contract.
-- Codex should implement from the task plan and its linked PRD slice, not from raw chat context alone.
-
-## Supervised Implementation Flow
-
-When Codex (or another agent) implements a plan that Claude created:
-
-```
-Claude: /prd → task artifact (commit only if explicitly requested)
-                ↓
-Claude or user: create local task artifact from `tasks/plan-template.md`
-                ↓
-User: hand approved task plan to Codex → Codex implements from the plan
-                ↓
-Codex: run self-review (`review this`) → append `## Implementer Review`
-                ↓
-User: ask Claude to /supervise → Claude independently reviews and verifies against the task plan and linked PRD
-                ↓
-Record agreement in the same local task artifact as `## Agreement`
-                ↓
-Agreement?
-  - agree-pass → push
-  - agree-fail → Claude writes local fix doc → Codex fixes from fix doc → both re-review
-  - disagree   → reconcile review differences before fixing or pushing
-```
-
-### Plan Verification And Review Sections
-
-Every implementation task plan in `tasks/` should end with a `## Verification` block and a `## Review Gate` block so the two-agent loop is explicit. PRDs can stay requirements-focused; task plans are the execution artifact reviewers verify against.
-
-Start from `tasks/plan-template.md` when writing a new task plan, then place the working copy under `.local/agent-artifacts/` unless the user explicitly asks to commit it.
-
-```markdown
 ## Verification
 
-**Success commands:**
-- `cd frontend && npm test`
-- `cd frontend && npm run test:coverage`
-
-**Manual verification:**
-- Open the affected screen and confirm the feature works end to end
-
-**Evidence:**
-- `/tmp/<feature-check>.png`
-
-**Quality gates:** backend, frontend (references CLAUDE.md commands)
-
-**Max fix attempts:** 3
-
-**Watch targets:**
-- `frontend/package.json` — dependency versions must be compatible
-- `frontend/vitest.config.*` — must reference correct setup file
-
-## Review Gate
-
-**Implementer review:**
-- Codex runs `review this`
-- Append the self-review as `## Implementer Review` in this local task artifact
-
-**Independent review:**
-- Claude runs `/supervise`
-
-**Review evidence:**
-- Implementer self-review: `## Implementer Review` section in this local artifact
-- Independent review summary or link
-- Final agreement: `## Agreement` section in this local artifact
-
-**Agreement rule:**
-- `agree-pass` = both reviews say ready
-- `agree-fail` = both reviews say blockers remain
-- `disagree` = reviewers differ materially; stop and reconcile before push
-
-**Fix owner:**
-- original implementer unless the user redirects
-```
-
-If a plan lacks `## Verification`, `/supervise` constructs one from CLAUDE.md quality gates + reasonable defaults.
-If a plan lacks `## Review Gate`, the second review can still run, but the double-check is incomplete and should be called out explicitly.
-
-### When to use `/supervise`
-
-- After the implementing agent has finished and posted a self-review
-- When you want the independent second-agent verdict before fixing or pushing
-- After each fix round when you want both agents to re-check the result
-- When the task involves config/dependency changes where version mismatches are likely
-- Anytime you'd say "watch this" or "check what Codex did"
-
-## Feature Task Flow
-
-For new features:
-
-1. Generate a PRD
-   - Claude style: `/prd`
-   - Codex style: ask to use the `prd` skill
-2. Refine scope and acceptance criteria
-3. Create the next task plan from `tasks/plan-template.md`
-   - link the PRD in `## Source`
-   - choose the story IDs or requirements for this slice
-4. Implement interactively, story by story with the chosen agent
-6. Run implementer self-review
-   - Codex style: `review this`
-7. Run the independent second review
-   - Claude style: `/supervise`
-8. Record the review outcome in the local task artifact as `## Agreement`
-9. Fix agreed issues and re-review until the verdict is `agree-pass`
-10. Run tech debt scan periodically
-   - Claude style: `/techdebt`
-   - Codex style: ask to use the `techdebt` skill
-
-## Available Skills
-
-### Project-specific (`skills/`)
-
-| Skill | Purpose | When to use |
-|-------|---------|-------------|
-| `prd` | Generate a structured PRD | Starting a new feature |
-| `techdebt` | Scan for tech debt and inconsistencies | Periodically |
-| `review` | Pre-push review against project conventions | Before pushing any branch |
-| `supervise` | Independent second review against a plan | After the implementing agent finishes and self-reviews |
-
-### Installed community skills (`.agents/skills/`)
-
-| Skill | Purpose | When to use |
-|-------|---------|-------------|
-| `angular-component` | Generate Angular components | Creating new standalone components |
-| `java-springboot` | Spring Boot patterns | Adding controllers, services, entities |
-| `playwright-e2e-testing` | Playwright E2E testing | Writing or debugging E2E tests |
-| `tdd` | Test-driven development | Implementing with red-green-refactor |
-| `code-review` | General code quality review | Deep review for SOLID, patterns, bugs |
-| `security-review` | OWASP security vulnerability scan | Pre-merge security audit |
-| `backend-testing` | Backend test strategies | Writing unit/integration tests for Java |
-| `docker-expert` | Docker/Compose guidance | Dockerfile or compose changes |
-| `github-actions-cicd` | CI/CD pipeline help | Modifying GitHub Actions workflows |
-| `find-skills` | Discover installable skills | When you are unsure which skill to use |
-| `skill-creator` | Create or improve skills | Building or refining project skills |
-
-## Claude-only Capabilities
-
-The items below are Claude-specific workflow features and should not be treated as shared agent rules:
-
-- `/worktree` helper flow in `.claude/worktrees/`
-- Claude subagents for parallel background exploration
-- Claude memory-specific prompts in `.claude/`
-
-## Pre-Push Checklist
-
-Direct pushes to `main` are blocked by `.githooks/pre-push` by default.
-Use branch + PR flow; only use `ALLOW_MAIN_PUSH=1 git push origin main` intentionally.
+Run relevant checks before finalizing work.
 
 ### Backend
 
@@ -233,7 +64,7 @@ Use branch + PR flow; only use `ALLOW_MAIN_PUSH=1 git push origin main` intentio
 cd backend
 ./gradlew spotlessApply
 ./gradlew test jacocoTestReport
-./gradlew jacocoTestCoverageVerification  # 70% minimum
+./gradlew jacocoTestCoverageVerification
 ```
 
 ### Frontend
@@ -241,14 +72,16 @@ cd backend
 ```bash
 cd frontend
 npm run format
-npm test              # Vitest unit tests
+npm test
 npm run lint
 npm run e2e
 ```
 
-### Both
+If the change touches cross-service behavior, also run `./run-e2e-integration.sh --down` from the repo root.
 
-- [ ] No `javax.persistence` imports in Java files
-- [ ] No edited/deleted Flyway migrations (only new ones)
-- [ ] All `inject()` usage, no constructor injection in Angular
-- [ ] UI changes verified in browser/Playwright
+## Safety Rules
+
+- Do not edit or delete existing Flyway migrations; add a new migration.
+- Do not revert unrelated local changes.
+- Do not push directly to `main`; use a branch and PR by default.
+- For UI changes, verify behavior with Playwright/browser tooling when practical.
