@@ -1,5 +1,42 @@
 # Change Log
 
+## 2026-06-26 — Auth: Cookie-JWT login, owner-scoped manga, public demo account
+
+**Files:** `backend/.../controller/AuthController.java`,
+`backend/.../security/{SecurityConfig,JwtCookieAuthFilter,JwtService,UserSeeder,
+CurrentUser,AuthenticatedUser,AddMangaRateLimiter}.java`,
+`backend/.../model/{AppUser,Role}.java`,
+`backend/.../repository/AppUserRepository.java`,
+`backend/.../exception/RateLimitExceededException.java`,
+`backend/.../job/DemoResetJob.java`,
+`backend/.../db/migration/V10__create_app_user_and_manga_owner.sql`,
+`frontend/.../login/*`, `frontend/.../services/auth.service.ts`,
+`frontend/.../guards/auth.guard.ts`, `frontend/.../interceptors/auth.interceptor.ts`,
+`frontend/.../app.component.{html,scss,ts}`, `docs/{api,architecture,developer-guide}.md`,
+`.env.example`
+
+**What changed:**
+
+- Added cookie-based JWT authentication: `POST /api/auth/login`,
+  `POST /api/auth/demo-login`, `POST /api/auth/logout`, `GET /api/auth/me`.
+  The JWT rides in an `httpOnly`, `SameSite=Strict` cookie (Secure in prod).
+- Introduced `app_user` table and two seeded roles — `OWNER` (private) and
+  `DEMO` (public, passwordless, reset nightly by `DemoResetJob`). Seeded at
+  startup from `OWNER_PASSWORD` / `DEMO_PASSWORD` env vars (BCrypt-hashed).
+- Made `/api/manga/**` owner-scoped via `manga.owner_id` (FK + index, migration V10);
+  cross-owner access returns `404`.
+- Login is constant-time (decoy hash when the username is unknown) to prevent
+  username enumeration; bad credentials return a generic `401`.
+- Added CSRF (double-submit `XSRF-TOKEN`) and optional CORS via `app.auth.allowed-origins`.
+- Added a per-user add-manga rate limiter (default 20 / 60s) → `429`.
+- Frontend: login page, auth service, route guard, HTTP interceptor, and a
+  Login/Logout control in the top-right nav driven by the current user's role.
+
+**Why:**
+The dashboard needed a real owner login to keep the private library private while
+still offering recruiters a no-friction public demo. Cookie-JWT keeps the API
+stateless and avoids exposing tokens to JavaScript.
+
 ## 2026-03-07 — Dev Container: Add Codex CLI and mount Codex home
 
 **Files:** `.devcontainer/.devcontainer/devcontainer.json`,

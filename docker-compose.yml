@@ -28,6 +28,9 @@ services:
       DB_URL: jdbc:postgresql://db:5432/manga_tracker
       DB_USERNAME: manga_tracker
       DB_PASSWORD: manga_tracker
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      OWNER_PASSWORD: ${OWNER_PASSWORD:-}
+      DEMO_PASSWORD: ${DEMO_PASSWORD:-}
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
       VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:mateus1337bentes@gmail.com}

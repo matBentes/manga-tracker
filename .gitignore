@@ -48,3 +48,12 @@ postgres_data/
 
 # ── Local agent artifacts ────────────────────────────────────────────────────
 .local/
+
+# ── Personal local-only notes / skills (not part of the project) ─────────────
+docs/interview-architecture.html
+docs/sakura-cloudflare-solution.html
+skills/domain-modeling/
+skills/grill-with-docs/
+skills/handoff/
+skills/improve-codebase-architecture/
+skills/teach/

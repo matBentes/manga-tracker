@@ -1,6 +1,4 @@
-import { test, expect } from '@playwright/test';
-
-const API_BASE = process.env['PLAYWRIGHT_API_BASE'] ?? '**';
+import { test, expect, type Page, type Route } from '@playwright/test';
 
 const sampleManga = {
   id: '11111111-1111-1111-1111-111111111111',
@@ -9,31 +7,65 @@ const sampleManga = {
   currentChapter: 0,
   latestChapter: 180,
   coverImageUrl: null,
+  latestChapterAt: null,
   notificationsEnabled: true,
   lastCheckedAt: null,
   createdAt: '2024-01-01T00:00:00',
   updatedAt: '2024-01-01T00:00:00',
 };
 
-test('add manga by URL - appears in reading list with detected title', async ({ page }) => {
-  // Initially no manga
-  await page.route(`${API_BASE}/api/manga`, async (route) => {
-    if (route.request().method() === 'GET') {
-      await route.fulfill({ json: [] });
+type ApiHandler = (route: Route, pathname: string) => Promise<boolean>;
+
+async function mockApi(page: Page, handleManga: ApiHandler): Promise<void> {
+  await page.route(/\/api\/.*/, async (route) => {
+    const request = route.request();
+    const pathname = new URL(request.url()).pathname;
+
+    if (pathname === '/api/auth/me' || pathname === '/api/auth/demo-login') {
+      await route.fulfill({ json: { username: 'demo', role: 'DEMO' } });
+      return;
     }
+
+    if (pathname === '/api/auth/csrf') {
+      await route.fulfill({
+        headers: { 'X-XSRF-TOKEN': 'csrf-token' },
+        json: { token: 'csrf-token' },
+      });
+      return;
+    }
+
+    if (pathname.startsWith('/api/manga')) {
+      if (await handleManga(route, pathname)) {
+        return;
+      }
+    }
+
+    throw new Error(`Unhandled API request: ${request.method()} ${request.url()}`);
+  });
+}
+
+test('add manga by URL - appears in reading list with detected title', async ({ page }) => {
+  let mangaList: Array<typeof sampleManga> = [];
+
+  await mockApi(page, async (route, pathname) => {
+    const method = route.request().method();
+
+    if (pathname === '/api/manga' && method === 'GET') {
+      await route.fulfill({ json: mangaList });
+      return true;
+    }
+
+    if (pathname === '/api/manga' && method === 'POST') {
+      mangaList = [sampleManga];
+      await route.fulfill({ status: 201, json: sampleManga });
+      return true;
+    }
+
+    return false;
   });
 
   await page.goto('/');
-  await expect(page.locator('.state-box')).toBeVisible();
-
-  // Set up POST to return the new manga and subsequent GET to return it in list
-  await page.route(`${API_BASE}/api/manga`, async (route) => {
-    if (route.request().method() === 'POST') {
-      await route.fulfill({ status: 201, json: sampleManga });
-    } else if (route.request().method() === 'GET') {
-      await route.fulfill({ json: [sampleManga] });
-    }
-  });
+  await expect(page.locator('.state-box')).toHaveText(/No manga tracked yet/);
 
   await page.fill('.url-input', sampleManga.sourceUrl);
   await page.click('.submit-btn');
@@ -43,20 +75,27 @@ test('add manga by URL - appears in reading list with detected title', async ({ 
 });
 
 test('mark as read - card shows caught up after marking', async ({ page }) => {
-  const unread = { ...sampleManga, currentChapter: 5, latestChapter: 10 };
+  let manga = { ...sampleManga, currentChapter: 5, latestChapter: 10 };
 
-  await page.route(`${API_BASE}/api/manga`, async (route) => {
-    await route.fulfill({ json: [unread] });
+  await mockApi(page, async (route, pathname) => {
+    const method = route.request().method();
+
+    if (pathname === '/api/manga' && method === 'GET') {
+      await route.fulfill({ json: [manga] });
+      return true;
+    }
+
+    if (pathname === `/api/manga/${manga.id}/read` && method === 'POST') {
+      manga = { ...manga, currentChapter: 10 };
+      await route.fulfill({ json: manga });
+      return true;
+    }
+
+    return false;
   });
 
   await page.goto('/');
   await expect(page.locator('.badge-new')).toBeVisible();
-
-  await page.route(`${API_BASE}/api/manga/${unread.id}/read`, async (route) => {
-    if (route.request().method() === 'POST') {
-      await route.fulfill({ json: { ...unread, currentChapter: 10 } });
-    }
-  });
 
   await page.click('.read-btn');
 
@@ -66,18 +105,27 @@ test('mark as read - card shows caught up after marking', async ({ page }) => {
 });
 
 test('delete manga - removed from list after confirmation', async ({ page }) => {
-  await page.route(`${API_BASE}/api/manga`, async (route) => {
-    await route.fulfill({ json: [sampleManga] });
+  let mangaList: Array<typeof sampleManga> = [sampleManga];
+
+  await mockApi(page, async (route, pathname) => {
+    const method = route.request().method();
+
+    if (pathname === '/api/manga' && method === 'GET') {
+      await route.fulfill({ json: mangaList });
+      return true;
+    }
+
+    if (pathname === `/api/manga/${sampleManga.id}` && method === 'DELETE') {
+      mangaList = [];
+      await route.fulfill({ status: 204 });
+      return true;
+    }
+
+    return false;
   });
 
   await page.goto('/');
   await expect(page.locator('.manga-title').first()).toHaveText(sampleManga.title);
-
-  await page.route(`${API_BASE}/api/manga/${sampleManga.id}`, async (route) => {
-    if (route.request().method() === 'DELETE') {
-      await route.fulfill({ status: 204 });
-    }
-  });
 
   page.once('dialog', (dialog) => dialog.accept());
   await page.click('.delete-btn');

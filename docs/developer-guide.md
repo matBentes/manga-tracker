@@ -31,7 +31,7 @@ manga-tracker/
 │       │       └── db/migration/ Flyway migrations (V1–V8)
 │       └── test/                JUnit 5 unit and integration tests
 │
-└── frontend/                    Angular 18 application
+└── frontend/                    Angular 22 application
     ├── Dockerfile
     ├── nginx.conf
     ├── angular.json
@@ -248,6 +248,27 @@ Generate a pair with `npx web-push generate-vapid-keys --json`. Copy `.env.examp
 `/api/push/subscribe`. Web Push requires HTTPS in production; `localhost` is exempt for dev. To
 test on a phone, expose the dev frontend over HTTPS (e.g. a cloudflared quick tunnel to
 `http://localhost:4200`).
+
+---
+
+## Authentication (cookie-JWT)
+
+The backend uses stateless, cookie-based JWT auth (see `docs/api.md` and `docs/architecture.md`).
+On startup `UserSeeder` creates two accounts from env, BCrypt-hashing the passwords:
+
+```
+JWT_SECRET=...            # secret — HMAC signing key for the auth JWT; never commit
+OWNER_PASSWORD=...        # secret — password for the private OWNER account; never commit
+DEMO_PASSWORD=...         # secret — password for the public DEMO account; never commit
+```
+
+- `JWT_SECRET` should be a long random string; if it changes, existing auth cookies are invalidated.
+- `OWNER` is the private library; `DEMO` is a public, passwordless account (login via
+  `POST /api/auth/demo-login`) whose library is reset nightly by `DemoResetJob`.
+- All three live in `.env` (gitignored) and are documented in `.env.example` with placeholder
+  values. Optional knobs: `app.auth.allowed-origins` (enable CORS for a cross-origin frontend),
+  `app.ratelimit.add-manga.max` / `.window-seconds` (per-user add limit, default 20 / 60s),
+  `app.demo.reset-cron` (default `0 0 4 * * *`, `America/Sao_Paulo`).
 
 ---
 

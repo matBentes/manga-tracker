@@ -9,13 +9,13 @@
 
 ## What This Project Is
 
-A manga reading tracker: users add manga URLs, the backend scrapes for new chapters, and the frontend shows a reading dashboard. Stack: **Spring Boot 3 + Angular 18 + PostgreSQL**, deployed via Docker Compose.
+A manga reading tracker: users add manga URLs, the backend scrapes for new chapters, and the frontend shows a reading dashboard. Stack: **Spring Boot 3 + Angular 22 + PostgreSQL**, deployed via Docker Compose.
 
 ## Directory Map
 
 ```
 backend/        Spring Boot 3 (Gradle, Java 21, Jakarta EE 10)
-frontend/       Angular 18 (standalone components, SCSS, Playwright E2E)
+frontend/       Angular 22 (standalone components, SCSS, Playwright E2E)
 docs/           API reference, architecture, developer guide, workflow, change log
 ralph/          Ralph autonomous agent system (PRD-driven iteration)
 skills/         Project-specific skills and repo-owned workflows
@@ -26,14 +26,15 @@ tasks/          PRD outputs and techdebt reports
 
 | Skill | Purpose |
 |-------|---------|
-| `/prd` | Generate a structured PRD for a new feature |
-| `/ralph` | Convert PRD to Ralph JSON for autonomous execution |
-| `/techdebt` | Scan for tech debt and inconsistencies |
-| `/review` | Pre-push review against **project conventions** (jakarta, Flyway, inject, etc.) |
-| `/prioritize-features` | Rank candidate work by value, effort, and delivery risk |
-| `/pre-mortem` | Identify likely failure modes before implementation or release |
-| `/outcome-roadmap` | Group future work into outcome-based roadmap themes |
-| `/supervise` | Independent second review against a plan; verify, agree/disagree, then fix only if requested |
+| `domain-modeling` | Actively maintain the project's domain model — challenge terms, invent edge cases, record ADRs |
+| `grill-with-docs` | Relentless interview to sharpen a plan/design while generating ADRs + glossary |
+| `handoff` | Compact the current conversation into a handoff doc for a fresh agent to continue |
+| `improve-codebase-architecture` | Scan for shallow-module refactors (deepening opportunities) aligned with the domain model |
+| `teach` | Stateful, multi-session learning workspace (missions, glossary, learning records) |
+| `thermo-nuclear-code-quality-review` | Extremely strict maintainability review: abstraction quality, giant files, spaghetti conditions |
+
+> The earlier planning/review skills (`/prd`, `/ralph`, `/techdebt`, `/review`, `/supervise`, etc.)
+> were moved out of this repo. Use the equivalents from your global skill set when referenced below.
 
 ## Two-Agent Loop
 
@@ -99,4 +100,3 @@ For any UI change, verify in browser using Playwright MCP tools:
 2. Navigate to the affected page
 3. Interact with the feature and take a screenshot
 4. Save screenshot to `/tmp/<description>.png`
-

@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "instructions": ["AGENTS.md"],
+  "references": {
+    "docs": {
+      "path": "docs",
+      "description": "Project architecture, API contracts, and conventions"
+    }
+  }
+}

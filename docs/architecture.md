@@ -53,7 +53,8 @@
 | Service      | `service`                                    | Business logic, validation, transaction management          |
 | Repository   | `repository`                                 | JPA data access; extends `JpaRepository`                    |
 | Scraper      | `scraper`                                    | Web scraping; pluggable via `MangaScraper` interface        |
-| Job          | `job`                                        | Daily scheduled scrape (08:00); calls scraper + push notify |
+| Job          | `job`                                        | Daily scheduled scrape (08:00); demo library reset; calls scraper + push notify |
+| Security     | `security`                                   | Cookie-JWT auth filter, JWT signing, user seeding, current-user resolution, add-manga rate limiting |
 | Exception    | `exception`                                  | Domain exception classes mapped to HTTP status codes        |
 
 ### Exception → HTTP Mapping
@@ -67,6 +68,48 @@
 | `UnsupportedSourceException` | 400       |
 | `ScrapingException`        | 422         |
 | `IllegalArgumentException` | 400         |
+| `RateLimitExceededException` | 429       |
+
+---
+
+## Security & Authentication
+
+Authentication is **stateless, cookie-based JWT**. No server-side sessions are kept; every
+request is authorized from the signed token in the auth cookie.
+
+| Component               | Package    | Responsibility                                                        |
+|-------------------------|------------|----------------------------------------------------------------------|
+| `SecurityConfig`        | `security` | Spring Security filter chain: which paths are public vs. authenticated, CSRF, CORS |
+| `JwtCookieAuthFilter`   | `security` | Reads the JWT cookie on each request, validates it, sets the authentication |
+| `JwtService`            | `security` | Signs and verifies the JWT (HMAC); encodes `username` + `role`       |
+| `UserSeeder`            | `security` | On startup creates the OWNER and DEMO accounts from env passwords (BCrypt-hashed) |
+| `CurrentUser` / `AuthenticatedUser` | `security` | Resolves the authenticated user (and its `id`) for owner-scoped queries |
+| `AddMangaRateLimiter`   | `security` | Per-user sliding-window limit on add-manga (default 20 / 60s) → 429  |
+
+Flow:
+
+```
+POST /api/auth/login { username, password }
+       │  constant-time BCrypt check (decoy hash if user unknown → no username enumeration)
+       ▼
+Set-Cookie: <jwt>  (httpOnly, SameSite=Strict, Secure in prod, path=/)
+       │
+       ▼  every later request carries the cookie automatically
+JwtCookieAuthFilter validates JWT → SecurityContext authentication
+       │
+       ▼
+/api/manga/** resolved against CurrentUser.id  →  owner-scoped reads & writes
+```
+
+- **Roles:** `OWNER` (private library) and `DEMO` (public, passwordless; nightly reset by `DemoResetJob`).
+- **Owner scoping:** `manga.owner_id` FKs to `app_user`; queries filter by the authenticated
+  user's id, so one user never sees another's manga (cross-owner access returns `404`).
+- **CSRF:** `HttpOnly` CSRF cookie (`XSRF-TOKEN`) plus same-origin token bootstrap
+  (`GET /api/auth/csrf`); all state-changing API requests, including login/logout/demo-login,
+  must send `X-XSRF-TOKEN`.
+- **CORS:** disabled (same-origin) unless `app.auth.allowed-origins` is set.
+- **Public endpoints:** `/api/auth/csrf`, `/api/auth/login|logout|demo-login`,
+  `/api/push/public-key`, `/actuator/health|info`.
 
 ---
 
@@ -120,17 +163,30 @@ When a notification is tapped it opens `/open/{id}`, which marks the manga read 
 
 ## Database Schema
 
+### `app_user`
+
+| Column          | Type         | Constraints                          |
+|-----------------|--------------|--------------------------------------|
+| `id`            | UUID         | PK                                   |
+| `username`      | VARCHAR(255) | NOT NULL, UNIQUE                     |
+| `password_hash` | VARCHAR(255) | NOT NULL (BCrypt)                    |
+| `role`          | VARCHAR(32)  | NOT NULL (`OWNER` / `DEMO`)          |
+| `created_at`    | TIMESTAMP    | NOT NULL, DEFAULT now()              |
+
+Seeded at startup by `UserSeeder` from `OWNER_PASSWORD` / `DEMO_PASSWORD` (added in migration V10).
+
 ### `manga`
 
 | Column                | Type          | Constraints                              |
 |-----------------------|---------------|------------------------------------------|
 | `id`                  | UUID          | PK, default `gen_random_uuid()`          |
 | `title`               | VARCHAR(255)  | NOT NULL                                 |
-| `source_url`          | TEXT          | NOT NULL, UNIQUE                         |
+| `source_url`          | TEXT          | NOT NULL, UNIQUE per non-null `owner_id` |
 | `current_chapter`     | INTEGER       | NOT NULL, DEFAULT 0                      |
 | `latest_chapter`      | INTEGER       | NOT NULL, DEFAULT 0                      |
 | `cover_image_url`     | TEXT          | NULLABLE                                 |
 | `notifications_enabled`| BOOLEAN      | NOT NULL, DEFAULT TRUE                   |
+| `owner_id`            | UUID          | NULLABLE, FK → `app_user(id)`, indexed (V10) |
 | `last_checked_at`     | TIMESTAMP     | NULLABLE                                 |
 | `created_at`          | TIMESTAMP     | NOT NULL, DEFAULT now()                  |
 | `updated_at`          | TIMESTAMP     | NOT NULL, DEFAULT now()                  |
@@ -154,10 +210,12 @@ Unique constraint on `(manga_id, chapter_number)` prevents duplicate notificatio
 | `endpoint`    | TEXT      | NOT NULL, UNIQUE                |
 | `p256dh`      | TEXT      | NOT NULL                        |
 | `auth`        | TEXT      | NOT NULL                        |
+| `owner_id`    | UUID      | NOT NULL, FK → `app_user(id)`, indexed |
 | `created_at`  | TIMESTAMP | NOT NULL                        |
 
-One row per subscribed browser. The `app_settings` table was removed (V8) along with the email
-and poll-interval settings.
+One row per subscribed browser, scoped to the authenticated user so private owner notifications are
+not delivered to demo/public subscribers. The `app_settings` table was removed (V8) along with the
+email and poll-interval settings.
 
 ---
 

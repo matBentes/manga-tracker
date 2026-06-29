@@ -1,4 +1,4 @@
-import { Component, OnInit, DestroyRef, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, DestroyRef, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { forkJoin } from 'rxjs';
 
@@ -14,6 +14,7 @@ import { Manga, MangaService } from '../services/manga.service';
 })
 export class DashboardComponent implements OnInit {
   private readonly mangaService = inject(MangaService);
+  private readonly changeDetector = inject(ChangeDetectorRef);
   private readonly destroyRef = inject(DestroyRef);
 
   mangaList: Manga[] = [];
@@ -37,10 +38,12 @@ export class DashboardComponent implements OnInit {
         next: (manga) => {
           this.mangaList = manga;
           this.isLoading = false;
+          this.changeDetector.detectChanges();
         },
         error: () => {
           this.error = 'Failed to load manga list. Please try again.';
           this.isLoading = false;
+          this.changeDetector.detectChanges();
         },
       });
   }
@@ -68,10 +71,12 @@ export class DashboardComponent implements OnInit {
       next: (updated) => {
         manga.currentChapter = updated.currentChapter;
         this.busy[manga.id] = false;
+        this.changeDetector.detectChanges();
       },
       error: () => {
         this.actionError[manga.id] = wasUnread ? 'Failed to mark as read.' : 'Failed to undo.';
         this.busy[manga.id] = false;
+        this.changeDetector.detectChanges();
       },
     });
   }
@@ -91,10 +96,12 @@ export class DashboardComponent implements OnInit {
           }
         });
         this.isMarkingAll = false;
+        this.changeDetector.detectChanges();
       },
       error: () => {
         this.error = 'Failed to mark all as read. Please try again.';
         this.isMarkingAll = false;
+        this.changeDetector.detectChanges();
       },
     });
   }
@@ -108,11 +115,13 @@ export class DashboardComponent implements OnInit {
       next: (updated) => {
         manga.notificationsEnabled = updated.notificationsEnabled;
         this.busy[manga.id] = false;
+        this.changeDetector.detectChanges();
       },
       error: () => {
         checkbox.checked = manga.notificationsEnabled;
         this.actionError[manga.id] = 'Failed to update notifications.';
         this.busy[manga.id] = false;
+        this.changeDetector.detectChanges();
       },
     });
   }
@@ -126,10 +135,12 @@ export class DashboardComponent implements OnInit {
     this.mangaService.deleteManga(manga.id).subscribe({
       next: () => {
         this.mangaList = this.mangaList.filter((m) => m.id !== manga.id);
+        this.changeDetector.detectChanges();
       },
       error: () => {
         this.actionError[manga.id] = 'Failed to delete. Please try again.';
         this.busy[manga.id] = false;
+        this.changeDetector.detectChanges();
       },
     });
   }
@@ -140,10 +151,12 @@ export class DashboardComponent implements OnInit {
     this.mangaService.testPush(manga.id).subscribe({
       next: () => {
         this.busy[manga.id] = false;
+        this.changeDetector.detectChanges();
       },
       error: () => {
         this.actionError[manga.id] = 'Failed to send test push. Please try again.';
         this.busy[manga.id] = false;
+        this.changeDetector.detectChanges();
       },
     });
   }
