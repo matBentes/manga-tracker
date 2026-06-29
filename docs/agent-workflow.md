@@ -9,6 +9,7 @@ Shared operating rules for AI agents in this repository.
 - Agent-specific wrappers:
   - Codex: `AGENTS.md`
   - Claude: `CLAUDE.md`
+- Reusable dual-agent workflows: `https://github.com/matBentes/agent-workflows`
 
 ## Practical Split (Recommended)
 
@@ -49,11 +50,12 @@ If the change touches cross-service behavior, also run:
 ./run-e2e-integration.sh --down
 ```
 
-## Skills
+## Reusable Workflow Setup
 
-- Project skills: `skills/` (`prd`, `ralph`, `review`, `supervise`, `techdebt`)
-- Community skills: `.agents/skills/`
-- Use the minimum set of skills needed for the task; avoid broad, unfocused runs.
+- Keep reusable commands, OpenSpec bootstrap files, and shared review skills local/global.
+- Use `matBentes/agent-workflows` as the source of truth for `/dual-opus`, `/dual-gpt`, and `thermo-nuclear-code-quality-review`.
+- Do not commit generated `.claude/commands/`, `.claude/skills/`, `.opencode/`, `openspec/`, or `skills/` artifacts unless the team explicitly decides to vendor them.
+- Use the minimum workflow or skill needed for the task; avoid broad, unfocused runs.
 
 ## Planning Artifacts
 

@@ -18,23 +18,14 @@ backend/        Spring Boot 3 (Gradle, Java 21, Jakarta EE 10)
 frontend/       Angular 22 (standalone components, SCSS, Playwright E2E)
 docs/           API reference, architecture, developer guide, workflow, change log
 ralph/          Ralph autonomous agent system (PRD-driven iteration)
-skills/         Project-specific skills and repo-owned workflows
 tasks/          PRD outputs and techdebt reports
 ```
 
-## Available Skills (`skills/`)
+## Reusable Agent Workflows
 
-| Skill | Purpose |
-|-------|---------|
-| `domain-modeling` | Actively maintain the project's domain model — challenge terms, invent edge cases, record ADRs |
-| `grill-with-docs` | Relentless interview to sharpen a plan/design while generating ADRs + glossary |
-| `handoff` | Compact the current conversation into a handoff doc for a fresh agent to continue |
-| `improve-codebase-architecture` | Scan for shallow-module refactors (deepening opportunities) aligned with the domain model |
-| `teach` | Stateful, multi-session learning workspace (missions, glossary, learning records) |
-| `thermo-nuclear-code-quality-review` | Extremely strict maintainability review: abstraction quality, giant files, spaghetti conditions |
-
-> The earlier planning/review skills (`/prd`, `/ralph`, `/techdebt`, `/review`, `/supervise`, etc.)
-> were moved out of this repo. Use the equivalents from your global skill set when referenced below.
+Reusable workflow commands and shared review skills live outside this repo at `https://github.com/matBentes/agent-workflows`.
+Install `/dual-opus`, `/dual-gpt`, OpenSpec bootstrap files, and `thermo-nuclear-code-quality-review` from that repo when needed.
+Do not commit generated `.claude/commands/`, `.claude/skills/`, `.opencode/`, `openspec/`, or local `skills/` artifacts unless the team explicitly decides to vendor them.
 
 ## Two-Agent Loop
 
@@ -42,7 +33,7 @@ Default supervised flow:
 1. Claude plans
 2. Codex implements
 3. Codex self-reviews
-4. Claude independently reviews with `/supervise`
+4. Claude independently reviews with `/dual-opus review-impl`
 5. If both agree it is ready, push
 6. If they agree it is blocked, Codex fixes and both re-review
 7. If they disagree, stop and reconcile before fixing or pushing

@@ -1,8 +1,6 @@
-# manga-tracker — Agent Briefing (Codex + Claude)
+# manga-tracker — Agent Entrypoint
 
-This repository is configured to work with both Codex and Claude Code.
-Reusable dual-agent workflow templates and shared review skills live outside this
-repo at `https://github.com/matBentes/agent-workflows`.
+This is the compact OpenCode/Codex entrypoint for this repository.
 
 Read these in order:
 1. `docs/agent-workflow.md` (shared rules for both agents)
@@ -10,47 +8,17 @@ Read these in order:
 3. `docs/architecture.md` and `docs/api.md` (system behavior and contracts)
 4. `docs/github-operations.md` (rulesets, required checks, autofix, merge flow)
 
-## Codex Notes
+## Agent Setup
 
-- Use `AGENTS.md` as the entrypoint (this file).
-- Reusable workflow commands and shared skills should be installed from `matBentes/agent-workflows`, not committed here.
-- Community-installed skills live outside this repo unless explicitly needed for project behavior.
-- Recommended split: Claude for PRD/scope and independent second review, Codex for implementation/testing/fixes.
+- Reusable dual-agent workflow templates and shared review skills live at `https://github.com/matBentes/agent-workflows`.
+- Install `/dual-opus`, `/dual-gpt`, OpenSpec bootstrap files, and `thermo-nuclear-code-quality-review` from that repo, not from this project.
+- Do not commit generated `.claude/commands/`, `.claude/skills/`, `.opencode/`, `openspec/`, or local `skills/` artifacts unless the team explicitly decides to vendor them.
 
-### Agent Workflow Setup
+## Operating Defaults
 
-- Keep agent workflow commands, OpenSpec bootstrap files, and shared review skills local/global.
-- Use `matBentes/agent-workflows` as the source of truth for `/dual-opus`, `/dual-gpt`, and `thermo-nuclear-code-quality-review`.
-- Do not commit generated `.claude/commands/`, `.claude/skills/`, `.opencode/`, or `openspec/` setup artifacts unless the team explicitly decides to vendor them.
-
-### Codex Operating Profile
-
-Use this default behavior in this repository:
-
-1. Plan-first for non-trivial tasks:
-   - Before editing multiple files, changing architecture, or touching DB schema/API contracts, first present a short plan.
-   - For medium/large features, use `/prd` to define scope, then use `tasks/plan-template.md` for the implementation handoff and review contract.
-   - For small, clear bug fixes, a task plan is enough; do not force a PRD.
-2. Implementation checkpoints:
-   - After exploration, summarize findings before edits.
-   - After edits, report exactly what changed and which checks ran.
-3. Review-before-finalize:
-   - For feature or refactor work, run a self-review before closing.
-   - In the two-agent flow, expect an independent second review before anything is considered ready.
-4. Safety defaults:
-   - Do not modify existing Flyway migrations.
-   - Do not revert unrelated local changes.
-   - Do not push directly to `main` (blocked by `.githooks/pre-push` unless explicitly overridden).
-   - Call out assumptions and any checks not executed.
-
-### Prompt Shortcuts (Codex)
-
-- `plan first`: forces planning before any edits.
-- `implement now`: skip planning and execute directly.
-- `review this`: run a findings-first self-review on current changes before the second agent checks them.
-- `tech debt scan`: run the project tech debt workflow.
-
-## Claude Notes
-
-- Claude-specific quickstart remains in `CLAUDE.md`.
-- `CLAUDE.md` should stay aligned with `docs/agent-workflow.md`.
+- Plan before changing multiple files, architecture, database schema, or API contracts.
+- For small, clear fixes, keep the plan brief and implement directly.
+- Never edit existing Flyway migrations; add a new migration instead.
+- Do not revert unrelated local changes.
+- Do not push directly to `main`; use a branch and PR by default.
+- Report checks run and any checks skipped before finalizing.
