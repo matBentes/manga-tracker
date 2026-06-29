@@ -18,9 +18,32 @@ permissions:
   security-events: write
 
 jobs:
+  # Skip CodeQL when every changed file is docs/openspec/markdown. A job skipped
+  # via `if:` reports a "skipped" conclusion, which counts as passing for the
+  # required "CodeQL (java)" / "CodeQL (javascript-typescript)" status checks, so
+  # docs-only PRs are not blocked.
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      docs_only: ${{ steps.filter.outputs.docs_only }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          predicate-quantifier: 'every'
+          filters: |
+            docs_only:
+              - 'docs/**'
+              - 'openspec/**'
+              - '**/*.md'
+
   codeql:
     name: CodeQL (${{ matrix.language }})
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.docs_only != 'true'
     strategy:
       fail-fast: false
       matrix:

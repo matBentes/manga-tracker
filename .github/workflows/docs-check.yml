@@ -27,6 +27,10 @@ jobs:
       - id: changed-markdown
         uses: tj-actions/changed-files@v46
         with:
+          # markdownlint-cli2-action's `globs` expects newline/comma-separated
+          # patterns; the default space separator silently lints nothing on
+          # multi-file PRs (a single space-joined "a.md b.md" glob matches no file).
+          separator: "\n"
           files: |
             docs/**/*.md
             README.md
