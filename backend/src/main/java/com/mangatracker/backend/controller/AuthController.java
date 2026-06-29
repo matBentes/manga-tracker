@@ -6,6 +6,13 @@ import com.mangatracker.backend.security.AuthenticatedUser;
 import com.mangatracker.backend.security.CurrentUser;
 import com.mangatracker.backend.security.JwtCookieAuthFilter;
 import com.mangatracker.backend.security.JwtService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.time.Duration;
@@ -28,6 +35,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/auth")
+@Tag(name = "Auth", description = "Cookie-JWT authentication and CSRF bootstrap")
 public class AuthController {
 
   private static final String KEY_USERNAME = "username";
@@ -69,6 +77,18 @@ public class AuthController {
   }
 
   @PostMapping("/login")
+  @Operation(summary = "Log in with username and password")
+  @ApiResponses({
+    @ApiResponse(responseCode = "200", description = "Authenticated; auth cookie set"),
+    @ApiResponse(
+        responseCode = "400",
+        description = "Missing username or password",
+        content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+    @ApiResponse(
+        responseCode = "401",
+        description = "Invalid credentials",
+        content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+  })
   public ResponseEntity<Map<String, String>> login(@RequestBody LoginRequest request) {
     String username = request == null ? null : request.username();
     String password = request == null ? null : request.password();
@@ -87,6 +107,14 @@ public class AuthController {
   }
 
   @PostMapping("/demo-login")
+  @Operation(summary = "Log in to the public demo account")
+  @ApiResponses({
+    @ApiResponse(responseCode = "200", description = "Authenticated as demo; auth cookie set"),
+    @ApiResponse(
+        responseCode = "404",
+        description = "Demo account is not seeded",
+        content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+  })
   public ResponseEntity<Map<String, String>> demoLogin() {
     Optional<AppUser> demo = appUserRepository.findByUsername(DEMO_USERNAME);
     if (demo.isEmpty()) {
@@ -96,12 +124,23 @@ public class AuthController {
   }
 
   @PostMapping("/logout")
+  @Operation(summary = "Clear the auth cookie")
+  @ApiResponse(responseCode = "204", description = "Auth cookie cleared")
   public ResponseEntity<Void> logout() {
     ResponseCookie cleared = buildAuthCookie("", Duration.ZERO);
     return ResponseEntity.noContent().header(HttpHeaders.SET_COOKIE, cleared.toString()).build();
   }
 
   @GetMapping("/me")
+  @Operation(summary = "Get the current authenticated identity")
+  @SecurityRequirement(name = JwtCookieAuthFilter.COOKIE_NAME)
+  @ApiResponses({
+    @ApiResponse(responseCode = "200", description = "Current identity"),
+    @ApiResponse(
+        responseCode = "401",
+        description = "Missing or invalid auth cookie",
+        content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+  })
   public ResponseEntity<Map<String, String>> me() {
     AuthenticatedUser principal = currentUser.require();
     return appUserRepository
@@ -114,6 +153,8 @@ public class AuthController {
   }
 
   @GetMapping("/csrf")
+  @Operation(summary = "Issue the CSRF token required for state-changing requests")
+  @ApiResponse(responseCode = "200", description = "CSRF token returned and cookie set")
   public ResponseEntity<Map<String, String>> csrf(
       HttpServletRequest request, HttpServletResponse response) {
     CsrfToken csrfToken = csrfTokenRepository.loadToken(request);
@@ -144,5 +185,9 @@ public class AuthController {
         .build();
   }
 
-  record LoginRequest(String username, String password) {}
+  record LoginRequest(
+      @Schema(description = "Seeded account username", requiredMode = Schema.RequiredMode.REQUIRED)
+          String username,
+      @Schema(description = "Account password", requiredMode = Schema.RequiredMode.REQUIRED)
+          String password) {}
 }

@@ -6,7 +6,7 @@ Read these in order:
 
 1. `docs/agent-workflow.md` (shared agent rules and dual-agent workflow)
 2. `docs/developer-guide.md` (project structure, tests, quality gates)
-3. `docs/architecture.md` and `docs/api.md` (system behavior and contracts)
+3. `docs/architecture.md` and `docs/api.md` (system behavior and API concepts; use Swagger for endpoint contracts)
 4. `docs/github-operations.md` (rulesets, required checks, autofix, merge flow)
 
 ## Project Snapshot
@@ -60,3 +60,17 @@ If the change touches cross-service behavior, also run `./run-e2e-integration.sh
 ## Local Cautions
 
 - For UI changes, verify behavior with Playwright/browser tooling when practical and capture evidence for meaningful visual or flow changes.
+
+## Core Principles
+
+- Keep it simple (KISS)
+- Avoid duplication (DRY)
+- Don't implement speculative features (YAGNI)
+- Follow SOLID where it improves maintainability
+- Prefer readability over cleverness
+- Prefer composition over inheritance
+- High cohesion, low coupling
+- Fail fast on invalid input
+- Small, focused functions
+- Minimize dependencies
+- Refactor instead of accumulating technical debt
