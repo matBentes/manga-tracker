@@ -1,0 +1,8 @@
+{
+  // Repo markdown docs (CLAUDE.md, AGENTS.md, docs/**) intentionally use long
+  // lines, tables, and pasted code/config. MD013 line-length is noise here, so
+  // disable it repo-wide while keeping the rest of the default rule set.
+  "config": {
+    "MD013": false
+  }
+}
