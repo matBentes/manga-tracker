@@ -20,7 +20,15 @@ The backend SHALL serve an interactive Swagger UI for browsing and trying the AP
 
 #### Scenario: Docs paths bypass authentication
 - **WHEN** an unauthenticated client requests `/swagger-ui/**`, `/swagger-ui.html`, or `/v3/api-docs/**`
-- **THEN** the request is permitted (not redirected to login or rejected with 401), while all non-permitted endpoints remain `authenticated()`
+- **THEN** the request is permitted (not redirected to login or rejected with 401), and the existing explicitly-protected paths (`/api/auth/me`, `/api/manga/**`, `/api/push/**`) still require authentication
+
+#### Scenario: Documentation change does not alter authorization model
+- **WHEN** the SecurityConfig authorization rules are reviewed after the change
+- **THEN** the final `anyRequest().permitAll()` and the explicit `authenticated()` matchers for `/api/auth/me`, `/api/manga/**`, `/api/push/**` are unchanged in behavior, and docs paths are reachable (whether via the existing catch-all or explicit permit matchers added for clarity)
+
+#### Scenario: Unauthenticated protected requests return 401
+- **WHEN** an unauthenticated client requests a protected path (`/api/auth/me`, `/api/manga/**`, `/api/push/**`) with a valid CSRF token but no auth cookie
+- **THEN** the server returns HTTP 401 Unauthorized via the configured `AuthenticationEntryPoint` (intentionally hardened from the prior 403, accepted by the human reviewer), while requests missing a CSRF token still return 403, matching the status codes the OpenAPI document advertises
 
 ### Requirement: Documented authentication scheme
 The OpenAPI document SHALL declare the cookie-based JWT authentication scheme and mark protected operations, so Swagger's "Authorize" control reflects how the API is actually secured.
@@ -34,11 +42,15 @@ The OpenAPI document SHALL declare the cookie-based JWT authentication scheme an
 - **THEN** the docs state that POST/PATCH/DELETE require the `X-XSRF-TOKEN` header obtained from `GET /api/auth/csrf`, and that "Try it out" returns 403 without it
 
 ### Requirement: Documented error envelope schema
-The OpenAPI document SHALL expose the shared error envelope returned by `GlobalExceptionHandler` as a named schema, referenced by the error responses each endpoint can return.
+The OpenAPI document SHALL expose the shared error envelope returned by `GlobalExceptionHandler` as a named schema, referenced by the error responses each endpoint can return. The schema SHALL match the real serialized body, a single `error` string field (`{"error": "<message>"}`).
 
 #### Scenario: Error schema referenced on failure responses
-- **WHEN** an endpoint can return 400, 401, 404, 409, or 429
+- **WHEN** an endpoint can return 400, 401, 404, 409, 422, or 429
 - **THEN** the corresponding `@ApiResponse` in the OpenAPI document references the shared `ErrorResponse` schema describing the real error shape
+
+#### Scenario: Scraping failure documented as 422
+- **WHEN** `POST /api/manga` can fail with a `ScrapingException`
+- **THEN** the operation documents a `422 Unprocessable Entity` response referencing the `ErrorResponse` schema, matching `GlobalExceptionHandler`'s mapping
 
 ### Requirement: docs/api.md scoped to cross-cutting concepts
 `docs/api.md` SHALL remain present but be reduced to cross-cutting concepts plus a pointer to Swagger, and SHALL NOT duplicate the per-endpoint reference that OpenAPI now owns.
