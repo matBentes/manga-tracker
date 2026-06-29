@@ -59,23 +59,23 @@ If the change touches cross-service behavior, also run:
 
 ## Planning Artifacts
 
-- Use `/prd` for medium/large features, ambiguous scope, or multi-story work.
-- Use `tasks/plan-template.md` for the implementation handoff that Codex builds and both agents review.
-- Task plans should reference the source PRD and the specific story IDs or requirements in scope.
+- Use `/dual-opus propose` for medium/large features, ambiguous scope, or multi-story work when the external workflow is installed.
+- Use `tasks/plan-template.md` only when a local implementation handoff artifact is needed.
+- Task plans should reference the approved proposal/plan and the specific story IDs or requirements in scope.
 - Task plans should also record manual verification and review evidence when the task needs them.
 - By default, keep task plans, fix docs, and review records in a local untracked path such as `.local/agent-artifacts/`; only commit them when explicitly requested.
-- Small bug fixes or obvious refactors can skip the PRD if the scope is already clear.
+- Small bug fixes or obvious refactors can skip a durable planning artifact if the scope is already clear.
 
 ## Canonical Handoff
 
 For medium/large work, use this explicit handoff:
 
-1. Claude creates the PRD in a local task artifact unless the user explicitly wants it committed.
-2. The PRD is reviewed and approved before implementation starts.
-3. Claude or the user creates a local task artifact from `tasks/plan-template.md`, linking the approved PRD and the exact stories/requirements in scope.
-4. Codex implements from the task plan, not directly from the PRD or ad hoc chat context.
-5. Codex runs the implementer self-review and records it in the local task artifact.
-6. Claude runs `/supervise` against the task plan and linked PRD.
+1. Claude creates or updates the proposal/plan artifact unless the user explicitly wants only chat-based planning.
+2. The plan is reviewed and approved before implementation starts.
+3. Claude or the user creates a local task artifact from `tasks/plan-template.md` when a durable handoff is needed.
+4. OpenCode/Codex implements from the approved plan, not ad hoc chat context.
+5. OpenCode/Codex runs the implementer self-review and records relevant evidence.
+6. Claude runs `/dual-opus review-impl` against the plan and implementation.
 7. Record the final review outcome in the same local artifact (`## Agreement`: implementer verdict, independent verdict, final status).
 8. Any fix requires both agents to review again before push and update the agreement record.
 

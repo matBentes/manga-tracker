@@ -1,93 +1,61 @@
-# manga-tracker — Claude Code Briefing
+# manga-tracker — Claude Code Entrypoint
 
-> Full details in `docs/developer-guide.md`, `docs/architecture.md`, and `docs/api.md`.
-> GitHub operations reference: `docs/github-operations.md`.
-> Human+Claude workflow guide: `docs/workflow.md`.
-> Shared agent rules for Codex + Claude: `docs/agent-workflow.md`.
-> This file is the compact "fast path" — read it first, reference docs for depth.
-> Recommended split: use Claude for PRD/planning and independent second review, then Codex for implementation/testing/fixes.
+This is the compact Claude Code entrypoint for this repository.
 
-## What This Project Is
+Read these in order:
+1. `docs/agent-workflow.md` (shared agent rules and dual-agent workflow)
+2. `docs/developer-guide.md` (project structure, tests, quality gates)
+3. `docs/architecture.md` and `docs/api.md` (system behavior and contracts)
+4. `docs/github-operations.md` (rulesets, required checks, autofix, merge flow)
 
-A manga reading tracker: users add manga URLs, the backend scrapes for new chapters, and the frontend shows a reading dashboard. Stack: **Spring Boot 3 + Angular 22 + PostgreSQL**, deployed via Docker Compose.
+## Project Snapshot
 
-## Directory Map
+- Manga reading tracker: users add manga URLs, backend scrapes for new chapters, frontend shows the reading dashboard.
+- Stack: Spring Boot 3, Java 21, Angular 22, PostgreSQL, Docker Compose.
+- Main directories: `backend/`, `frontend/`, `docs/`, `tasks/`, `ralph/`.
 
-```
-backend/        Spring Boot 3 (Gradle, Java 21, Jakarta EE 10)
-frontend/       Angular 22 (standalone components, SCSS, Playwright E2E)
-docs/           API reference, architecture, developer guide, workflow, change log
-ralph/          Ralph autonomous agent system (PRD-driven iteration)
-tasks/          PRD outputs and techdebt reports
-```
+## Agent Setup
 
-## Reusable Agent Workflows
+- Reusable dual-agent workflow templates and shared review skills live at `https://github.com/matBentes/agent-workflows`.
+- Install `/dual-opus`, `/dual-gpt`, OpenSpec bootstrap files, and `thermo-nuclear-code-quality-review` from that repo; do not vendor them here.
+- Do not commit generated `.claude/commands/`, `.claude/skills/`, `.opencode/`, `openspec/`, or local `skills/` artifacts unless the team explicitly decides to vendor them.
 
-Reusable workflow commands and shared review skills live outside this repo at `https://github.com/matBentes/agent-workflows`.
-Install `/dual-opus`, `/dual-gpt`, OpenSpec bootstrap files, and `thermo-nuclear-code-quality-review` from that repo when needed.
-Do not commit generated `.claude/commands/`, `.claude/skills/`, `.opencode/`, `openspec/`, or local `skills/` artifacts unless the team explicitly decides to vendor them.
+## Claude Role
 
-## Two-Agent Loop
+- Own exploration, proposal shaping, plan confirmation, implementation review, final approval, sync, and archive.
+- Use `/dual-opus explore`, `/dual-opus propose`, `/dual-opus confirm-plan`, `/dual-opus review-impl`, `/dual-opus final-review`, `/dual-opus sync`, and `/dual-opus archive` when the external workflow is installed.
+- Let OpenCode/GPT handle implementation, accepted fixes, PR warning fixes, and CI fixes via `/dual-gpt`.
 
-Default supervised flow:
-1. Claude plans
-2. Codex implements
-3. Codex self-reviews
-4. Claude independently reviews with `/dual-opus review-impl`
-5. If both agree it is ready, push
-6. If they agree it is blocked, Codex fixes and both re-review
-7. If they disagree, stop and reconcile before fixing or pushing
+## Non-Negotiables
 
-Planning artifact rule:
-- Use `/prd` for medium/large features or ambiguous scope.
-- Use `tasks/plan-template.md` for the implementation handoff and review contract.
-- Small, clear bug fixes can skip the PRD and go straight to a task plan.
+- Use `jakarta.persistence.*`, never `javax.persistence.*`.
+- Keep `spring.jpa.hibernate.ddl-auto=validate` compatible with Flyway schema.
+- Never edit/delete existing Flyway migrations; add a new `V{n}__*.sql` migration.
+- Angular DI must use `inject()` rather than constructor injection.
+- Do not revert unrelated local changes.
+- Do not push directly to `main`; use a branch and PR by default.
 
-## Non-Negotiable Conventions
+## Verification
 
-These cause CI failures or runtime errors if violated:
-
-| Rule | Why |
-|------|-----|
-| `jakarta.persistence.*` — never `javax.persistence.*` | Spring Boot 3 uses Jakarta EE 10 |
-| `ddl-auto=validate` — always add a Flyway migration | Hibernate validates schema on startup; no auto-DDL |
-| Never edit or delete existing Flyway migrations | Checksum mismatch will block startup |
-| `inject()` function — never constructor injection | ESLint `@angular-eslint/prefer-inject` enforced |
-| Run `spotlessApply` before committing Java changes | CI rejects unformatted code |
-| New features use TDD — one test, make it pass, repeat. No horizontal slicing (all tests first then all code) | Tests drive design; ensures behavior coverage and prevents speculative code |
-
-## Quality Gate Commands
-
-Run these before pushing:
+Run relevant checks before final approval and report anything skipped:
 
 ```bash
 # Backend
 cd backend
-./gradlew spotlessApply          # Auto-format Java
-./gradlew test jacocoTestReport  # Unit + integration tests + coverage
+./gradlew spotlessApply
+./gradlew test jacocoTestReport
 
 # Frontend
 cd frontend
-npm run format                   # Prettier auto-fix
-npm test                         # Vitest unit tests
-npm run lint                     # ESLint check
-npm run e2e                      # Playwright E2E (mocked, no backend needed)
+npm run format
+npm test
+npm run lint
+npm run e2e
 ```
 
-## Testing Notes
+If the change touches cross-service behavior, also run `./run-e2e-integration.sh --down` from the repo root.
 
-- Backend integration tests use **Testcontainers** — Docker must be running.
-- Frontend E2E tests use **Playwright** with mocked backend (no real server needed for `e2e/manga.spec.ts`).
-- Integration E2E (`e2e/integration.spec.ts`) requires full stack via `./run-e2e-integration.sh`.
+## Local Cautions
 
-## Ralph System — Read Before Touching
-
-The `ralph/` directory contains an autonomous agent system. **Do not modify `ralph/CLAUDE.md`, `ralph/prd.json`, or `ralph/progress.txt`** unless you are running a Ralph session or explicitly asked to. These files drive multi-iteration autonomous execution.
-
-## Browser Verification
-
-For any UI change, verify in browser using Playwright MCP tools:
-1. Ensure the app is running (`dev.sh` or `docker compose up`)
-2. Navigate to the affected page
-3. Interact with the feature and take a screenshot
-4. Save screenshot to `/tmp/<description>.png`
+- `ralph/` contains an autonomous agent system. Do not modify `ralph/CLAUDE.md`, `ralph/prd.json`, or `ralph/progress.txt` unless running a Ralph session or explicitly asked.
+- For UI changes, verify behavior with Playwright/browser tooling when practical and capture evidence for meaningful visual or flow changes.
