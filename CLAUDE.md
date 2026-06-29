@@ -12,7 +12,7 @@ Read these in order:
 
 - Manga reading tracker: users add manga URLs, backend scrapes for new chapters, frontend shows the reading dashboard.
 - Stack: Spring Boot 3, Java 21, Angular 22, PostgreSQL, Docker Compose.
-- Main directories: `backend/`, `frontend/`, `docs/`, `tasks/`, `ralph/`.
+- Main directories: `backend/`, `frontend/`, `docs/`, `tasks/`.
 
 ## Agent Setup
 
@@ -57,5 +57,4 @@ If the change touches cross-service behavior, also run `./run-e2e-integration.sh
 
 ## Local Cautions
 
-- `ralph/` contains an autonomous agent system. Do not modify `ralph/CLAUDE.md`, `ralph/prd.json`, or `ralph/progress.txt` unless running a Ralph session or explicitly asked.
 - For UI changes, verify behavior with Playwright/browser tooling when practical and capture evidence for meaningful visual or flow changes.

@@ -176,10 +176,7 @@ For new features:
 3. Create the next task plan from `tasks/plan-template.md`
    - link the PRD in `## Source`
    - choose the story IDs or requirements for this slice
-4. Choose execution mode
-   - Ralph/autonomous flow for multi-story features
-   - Interactive story-by-story implementation
-5. Implement with the chosen agent
+4. Implement interactively, story by story with the chosen agent
 6. Run implementer self-review
    - Codex style: `review this`
 7. Run the independent second review
@@ -197,8 +194,7 @@ For new features:
 | Skill | Purpose | When to use |
 |-------|---------|-------------|
 | `prd` | Generate a structured PRD | Starting a new feature |
-| `ralph` | Convert PRD to Ralph JSON format | Preparing autonomous execution |
-| `techdebt` | Scan for tech debt and inconsistencies | After a Ralph run, or periodically |
+| `techdebt` | Scan for tech debt and inconsistencies | Periodically |
 | `review` | Pre-push review against project conventions | Before pushing any branch |
 | `supervise` | Independent second review against a plan | After the implementing agent finishes and self-reviews |
 

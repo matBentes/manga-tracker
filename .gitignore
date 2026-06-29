@@ -29,6 +29,7 @@ Thumbs.db
 # ── Test artifacts ──────────────────────────────────────────────────────────
 frontend/playwright-report/
 frontend/test-results/
+test-results/
 
 # ── Claude local settings ───────────────────────────────────────────────────
 .claude/settings.local.json
