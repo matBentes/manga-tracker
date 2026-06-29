@@ -89,9 +89,3 @@ For medium/large work, use this explicit handoff:
 - Do not revert unrelated local changes.
 - Call out assumptions and any unexecuted checks.
 - For UI changes, validate behavior with Playwright and capture evidence when relevant.
-
-Emergency override (explicit and intentional only):
-
-```bash
-ALLOW_MAIN_PUSH=1 git push origin main
-```
