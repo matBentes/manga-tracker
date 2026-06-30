@@ -18,15 +18,15 @@ Add a manga by pasting its URL. The backend scrapes the source once a day, detec
 
 ## Tech Stack
 
-| Layer     | Technology                                        |
-|-----------|---------------------------------------------------|
-| Backend   | Spring Boot 3.4 · Java 21 · Gradle · Jakarta EE 10|
+| Layer     | Technology                                         |
+|-----------|----------------------------------------------------|
+| Backend   | Spring Boot 3.4 · Java 21 · Gradle · Jakarta EE 10 |
 | Frontend  | Angular 22 · TypeScript · SCSS · Service Worker    |
-| Database  | PostgreSQL 16 · Flyway migrations                 |
-| Push      | Web Push (VAPID) · `nl.martijndwars:web-push`     |
-| Scraping  | Playwright (stealth) · rendered-DOM scrape        |
+| Database  | PostgreSQL 16 · Flyway migrations                  |
+| Push      | Web Push (VAPID) · `nl.martijndwars:web-push`      |
+| Scraping  | Playwright (stealth) · rendered-DOM scrape         |
 | Testing   | JUnit 5 · Mockito · Testcontainers · Playwright    |
-| Container | Docker · docker compose                           |
+| Container | Docker · docker compose                            |
 
 ## Quick Start
 
@@ -42,7 +42,7 @@ cp .env.example .env
 docker compose up
 ```
 
-App: **http://localhost:4200** once all services report healthy.
+App: **<http://localhost:4200>** once all services report healthy.
 
 > First startup builds the images and downloads Playwright's browser — give it a few minutes.
 
@@ -94,7 +94,7 @@ cd backend
 ./gradlew bootRun
 ```
 
-API on **http://localhost:8080**.
+API on **<http://localhost:8080>**.
 
 **Frontend** (Node 24.15+):
 
@@ -104,7 +104,7 @@ npm install
 npm start
 ```
 
-Dev server on **http://localhost:4200**, proxies `/api` to `localhost:8080`.
+Dev server on **<http://localhost:4200>**, proxies `/api` to `localhost:8080`.
 
 ## Environment Variables
 
@@ -139,5 +139,6 @@ npm run e2e                         # Playwright, mocked backend
 
 - [API Concepts](docs/api.md) — auth, CSRF, demo behavior, rate limits, and error format. Full endpoint reference is generated at `http://localhost:8080/swagger-ui.html`.
 - [Architecture Overview](docs/architecture.md)
+- [AWS Deployment Runbook](docs/aws-deployment.md)
 - [Developer Guide](docs/developer-guide.md)
 - [Agent Workflow (Codex + Claude)](docs/agent-workflow.md)
