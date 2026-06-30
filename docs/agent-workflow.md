@@ -96,7 +96,7 @@ For medium/large work, use this explicit handoff:
 
 ## Review Criteria
 
-Use these criteria for implementer self-review, independent implementation review, final review, PR warning fixes, and CI fixes:
+Use these criteria for implementer self-review, independent implementation review, final review, PR warning fixes, and CI fixes. They are the canonical form of this repo's core principles: KISS, DRY, YAGNI, useful SOLID, readable code, high cohesion, low coupling, fail-fast input handling, minimal dependencies, and active technical-debt control.
 
 1. Plan/spec alignment: the implementation satisfies the approved OpenSpec change, task scope, non-goals, and accepted review decisions without adding speculative behavior.
 2. Behavioral correctness: user-visible behavior, API contracts, persistence behavior, and error handling match the documented requirements and existing architecture.
