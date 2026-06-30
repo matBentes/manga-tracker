@@ -4,11 +4,11 @@
 
 needs-gpt-fix
 
-The implementation itself is correct and structurally clean, and every functional CI gate is green on PR #25 — including the gates that could not run locally (Docker). One CI job fails: **Markdown Lint**, on pre-existing bare URLs in `README.md` surfaced by this PR's changed-file glob. Merge is blocked on that single fix. No code/design changes required.
+Markdown Lint is now green (GPT wrapped the 3 README bare URLs in `d363ea9`). All CI gates pass on PR #25. However, the **Codex PR review surfaced a valid P2** that blocks sync: the runbook's ALB health check targets `/actuator/health` on the frontend nginx, but nginx does not proxy that path. One implementation fix required before sync. No spec/design change.
 
 ## PR / CI evidence (PR #25)
 
-https://github.com/matBentes/manga-tracker/pull/25 — branch `harden-for-aws-deploy` → `main`.
+<https://github.com/matBentes/manga-tracker/pull/25> — branch `harden-for-aws-deploy` → `main`.
 
 Settled check results:
 
@@ -18,27 +18,38 @@ Settled check results:
 - **Format & Lint** (backend spotless/build): **pass** 1m12s.
 - **CodeQL (java)**: **pass** 2m4s. **CodeQL (javascript-typescript)**: **pass** 54s.
 - **SonarCloud Code Analysis**: **pass** 25s — no new issues on PR #25.
-- **Markdown Lint**: **FAIL** 6s — 3× `MD034/no-bare-urls` in `README.md:45`, `:97`, `:107` (`http://localhost:4200` / `:8080`).
+- **Markdown Lint**: **pass** — GPT wrapped the 3 README bare URLs in angle brackets (`d363ea9`).
 
-## Markdown Lint failure analysis
+## Blocking finding — Codex P2 (valid)
 
-The 3 errors are **pre-existing bare URLs** in `README.md`, not introduced by this change. This PR's only README edit is line ~142 (AWS runbook link). The linter runs against changed files, so adding any README line pulled the whole file into scope and exposed the existing `MD034` violations.
+Codex inline comment on `docs/aws-deployment.md:99`: the ALB targets the frontend/nginx container, but `frontend/nginx.conf` only proxies `/api/`; `/actuator/health` falls through the SPA fallback (`location / { try_files $uri $uri/ /index.html; }`) and returns `index.html` with HTTP 200.
 
-Fix (GPT, `README.md`): wrap each bare URL in angle brackets to satisfy `MD034`:
+Verified against the working tree — `frontend/nginx.conf` has exactly two locations (`/api/` proxy + `/` SPA fallback), no `/actuator/health`. Consequences:
 
-- `:45` and `:107` — `http://localhost:4200` → `<http://localhost:4200>`
-- `:97` — `http://localhost:8080` → `<http://localhost:8080>`
+- `docs/aws-deployment.md:99` "Target group health check path `/actuator/health`" with matcher `200` passes blindly on the SPA fallback and never validates backend/RDS health.
+- `docs/aws-deployment.md:111` "Verify `/actuator/health` returns `UP` through the ALB" cannot work — the ALB path returns HTML, not `{"status":"UP"}`.
 
-Confirm no other bare URLs remain, re-push to `harden-for-aws-deploy`, and let Markdown Lint re-run green. All other gates already pass and are unaffected.
+This is a real inconsistency between the runbook architecture (single ALB → frontend nginx, line 7/14) and the proxy config. Sync precondition "Codex PR review + accepted fixes complete" is therefore not met.
+
+### Decision (accept)
+
+Fix in `frontend/nginx.conf`: add a dedicated location that proxies `/actuator/health` to `http://backend:8080`, with the same forwarded-header set as `/api/`. Rationale:
+
+- Keeps the single-ALB-entry shape coherent: the frontend target group health check on `/actuator/health` now actually reaches the backend.
+- Makes the deploy verify step (`:111`) honest — `UP` returns through the ALB.
+- Anonymous-safe: backend already returns only `{"status":"UP"}` to unauthenticated callers (`show-details=when-authorized`), so exposing the path adds no detail leak.
+- No runbook edit needed; smaller, more correct diff than re-pointing health checks at a separate backend target group.
+
+After the fix: re-run the `run-e2e-integration.sh` smoke (curl `/actuator/health` through nginx on `4200`, assert no `components`/`db`/`diskSpace`), let CI re-run green, then return to final-review → sync.
 
 ## Quality (thermo-nuclear bar)
 
-Unchanged from `implementation-opus-review.md`: no structural debt, minimal diffs, sound boundary handling. CI now corroborates correctness end-to-end (backend Testcontainers + cross-service integration both green). Approval of the implementation is on merit; the only outstanding item is the markdown lint hygiene fix above.
+Unchanged from `implementation-opus-review.md`: no structural debt, minimal diffs, sound boundary handling. CI corroborates correctness end-to-end (backend Testcontainers + cross-service integration both green). The only outstanding item is the nginx health-proxy fix above.
 
 ## Remaining before `/dual-opus sync`
 
-1. GPT fixes the 3 `README.md` bare URLs → Markdown Lint green on PR #25.
-2. Bookkeeping: tick `tasks.md` checkboxes (5.1/5.2/5.3/5.4 now evidenced by green CI) and add the optional `reviews/implementation-gpt-5.5-summary.md`.
+1. GPT adds the `/actuator/health` nginx proxy → resolves Codex P2, CI re-runs green.
+2. Optionally extend the integration smoke to curl `/actuator/health` through nginx (`4200`) rather than backend `8080` directly, so the proxy path is regression-guarded.
 
 ## Next Command
 

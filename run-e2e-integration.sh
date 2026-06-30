@@ -55,9 +55,9 @@ for i in $(seq 1 30); do
 done
 
 echo "==> Running proxy/auth/health smoke checks..."
-HEALTH_BODY="$(curl -fsS http://localhost:8080/actuator/health)"
+HEALTH_BODY="$(curl -fsS http://localhost:4200/actuator/health)"
 if [[ "$HEALTH_BODY" != *'"status":"UP"'* ]]; then
-  echo "    ERROR: /actuator/health did not report UP"
+  echo "    ERROR: proxied /actuator/health did not report UP"
   exit 1
 fi
 if [[ "$HEALTH_BODY" == *'"components"'* || "$HEALTH_BODY" == *'"db"'* || "$HEALTH_BODY" == *'"diskSpace"'* ]]; then
