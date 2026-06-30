@@ -10,13 +10,11 @@ Use this guide for day-to-day collaboration between the human developer, Claude 
    - Claude Code: `CLAUDE.md`
 3. Use `docs/developer-guide.md` for project structure, test commands, and quality gates.
 
-## Reusable Workflow Source
+## Source Of Truth
 
-Reusable dual-agent workflow templates and shared review skills are not vendored in this repo.
-
-- Source of truth: `https://github.com/matBentes/agent-workflows`
-- Install from there when needed: `/dual-opus`, `/dual-gpt`, OpenSpec bootstrap files, and `thermo-nuclear-code-quality-review`
-- Do not commit generated `.claude/commands/`, `.claude/skills/`, `.opencode/`, `openspec/`, or local `skills/` artifacts unless the team explicitly decides to vendor them.
+- Detailed agent rules: `docs/agent-workflow.md`
+- Reusable commands/skills: `https://github.com/matBentes/agent-workflows`
+- Durable planning/review history: `openspec/`
 
 ## Practical Split
 
@@ -26,17 +24,17 @@ Reusable dual-agent workflow templates and shared review skills are not vendored
 
 ## Standard Flow
 
-When the external dual-agent workflow is installed, use this sequence:
+When the external dual-agent workflow is installed:
 
 1. Claude explores with `/dual-opus explore`.
 2. Claude proposes scope with `/dual-opus propose`.
-3. OpenCode reviews the plan with `/dual-gpt review-plan`.
+3. OpenCode reviews the plan with `/dual-gpt review-plan` using `grill-with-docs`.
 4. Claude confirms the plan with `/dual-opus confirm-plan`.
 5. OpenCode implements with `/dual-gpt apply`.
-6. Claude reviews implementation with `/dual-opus review-impl`.
+6. Claude reviews implementation with `/dual-opus review-impl` using `docs/agent-workflow.md#review-criteria`.
 7. OpenCode applies accepted fixes with `/dual-gpt fix`.
 8. Claude runs final approval with `/dual-opus final-review`.
-9. After PR checks and accepted review comments are handled, Claude runs `/dual-opus sync` and `/dual-opus archive` when appropriate.
+9. After PR checks and accepted review comments are handled, Claude runs `/dual-opus sync` and `/dual-opus archive`.
 
 For small, obvious fixes, keep the plan brief and implement directly. Still report the checks run and any checks skipped.
 
@@ -48,11 +46,7 @@ For small, obvious fixes, keep the plan brief and implement directly. Still repo
 
 ## Local Artifacts
 
-Keep transient plans, fix notes, and review evidence local by default.
-
-- Preferred location: `.local/agent-artifacts/`
-- Commit task artifacts only when explicitly requested.
-- If a durable handoff is useful, start from `tasks/plan-template.md` and adapt it to the current workflow.
+Keep scratch notes under `.local/agent-artifacts/`. Keep durable planning, review evidence, and archive history in `openspec/`; see `docs/agent-workflow.md#openspec-definition-of-done`.
 
 ## Verification
 

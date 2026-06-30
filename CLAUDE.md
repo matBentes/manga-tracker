@@ -18,9 +18,8 @@ Read these in order:
 ## Agent Setup
 
 - Reusable dual-agent workflow templates and shared review skills live at `https://github.com/matBentes/agent-workflows`.
-- Install `/dual-opus`, `/dual-gpt`, OpenSpec bootstrap files, and `thermo-nuclear-code-quality-review` from that repo; do not vendor them here.
-- Do not commit generated `.claude/commands/`, `.claude/skills/`, `.opencode/`, or local `skills/` artifacts unless the team explicitly decides to vendor them.
-- `openspec/` is vendored and canonical: it is the main planning system (proposals, specs, tasks). Retired pre-OpenSpec plans live under `openspec/deprecated-tasks/` for reference only.
+- Install `/dual-opus`, `/dual-gpt`, OpenSpec command bootstrap files, and `thermo-nuclear-code-quality-review` from that repo; do not vendor generated command/skill artifacts here.
+- `openspec/` is vendored and canonical. Use `docs/agent-workflow.md` for planning, review criteria, and archive rules.
 
 ## Claude Role
 
@@ -60,17 +59,3 @@ If the change touches cross-service behavior, also run `./run-e2e-integration.sh
 ## Local Cautions
 
 - For UI changes, verify behavior with Playwright/browser tooling when practical and capture evidence for meaningful visual or flow changes.
-
-## Core Principles
-
-- Keep it simple (KISS)
-- Avoid duplication (DRY)
-- Don't implement speculative features (YAGNI)
-- Follow SOLID where it improves maintainability
-- Prefer readability over cleverness
-- Prefer composition over inheritance
-- High cohesion, low coupling
-- Fail fast on invalid input
-- Small, focused functions
-- Minimize dependencies
-- Refactor instead of accumulating technical debt
