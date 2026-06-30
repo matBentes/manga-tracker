@@ -18,9 +18,12 @@ concurrency:
 jobs:
 
   # ── Stage 0: Detect what changed ───────────────────────────────────────────
-  # `docs_only` is true only when EVERY changed file is docs/openspec/markdown
-  # (predicate-quantifier: every). Any source/CI/config change anywhere flips it
-  # to false, so the heavy suite still runs — the safe default is to run.
+  # `code` is true when at least one changed file is NOT docs/openspec/markdown.
+  # The filter is the inverse: `'**'` includes everything, then the `!` patterns
+  # exclude docs/openspec/markdown (dorny default predicate-quantifier `some`
+  # matches a file when it survives the exclusions). A docs-only PR leaves no
+  # file included, so `code` is empty/false and the heavy suite is skipped; any
+  # source/CI/config change anywhere makes `code` true and the suite runs.
   #
   # Only jobs whose required-check context is GitHub-native are gated on this,
   # because a job skipped via `if:` reports a "skipped" conclusion that counts
@@ -31,18 +34,18 @@ jobs:
     name: Detect changes
     runs-on: ubuntu-latest
     outputs:
-      docs_only: ${{ steps.filter.outputs.docs_only }}
+      code: ${{ steps.filter.outputs.code }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
         id: filter
         with:
-          predicate-quantifier: 'every'
           filters: |
-            docs_only:
-              - 'docs/**'
-              - 'openspec/**'
-              - '**/*.md'
+            code:
+              - '**'
+              - '!**/*.md'
+              - '!docs/**'
+              - '!openspec/**'
 
   # ── Stage 1: Format & Lint ─────────────────────────────────────────────────
   format-lint:
@@ -181,7 +184,7 @@ jobs:
     name: E2E
     runs-on: ubuntu-latest
     needs: [changes, format-lint]
-    if: needs.changes.outputs.docs_only != 'true'
+    if: needs.changes.outputs.code == 'true'
     # The official Playwright image ships the matching browser preinstalled, so there is no flaky
     # `playwright install` download/extract step. Tag is pinned to the project's Playwright version.
     container:
@@ -221,7 +224,7 @@ jobs:
     name: E2E Integration Tests
     runs-on: ubuntu-latest
     needs: [changes, format-lint]
-    if: needs.changes.outputs.docs_only != 'true'
+    if: needs.changes.outputs.code == 'true'
     # Run inside the Playwright image (browser preinstalled, no flaky install). Inside a container
     # job, service containers are reachable by their id as hostname (postgres), not localhost.
     container:
