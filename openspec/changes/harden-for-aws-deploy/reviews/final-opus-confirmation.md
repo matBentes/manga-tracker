@@ -2,25 +2,26 @@
 
 ## Verdict
 
-needs-gpt-fix
+approved
 
-Markdown Lint is now green (GPT wrapped the 3 README bare URLs in `d363ea9`). All CI gates pass on PR #25. However, the **Codex PR review surfaced a valid P2** that blocks sync: the runbook's ALB health check targets `/actuator/health` on the frontend nginx, but nginx does not proxy that path. One implementation fix required before sync. No spec/design change.
+Codex P2 resolved and all CI green on PR #25 head `589cb6e`. GPT added the `/actuator/health` nginx proxy as prescribed; the runbook's single-ALB health-check path is now coherent. No spec/design change. Implementation and runbook are merge-ready.
 
-## PR / CI evidence (PR #25)
+## PR / CI evidence (PR #25, head `589cb6e`)
 
-<https://github.com/matBentes/manga-tracker/pull/25> — branch `harden-for-aws-deploy` → `main`.
+<https://github.com/matBentes/manga-tracker/pull/25> — branch `harden-for-aws-deploy` → `main`. MERGEABLE.
 
-Settled check results:
+Settled check results (re-run on `589cb6e`):
 
-- **Tests** (backend, Testcontainers): **pass** 2m11s — confirms the 3 local `*RepositoryTest` failures were Docker-daemon-unavailable environmental only; they pass in CI where Docker is present.
-- **E2E Integration Tests**: **pass** 2m26s — the cross-service nginx → backend forwarded-header + auth/health smoke path (task 5.3) is green in CI.
-- **E2E**: **pass** 1m15s.
-- **Format & Lint** (backend spotless/build): **pass** 1m12s.
-- **CodeQL (java)**: **pass** 2m4s. **CodeQL (javascript-typescript)**: **pass** 54s.
-- **SonarCloud Code Analysis**: **pass** 25s — no new issues on PR #25.
-- **Markdown Lint**: **pass** — GPT wrapped the 3 README bare URLs in angle brackets (`d363ea9`).
+- **Tests** (backend, Testcontainers): **pass** 2m4s — confirms the 3 local `*RepositoryTest` failures were Docker-daemon-unavailable environmental only; they pass in CI where Docker is present.
+- **E2E Integration Tests**: **pass** 2m20s — full nginx → backend stack boots with the new `/actuator/health` location; cross-service forwarded-header + auth/health smoke path (task 5.3) green.
+- **E2E**: **pass** 1m10s.
+- **Format & Lint** (backend spotless/build): **pass** 1m6s.
+- **CodeQL (java)**: **pass** 2m34s. **CodeQL (javascript-typescript)**: **pass** 50s.
+- **SonarCloud Code Analysis**: **pass** 21s — no new issues on PR #25.
+- **Markdown Lint**: **pass** — README bare URLs fixed (`d363ea9`).
+- **Build & Deploy** / **Label Autofix PRs**: skipping (expected on PR).
 
-## Blocking finding — Codex P2 (valid)
+## Resolved finding — Codex P2 (fixed in `589cb6e`)
 
 Codex inline comment on `docs/aws-deployment.md:99`: the ALB targets the frontend/nginx container, but `frontend/nginx.conf` only proxies `/api/`; `/actuator/health` falls through the SPA fallback (`location / { try_files $uri $uri/ /index.html; }`) and returns `index.html` with HTTP 200.
 
@@ -31,28 +32,35 @@ Verified against the working tree — `frontend/nginx.conf` has exactly two loca
 
 This is a real inconsistency between the runbook architecture (single ALB → frontend nginx, line 7/14) and the proxy config. Sync precondition "Codex PR review + accepted fixes complete" is therefore not met.
 
-### Decision (accept)
+### Fix applied (`589cb6e`, "fix: proxy health check through nginx")
 
-Fix in `frontend/nginx.conf`: add a dedicated location that proxies `/actuator/health` to `http://backend:8080`, with the same forwarded-header set as `/api/`. Rationale:
+GPT added a dedicated `location = /actuator/health` to `frontend/nginx.conf` that proxies to `http://backend:8080` with the same forwarded-header set as `/api/` (exact match `=`, so no other `/actuator/*` path is exposed). Verified against the working tree:
 
-- Keeps the single-ALB-entry shape coherent: the frontend target group health check on `/actuator/health` now actually reaches the backend.
-- Makes the deploy verify step (`:111`) honest — `UP` returns through the ALB.
-- Anonymous-safe: backend already returns only `{"status":"UP"}` to unauthenticated callers (`show-details=when-authorized`), so exposing the path adds no detail leak.
+```nginx
+location = /actuator/health {
+    proxy_pass http://backend:8080;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;
+    proxy_set_header X-Forwarded-Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+}
+```
+
+Why this resolves P2:
+
+- Single-ALB-entry shape now coherent: the frontend target group health check on `/actuator/health` actually reaches the backend instead of the SPA fallback.
+- Deploy verify step (`docs/aws-deployment.md:111`) is honest — `UP` returns through the ALB, not `index.html`.
+- Anonymous-safe: backend returns only `{"status":"UP"}` to unauthenticated callers (`show-details=when-authorized`), so exposing the exact path leaks no detail.
 - No runbook edit needed; smaller, more correct diff than re-pointing health checks at a separate backend target group.
-
-After the fix: re-run the `run-e2e-integration.sh` smoke (curl `/actuator/health` through nginx on `4200`, assert no `components`/`db`/`diskSpace`), let CI re-run green, then return to final-review → sync.
+- E2E Integration Tests green on `589cb6e` proves the full nginx → backend stack boots with the new location (config syntactically valid in a live run).
 
 ## Quality (thermo-nuclear bar)
 
-Unchanged from `implementation-opus-review.md`: no structural debt, minimal diffs, sound boundary handling. CI corroborates correctness end-to-end (backend Testcontainers + cross-service integration both green). The only outstanding item is the nginx health-proxy fix above.
-
-## Remaining before `/dual-opus sync`
-
-1. GPT adds the `/actuator/health` nginx proxy → resolves Codex P2, CI re-runs green.
-2. Optionally extend the integration smoke to curl `/actuator/health` through nginx (`4200`) rather than backend `8080` directly, so the proxy path is regression-guarded.
+Unchanged from `implementation-opus-review.md`: no structural debt, minimal diffs, sound boundary handling. The nginx fix is a 8-line additive block mirroring the existing `/api/` proxy — no new abstraction, no boundary leak. CI corroborates correctness end-to-end (backend Testcontainers + cross-service integration both green). No outstanding items.
 
 ## Next Command
 
 ```text
-/dual-gpt fix harden-for-aws-deploy
+/dual-opus sync harden-for-aws-deploy
 ```
