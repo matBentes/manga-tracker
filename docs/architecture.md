@@ -2,7 +2,7 @@
 
 ## System Diagram
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────┐
 │  Browser (localhost:4200)                                       │
 │  Angular SPA                                                    │
@@ -10,17 +10,17 @@
                        │ HTTP
                        ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  nginx (Docker, port 4200 → 80)                                 │
+│  nginx (Docker, port 4200 → 8080)                               │
 │  • Serves Angular static files                                  │
-│  • Proxies /api/* → backend:8080                                │
+│  • Proxies /api/* and /actuator/health → backend:8080           │
 └──────────────────────┬──────────────────────────────────────────┘
-                       │ HTTP /api/*
+                       │ HTTP proxied paths
                        ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │  Spring Boot (port 8080)                                        │
 │  ┌──────────────┐  ┌──────────────────┐  ┌────────────────────┐ │
 │  │  Controller  │  │   Service        │  │  Repository (JPA)  │ │
-│  │  MangaCtrl   │→ │  MangaSvc        │→ │  MangaRepository   │ │
+│  │  Manga/Auth  │→ │  MangaSvc        │→ │  MangaRepository   │ │
 │  │  PushCtrl    │  │  PushSubsSvc     │  │  PushSubsRepository│ │
 │  │              │  │  Notif/PushSvc   │  │  NotifLogRepository│ │
 │  └──────────────┘  └──────┬───────────┘  └──────────┬─────────┘ │
@@ -47,28 +47,24 @@
 
 ## Backend Layers
 
-| Layer        | Package                                      | Responsibility                                              |
-|--------------|----------------------------------------------|-------------------------------------------------------------|
-| Controller   | `controller`                                 | HTTP request/response mapping; delegates to services        |
-| Service      | `service`                                    | Business logic, validation, transaction management          |
-| Repository   | `repository`                                 | JPA data access; extends `JpaRepository`                    |
-| Scraper      | `scraper`                                    | Web scraping; pluggable via `MangaScraper` interface        |
-| Job          | `job`                                        | Daily scheduled scrape (08:00); demo library reset; calls scraper + push notify |
-| Security     | `security`                                   | Cookie-JWT auth filter, JWT signing, user seeding, current-user resolution, add-manga rate limiting |
-| Exception    | `exception`                                  | Domain exception classes mapped to HTTP status codes        |
+- `controller`: HTTP request/response mapping; delegates to services.
+- `service`: business logic, validation, and transactions.
+- `repository`: JPA data access.
+- `scraper`: pluggable manga source scraping.
+- `job`: scheduled scraping and demo library reset.
+- `security`: cookie-JWT auth, CSRF, current-user resolution, and add-manga rate limiting.
+- `exception`: domain exceptions mapped to HTTP status codes.
 
 ### Exception → HTTP Mapping
 
-`GlobalExceptionHandler` (`@RestControllerAdvice`) centralizes all error responses:
+`GlobalExceptionHandler` (`@RestControllerAdvice`) centralizes application exceptions:
 
-| Exception                  | HTTP Status |
-|----------------------------|-------------|
-| `MangaNotFoundException`   | 404         |
-| `DuplicateMangaException`  | 409         |
-| `UnsupportedSourceException` | 400       |
-| `ScrapingException`        | 422         |
-| `IllegalArgumentException` | 400         |
-| `RateLimitExceededException` | 429       |
+- `MangaNotFoundException`: `404`
+- `DuplicateMangaException`: `409`
+- `UnsupportedSourceException`: `400`
+- `ScrapingException`: `422`
+- `IllegalArgumentException`: `400`
+- `RateLimitExceededException`: `429`
 
 ---
 
@@ -77,18 +73,16 @@
 Authentication is **stateless, cookie-based JWT**. No server-side sessions are kept; every
 request is authorized from the signed token in the auth cookie.
 
-| Component               | Package    | Responsibility                                                        |
-|-------------------------|------------|----------------------------------------------------------------------|
-| `SecurityConfig`        | `security` | Spring Security filter chain: which paths are public vs. authenticated, CSRF, CORS |
-| `JwtCookieAuthFilter`   | `security` | Reads the JWT cookie on each request, validates it, sets the authentication |
-| `JwtService`            | `security` | Signs and verifies the JWT (HMAC); encodes `username` + `role`       |
-| `UserSeeder`            | `security` | On startup creates the OWNER and DEMO accounts from env passwords (BCrypt-hashed) |
-| `CurrentUser` / `AuthenticatedUser` | `security` | Resolves the authenticated user (and its `id`) for owner-scoped queries |
-| `AddMangaRateLimiter`   | `security` | Per-user sliding-window limit on add-manga (default 20 / 60s) → 429  |
+- `SecurityConfig`: public/authenticated routes, CSRF, and optional CORS.
+- `JwtCookieAuthFilter`: validates the auth cookie and sets authentication.
+- `JwtService`: signs and verifies JWTs.
+- `UserSeeder`: creates `OWNER` and `DEMO` accounts from env passwords.
+- `CurrentUser` / `AuthenticatedUser`: resolves owner-scoped queries.
+- `AddMangaRateLimiter`: per-user add-manga sliding-window limit.
 
 Flow:
 
-```
+```text
 POST /api/auth/login { username, password }
        │  constant-time BCrypt check (decoy hash if user unknown → no username enumeration)
        ▼
@@ -109,7 +103,7 @@ JwtCookieAuthFilter validates JWT → SecurityContext authentication
   must send `X-XSRF-TOKEN`.
 - **CORS:** disabled (same-origin) unless `app.auth.allowed-origins` is set.
 - **Public endpoints:** `/api/auth/csrf`, `/api/auth/login|logout|demo-login`,
-  `/api/push/public-key`, `/actuator/health|info`.
+  `/api/push/public-key`, `/actuator/health|info`, Swagger UI, and OpenAPI JSON.
 
 ---
 
@@ -117,7 +111,7 @@ JwtCookieAuthFilter validates JWT → SecurityContext authentication
 
 ### Add Manga Flow
 
-```
+```text
 POST /api/manga { sourceUrl }
        │
        ▼
@@ -127,7 +121,7 @@ MangaController.addManga()
 MangaService.addManga(sourceUrl)
   1. ScraperRegistry.resolve(url)   → selects matching MangaScraper
   2. MangaScraper.scrape(url)       → returns ScrapedManga(title, latestChapter, coverImageUrl)
-  3. Check for existing sourceUrl   → throws DuplicateMangaException if found
+  3. Check owner-scoped sourceUrl   → throws DuplicateMangaException if found
   4. MangaRepository.save()         → persists with currentChapter=0
        │
        ▼
@@ -136,7 +130,7 @@ MangaService.addManga(sourceUrl)
 
 ### Daily Scraping + Notification Flow
 
-```
+```text
 @Scheduled (cron "0 0 8 * * *", zone America/Sao_Paulo)
        │
        ▼
@@ -151,7 +145,7 @@ ScrapingJob.runDailyCheck()
               └─ If manga.notificationsEnabled AND not already sent
                  (notification_log unique constraint):
                    • Save NotificationLog entry
-                   • PushNotificationService.send(...)  → Web Push to all subscriptions
+                   • PushNotificationService.send(...)  → Web Push to owner's subscriptions
     5. Update manga.lastCheckedAt
     On scraping error: log and continue to next manga
 ```
@@ -163,59 +157,16 @@ When a notification is tapped it opens `/open/{id}`, which marks the manga read 
 
 ## Database Schema
 
-### `app_user`
+The canonical schema is the Flyway migrations plus JPA entities. Keep this section at the
+relationship level so it does not drift from migrations.
 
-| Column          | Type         | Constraints                          |
-|-----------------|--------------|--------------------------------------|
-| `id`            | UUID         | PK                                   |
-| `username`      | VARCHAR(255) | NOT NULL, UNIQUE                     |
-| `password_hash` | VARCHAR(255) | NOT NULL (BCrypt)                    |
-| `role`          | VARCHAR(32)  | NOT NULL (`OWNER` / `DEMO`)          |
-| `created_at`    | TIMESTAMP    | NOT NULL, DEFAULT now()              |
+- `app_user`: seeded `OWNER` and `DEMO` accounts with BCrypt password hashes.
+- `manga`: owner-scoped reading list entry with source URL, chapter state, cover URL,
+  `latest_chapter_at`, notification flag, and scrape timestamps. Source URLs are unique per owner.
+- `notification_log`: one row per `(manga, chapter)` push attempt to prevent duplicate alerts.
+- `push_subscription`: one row per subscribed browser, scoped to the authenticated owner.
 
-Seeded at startup by `UserSeeder` from `OWNER_PASSWORD` / `DEMO_PASSWORD` (added in migration V10).
-
-### `manga`
-
-| Column                | Type          | Constraints                              |
-|-----------------------|---------------|------------------------------------------|
-| `id`                  | UUID          | PK, default `gen_random_uuid()`          |
-| `title`               | VARCHAR(255)  | NOT NULL                                 |
-| `source_url`          | TEXT          | NOT NULL, UNIQUE per non-null `owner_id` |
-| `current_chapter`     | INTEGER       | NOT NULL, DEFAULT 0                      |
-| `latest_chapter`      | INTEGER       | NOT NULL, DEFAULT 0                      |
-| `cover_image_url`     | TEXT          | NULLABLE                                 |
-| `notifications_enabled`| BOOLEAN      | NOT NULL, DEFAULT TRUE                   |
-| `owner_id`            | UUID          | NULLABLE, FK → `app_user(id)`, indexed (V10) |
-| `last_checked_at`     | TIMESTAMP     | NULLABLE                                 |
-| `created_at`          | TIMESTAMP     | NOT NULL, DEFAULT now()                  |
-| `updated_at`          | TIMESTAMP     | NOT NULL, DEFAULT now()                  |
-
-### `notification_log`
-
-| Column           | Type      | Constraints                                          |
-|------------------|-----------|------------------------------------------------------|
-| `id`             | UUID      | PK, default `gen_random_uuid()`                      |
-| `manga_id`       | UUID      | NOT NULL, FK → `manga(id)` ON DELETE CASCADE         |
-| `chapter_number` | INTEGER   | NOT NULL                                             |
-| `sent_at`        | TIMESTAMP | NOT NULL                                             |
-
-Unique constraint on `(manga_id, chapter_number)` prevents duplicate notifications.
-
-### `push_subscription`
-
-| Column        | Type      | Constraints                     |
-|---------------|-----------|---------------------------------|
-| `id`          | UUID      | PK                              |
-| `endpoint`    | TEXT      | NOT NULL, UNIQUE                |
-| `p256dh`      | TEXT      | NOT NULL                        |
-| `auth`        | TEXT      | NOT NULL                        |
-| `owner_id`    | UUID      | NOT NULL, FK → `app_user(id)`, indexed |
-| `created_at`  | TIMESTAMP | NOT NULL                        |
-
-One row per subscribed browser, scoped to the authenticated user so private owner notifications are
-not delivered to demo/public subscribers. The `app_settings` table was removed (V8) along with the
-email and poll-interval settings.
+The old `app_settings` table was removed with the email and poll-interval settings.
 
 ---
 
@@ -243,31 +194,7 @@ Currently supported sources:
 
 ## CI Pipeline
 
-```
-push / pull_request
-        │
-        ▼
-┌───────────────────┐
-│  Stage 1          │
-│  Format & Lint    │  Spotless (Java) · Checkstyle · ESLint · Prettier · ng build
-└────────┬──────────┘
-         │ on success
-         ▼
-┌───────────────────┐
-│  Stage 2          │
-│  Tests            │  JUnit 5 · Testcontainers · SonarCloud · Playwright E2E
-└────────┬──────────┘
-         │ on success (parallel)
-    ┌────┴─────────────────────┐
-    ▼                          ▼
-┌──────────────┐    ┌──────────────────────┐
-│  Stage 3     │    │  Stage 4             │
-│  AI Code     │    │  Build & Deploy      │  (main branch only)
-│  Review      │    │  Docker → GHCR       │
-└──────────────┘    └──────────────────────┘
-```
-
-- Stage 1 auto-commits Spotless formatting fixes with `[skip ci]`.
-- Stage 2 runs a real PostgreSQL 16 service container for Testcontainers-based repository tests.
-- Stage 3 runs only on pull requests (posts review comments via Claude).
-- Stage 4 runs only on pushes to `main`; pushes images to GitHub Container Registry (`ghcr.io`).
+Current jobs and required check names live in `.github/workflows/` and
+`docs/github-operations.md`. In short: CI formats/lints, runs backend tests with coverage,
+runs frontend unit and Playwright E2E checks, runs real-backend integration E2E checks, and
+builds/pushes images on `main`.

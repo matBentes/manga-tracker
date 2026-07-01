@@ -21,6 +21,7 @@ The checks currently expected on pull requests are:
 
 - `Format & Lint`
 - `Tests`
+- `E2E`
 - `E2E Integration Tests`
 - `Markdown Lint`
 - `SonarCloud Code Analysis`
@@ -39,6 +40,9 @@ Expected default flow:
 4. merge after checks are green
 
 For solo-maintainer work, approvals may be set to `0`, so green checks are the primary merge gate.
+
+Enable the tracked local hook with `git config core.hooksPath .githooks`; otherwise
+`.githooks/pre-push` is just a tracked script and will not run locally.
 
 ## Bypass Guidance
 
@@ -62,7 +66,7 @@ Two workflows support PR automation:
   - attempts a minimal Codex-based fix and pushes it to the PR branch if changes are produced
 
 `CI Auto Fix` also requires the repository secret `OPENAI_API_KEY`. Without that secret, the
-workflow still runs but skips the actual Codex edit step and comments that the secret is missing.
+workflow still runs but skips the Codex edit step.
 
 ## Operating Checks
 
