@@ -2,7 +2,7 @@
 
 ## Project Structure
 
-```
+```text
 manga-tracker/
 ├── README.md
 ├── docker-compose.yml
@@ -17,18 +17,19 @@ manga-tracker/
 │   ├── config/checkstyle/       Checkstyle rules
 │   └── src/
 │       ├── main/
-│       │   ├── java/com/mangaTracker/backend/
+│       │   ├── java/com/mangatracker/backend/
 │       │   │   ├── BackendApplication.java
-│       │   │   ├── controller/  HTTP layer (MangaController, PushController, GlobalExceptionHandler)
-│       │   │   ├── service/     Business logic (MangaService, NotificationService, PushNotificationService, PushSubscriptionService)
+│       │   │   ├── controller/  HTTP layer (auth, manga, push, global exceptions)
+│       │   │   ├── service/     Business logic
 │       │   │   ├── repository/  JPA repositories
-│       │   │   ├── model/       JPA entities (Manga, NotificationLog, PushSubscription)
-│       │   │   ├── scraper/     MangaScraper interface, ScraperRegistry, SakuraMangasScraper
-│       │   │   ├── job/         ScrapingJob (@Scheduled daily 08:00)
+│       │   │   ├── model/       JPA entities
+│       │   │   ├── scraper/     MangaScraper implementations and registry
+│       │   │   ├── job/         Scheduled scraping and demo reset jobs
+│       │   │   ├── security/    Cookie-JWT auth, CSRF, current-user helpers
 │       │   │   └── exception/   Domain exceptions
 │       │   └── resources/
 │       │       ├── application.properties
-│       │       └── db/migration/ Flyway migrations (V1–V8)
+│       │       └── db/migration/ Flyway migrations
 │       └── test/                JUnit 5 unit and integration tests
 │
 └── frontend/                    Angular 22 application
@@ -38,14 +39,8 @@ manga-tracker/
     ├── eslint.config.js
     ├── playwright.config.ts
     ├── src/
-    │   ├── app/
-    │   │   ├── app.config.ts    Angular bootstrapping
-    │   │   ├── app.routes.ts    Router config
-    │   │   ├── dashboard/       Reading list page (card grid, mark-read)
-    │   │   ├── settings/        Settings page (push toggle + daily-08:00 note)
-    │   │   ├── open-manga/      Push-tap landing: mark read + redirect
-    │   │   ├── add-manga/       Add manga form
-    │   │   └── services/        MangaService, PushService (HttpClient)
+    │   ├── app/                 Standalone components, routes, services,
+    │   │                         guards, and interceptors
     │   └── environments/        environment.ts / environment.prod.ts
     └── e2e/                     Playwright E2E tests
         ├── manga.spec.ts        Mocked unit-style E2E tests
@@ -68,7 +63,7 @@ cd backend
 ./gradlew jacocoTestCoverageVerification
 
 # Individual test class
-./gradlew test --tests "com.mangaTracker.backend.service.MangaServiceTest"
+./gradlew test --tests "com.mangatracker.backend.service.MangaServiceTest"
 ```
 
 Backend integration tests (repository layer) use **Testcontainers** to spin up a real PostgreSQL
@@ -114,9 +109,11 @@ These tests hit the real backend and database via `docker compose`. Use the runn
 ```
 
 The script will:
+
 1. Start all services via `docker compose up -d`
 2. Wait for the backend health check and frontend readiness
-3. Run `npx playwright test e2e/integration.spec.ts`
+3. Run proxy/auth/health smoke checks
+4. Run `npx playwright test e2e/integration.spec.ts`
 
 You can also run them manually if services are already up:
 
@@ -131,41 +128,12 @@ npx playwright test e2e/integration.spec.ts
 
 To support a new manga site:
 
-1. **Create the scraper class** in `backend/src/main/java/com/mangaTracker/backend/scraper/`:
+1. Create a `@Component` implementing `MangaScraper` in
+   `backend/src/main/java/com/mangatracker/backend/scraper/`.
+2. No registration is needed. Spring wires all `MangaScraper` beans into `ScraperRegistry`.
+3. Add scraper tests under `backend/src/test/java/com/mangatracker/backend/scraper/`.
 
-   ```java
-   @Component
-   public class MyNewSiteScraper implements MangaScraper {
-
-     @Override
-     public boolean supports(String url) {
-       return url != null && url.contains("mynewsite.com");
-     }
-
-     @Override
-     public ScrapedManga scrape(String url) throws ScrapingException {
-       try {
-         Document doc = Jsoup.connect(url).timeout(10_000).get();
-         String title = /* extract title from doc */;
-         int latestChapter = /* extract chapter number from doc */;
-         String coverImageUrl = /* extract og:image, or null */;
-         if (title == null || title.isBlank()) throw new ScrapingException("Title not found");
-         return new ScrapedManga(title, latestChapter, coverImageUrl);
-       } catch (IOException e) {
-         throw new ScrapingException("Failed to fetch page: " + e.getMessage());
-       }
-     }
-   }
-   ```
-
-2. **No registration needed.** Spring auto-wires all `MangaScraper` beans into `ScraperRegistry` via `List<MangaScraper>`. The new scraper is picked up automatically.
-
-3. **Write tests** in `src/test/java/com/mangaTracker/backend/scraper/`:
-   - `supports()` returns `true` for your domain URLs and `false` for others.
-   - `scrape()` correctly extracts title and chapter from a sample HTML string.
-   - `scrape()` throws `ScrapingException` when title or chapter cannot be extracted.
-
-   See `SakuraMangasScraperTest` for a reference pattern.
+Use `SakuraMangasScraper` and `SakuraMangasScraperTest` as the current pattern.
 
 ---
 
@@ -203,27 +171,11 @@ npm run lint          # ESLint check
 
 ---
 
-## CI Pipeline Explained
+## CI, Checks, And Branch Policy
 
-See `.github/workflows/ci.yml`. The pipeline has four stages:
-
-| Stage            | Trigger            | What runs                                                    |
-|------------------|--------------------|--------------------------------------------------------------|
-| 1. Format & Lint | Every push/PR      | Spotless, Checkstyle, ESLint, Prettier, `ng build --prod`    |
-| 2. Tests         | After stage 1      | JUnit 5, Jacoco coverage, SonarCloud, Playwright E2E         |
-| 3. AI Code Review| PRs only           | Claude posts review comments on the PR                       |
-| 4. Build & Deploy| Push to `main` only| Builds Docker images, pushes to GHCR (`ghcr.io`)             |
-
-The `main` ruleset requires the configured status checks to pass before merge. Required approvals
-depend on the active repository ruleset and may be set to `0` for solo-maintainer flow.
-
-## Branch Policy
-
-To reduce accidental bypass of failing CI, this repository enforces a local Git hook:
-
-- `.githooks/pre-push` blocks direct pushes to `main` by default.
-- Expected flow: feature branch -> pull request -> CI green -> merge.
-- Direct pushes to `main` are not part of the documented workflow.
+For current workflow jobs, required check names, autofix behavior, and branch policy, use
+`docs/github-operations.md` and `.github/workflows/` as the source of truth. Keep local command
+details in the testing and code-style sections above.
 
 ---
 
@@ -232,7 +184,7 @@ To reduce accidental bypass of failing CI, this repository enforces a local Git 
 New chapters are delivered as Web Push notifications to subscribed browsers (installable PWA) —
 there is no email path. The backend signs pushes with a VAPID key pair supplied via env:
 
-```
+```dotenv
 VAPID_PUBLIC_KEY=...
 VAPID_PRIVATE_KEY=...      # secret — never commit; .env is gitignored
 VAPID_SUBJECT=mailto:you@example.com
@@ -252,7 +204,7 @@ test on a phone, expose the dev frontend over HTTPS (e.g. a cloudflared quick tu
 The backend uses stateless, cookie-based JWT auth (see `docs/api.md` and `docs/architecture.md`).
 On startup `UserSeeder` creates two accounts from env, BCrypt-hashing the passwords:
 
-```
+```dotenv
 JWT_SECRET=...            # secret — HMAC signing key for the auth JWT; never commit
 OWNER_PASSWORD=...        # secret — password for the private OWNER account; never commit
 DEMO_PASSWORD=...         # secret — password for the public DEMO account; never commit
