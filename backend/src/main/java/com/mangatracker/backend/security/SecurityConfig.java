@@ -21,6 +21,7 @@ import org.springframework.security.web.csrf.CsrfFilter;
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.security.web.csrf.CsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
+import org.springframework.security.web.csrf.DeferredCsrfToken;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -87,10 +88,41 @@ public class SecurityConfig {
 
   @Bean
   public CsrfTokenRepository csrfTokenRepository() {
-    CookieCsrfTokenRepository csrfTokenRepository = new CookieCsrfTokenRepository();
-    csrfTokenRepository.setCookieCustomizer(
-        cookie -> cookie.httpOnly(true).sameSite("Strict").path("/"));
-    return csrfTokenRepository;
+    CookieCsrfTokenRepository delegate = new CookieCsrfTokenRepository();
+    delegate.setCookieCustomizer(cookie -> cookie.httpOnly(true).sameSite("Strict").path("/"));
+    // JwtCookieAuthFilter re-authenticates from the JWT cookie on every request (this app is
+    // stateless, so there's no session to authenticate into just once). Spring's
+    // SessionManagementFilter can't tell that apart from "a login just happened this request"
+    // and fires CsrfAuthenticationStrategy, which calls saveToken(null, ...) to rotate the
+    // cookie -- on every authenticated request, not just real logins. That desyncs the SPA's
+    // cached token from the browser's actual cookie. Deletion isn't otherwise used by this app
+    // (logout only clears the auth cookie), so dropping it here neutralizes the rotation.
+    return new CsrfTokenRepository() {
+      @Override
+      public CsrfToken generateToken(HttpServletRequest request) {
+        return delegate.generateToken(request);
+      }
+
+      @Override
+      public void saveToken(
+          CsrfToken token, HttpServletRequest request, HttpServletResponse response) {
+        if (token == null) {
+          return;
+        }
+        delegate.saveToken(token, request, response);
+      }
+
+      @Override
+      public CsrfToken loadToken(HttpServletRequest request) {
+        return delegate.loadToken(request);
+      }
+
+      @Override
+      public DeferredCsrfToken loadDeferredToken(
+          HttpServletRequest request, HttpServletResponse response) {
+        return delegate.loadDeferredToken(request, response);
+      }
+    };
   }
 
   @Bean
