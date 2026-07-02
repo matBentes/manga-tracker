@@ -31,12 +31,15 @@ HTTPS — yet), region `sa-east-1`.
   - **Web:** [IAM → Users](https://console.aws.amazon.com/iam/home#/users) — the new user
     and its access key show up here.
 - AWS CLI v2:
+
   ```bash
   curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o awscliv2.zip
   unzip awscliv2.zip && sudo ./aws/install && aws --version
   ```
+
 - Docker (for building/pushing images).
 - Configure the CLI and confirm identity:
+
   ```bash
   aws configure   # access key, secret, region, output format
   aws sts get-caller-identity   # should return your account ID + IAM user ARN (Amazon Resource Name, AWS's unique ID format for any resource)
@@ -213,7 +216,7 @@ console) — no risk of losing a randomly generated password.
 The only thing that should ever be open to the raw internet is the load balancer. Everything
 else should only accept traffic from the tier directly in front of it:
 
-```
+```text
 internet -> ALB (:80, 0.0.0.0/0)
          -> frontend SG (:80, from ALB SG only)
          -> backend SG (:8080, from frontend SG only)
