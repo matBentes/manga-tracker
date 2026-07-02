@@ -32,7 +32,6 @@ import org.mockito.quality.Strictness;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
@@ -49,15 +48,8 @@ class AuthControllerTest {
 
   @BeforeEach
   void setUp() {
-    CookieCsrfTokenRepository csrfTokenRepository = new CookieCsrfTokenRepository();
     AuthController controller =
-        new AuthController(
-            appUserRepository,
-            passwordEncoder,
-            jwtService,
-            currentUser,
-            csrfTokenRepository,
-            false);
+        new AuthController(appUserRepository, passwordEncoder, jwtService, currentUser, false);
     mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
     when(passwordEncoder.encode(any())).thenReturn("$2a$10$dummy.timing.attack.hash");
   }

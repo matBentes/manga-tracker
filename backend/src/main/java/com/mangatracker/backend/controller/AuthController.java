@@ -14,7 +14,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
@@ -26,7 +25,6 @@ import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.csrf.CsrfToken;
-import org.springframework.security.web.csrf.CsrfTokenRepository;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -49,7 +47,6 @@ public class AuthController {
   private final PasswordEncoder passwordEncoder;
   private final JwtService jwtService;
   private final CurrentUser currentUser;
-  private final CsrfTokenRepository csrfTokenRepository;
   private final boolean cookieSecure;
 
   private volatile String dummyHash;
@@ -59,13 +56,11 @@ public class AuthController {
       PasswordEncoder passwordEncoder,
       JwtService jwtService,
       CurrentUser currentUser,
-      CsrfTokenRepository csrfTokenRepository,
       @Value("${app.auth.cookie-secure:true}") boolean cookieSecure) {
     this.appUserRepository = appUserRepository;
     this.passwordEncoder = passwordEncoder;
     this.jwtService = jwtService;
     this.currentUser = currentUser;
-    this.csrfTokenRepository = csrfTokenRepository;
     this.cookieSecure = cookieSecure;
   }
 
@@ -155,13 +150,11 @@ public class AuthController {
   @GetMapping("/csrf")
   @Operation(summary = "Issue the CSRF token required for state-changing requests")
   @ApiResponse(responseCode = "200", description = "CSRF token returned and cookie set")
-  public ResponseEntity<Map<String, String>> csrf(
-      HttpServletRequest request, HttpServletResponse response) {
-    CsrfToken csrfToken = csrfTokenRepository.loadToken(request);
-    if (csrfToken == null) {
-      csrfToken = csrfTokenRepository.generateToken(request);
-      csrfTokenRepository.saveToken(csrfToken, request, response);
-    }
+  public ResponseEntity<Map<String, String>> csrf(HttpServletRequest request) {
+    // CsrfFilter (configured with a null request-attribute name, forcing eager resolution)
+    // has already generated and saved this request's token via the cookie repository, so we
+    // just read it back rather than generating a second, conflicting token+cookie ourselves.
+    CsrfToken csrfToken = (CsrfToken) request.getAttribute(CsrfToken.class.getName());
     return ResponseEntity.ok()
         .header(csrfToken.getHeaderName(), csrfToken.getToken())
         .body(Map.of(KEY_CSRF_TOKEN, csrfToken.getToken()));
