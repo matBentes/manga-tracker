@@ -5,10 +5,8 @@ the stack before reaching for Terraform (HashiCorp's infrastructure-as-code tool
 (AWS's own Cloud Development Kit, an alternative to Terraform for the same job). Written up
 as I went so I don't forget how the pieces fit together.
 
-> **Status: in progress.** This covers the steps taken so far — prereqs through creating the
-> security group chain, though the actual ingress rules for that chain are still pending (see
-> "What's left"). ECS, the load balancer, and end-to-end verification are still ahead too.
-> I'll fill in the rest as I get to it rather than back-dating this post to look finished.
+> **Status: done.** The app is live on ECS Fargate behind an ALB, HTTP-only (no domain/TLS
+> yet — see "Later"), login verified end-to-end. Written up as I went, phase by phase.
 
 **Stack:** Spring Boot backend (Docker, bundles headless Chrome for scraping), Angular
 frontend (nginx), PostgreSQL. **Target:** ECS (Elastic Container Service) Fargate — AWS's
@@ -247,23 +245,255 @@ traffic only from another security group, not from an IP range. Even if you lear
 backend task's private IP, its security group would still reject a direct connection that
 didn't come from the frontend tier.
 
-## What's left
+## 6. ECS — cluster, task definitions, services
 
-- **Finish wiring the security group chain** — the four groups exist, but as of this
-  writing I haven't run the `authorize-security-group-ingress` calls yet. That's the very
-  next thing.
-- **ECS**: cluster, backend task definition (min 1 vCPU / 2GB — the image bundles headless
-  Chrome for Playwright-based scraping), frontend task definition, services using the SGs
-  above.
-- **ALB**: HTTP `:80` listener, target group health check on `/actuator/health` expecting `200`.
-- **Verify**: `/actuator/health` returns `UP` through the ALB, login works end-to-end.
-- Later: buy a domain, add an ACM (AWS Certificate Manager) certificate, move ALB to HTTPS,
-  flip `AUTH_COOKIE_SECURE=true`.
+- **Web:** [ECS → Clusters](https://console.aws.amazon.com/ecs/v2/clusters?region=sa-east-1)
+  shows cluster status; click into a cluster → **Services** tab to see running/desired task
+  counts; click a service → **Tasks** tab for individual task status and a link to its logs.
+
+```bash
+aws ecs create-cluster --cluster-name manga-tracker-cluster --region sa-east-1
+```
+
+**Gotcha:** if this is the first time ECS is used in the account, `create-cluster` fails with
+`InvalidParameterException: Unable to assume the service linked role`. Fix once, up front:
+
+```bash
+aws iam create-service-linked-role --aws-service-name ecs.amazonaws.com
+```
+
+Every task needs an execution role (lets ECS itself pull the image and write logs — distinct
+from any permissions the *application* needs at runtime):
+
+```bash
+aws iam create-role --role-name ecsTaskExecutionRole \
+  --assume-role-policy-document '{
+    "Version": "2012-10-17",
+    "Statement": [{
+      "Effect": "Allow",
+      "Principal": {"Service": "ecs-tasks.amazonaws.com"},
+      "Action": "sts:AssumeRole"
+    }]
+  }'
+
+aws iam attach-role-policy --role-name ecsTaskExecutionRole \
+  --policy-arn arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+```
+
+That managed policy covers ECR pulls and writing to *existing* CloudWatch log groups, but not
+creating a new one. Since the task definitions below use `awslogs-create-group: true`, add an
+inline policy too, or the task fails at startup with a log-group `AccessDenied`:
+
+```bash
+aws iam put-role-policy --role-name ecsTaskExecutionRole \
+  --policy-name manga-tracker-logs-access \
+  --policy-document '{
+    "Version": "2012-10-17",
+    "Statement": [{
+      "Effect": "Allow",
+      "Action": ["logs:CreateLogGroup"],
+      "Resource": [
+        "arn:aws:logs:sa-east-1:123456789012:log-group:/ecs/manga-tracker-backend:*",
+        "arn:aws:logs:sa-east-1:123456789012:log-group:/ecs/manga-tracker-frontend:*"
+      ]
+    }]
+  }'
+```
+
+The application itself also needs to read the app secret and the RDS-managed master password
+secret from step 4 — another inline policy on the same role:
+
+```bash
+aws iam put-role-policy --role-name ecsTaskExecutionRole \
+  --policy-name manga-tracker-secrets-access \
+  --policy-document '{
+    "Version": "2012-10-17",
+    "Statement": [{
+      "Effect": "Allow",
+      "Action": ["secretsmanager:GetSecretValue"],
+      "Resource": [
+        "arn:aws:secretsmanager:sa-east-1:123456789012:secret:manga-tracker/app-AbCdEf",
+        "arn:aws:secretsmanager:sa-east-1:123456789012:secret:rds!db-a1b2c3d4-e5f6-47a8-b9c0-d1e2f3a4b5c6-GhIjKl"
+      ]
+    }]
+  }'
+```
+
+Register the backend task definition — the interesting parts are the `secrets` block (pulls
+straight from Secrets Manager at container start, nothing baked into the image) and the port
+name `backend` (used by Service Connect below):
+
+```json
+{
+  "family": "manga-tracker-backend",
+  "requiresCompatibilities": ["FARGATE"],
+  "networkMode": "awsvpc",
+  "cpu": "1024",
+  "memory": "2048",
+  "executionRoleArn": "arn:aws:iam::123456789012:role/ecsTaskExecutionRole",
+  "containerDefinitions": [{
+    "name": "backend",
+    "image": "123456789012.dkr.ecr.sa-east-1.amazonaws.com/manga-tracker-backend:latest",
+    "portMappings": [{ "containerPort": 8080, "name": "backend" }],
+    "secrets": [
+      { "name": "JWT_SECRET", "valueFrom": "arn:aws:secretsmanager:sa-east-1:123456789012:secret:manga-tracker/app-AbCdEf:JWT_SECRET::" },
+      { "name": "DB_URL", "valueFrom": "arn:aws:secretsmanager:sa-east-1:123456789012:secret:manga-tracker/app-AbCdEf:DB_URL::" }
+    ],
+    "logConfiguration": {
+      "logDriver": "awslogs",
+      "options": {
+        "awslogs-group": "/ecs/manga-tracker-backend",
+        "awslogs-region": "sa-east-1",
+        "awslogs-stream-prefix": "ecs",
+        "awslogs-create-group": "true"
+      }
+    }
+  }]
+}
+```
+
+```bash
+aws ecs register-task-definition --cli-input-json file://backend-task-def.json --region sa-east-1
+```
+
+The frontend task definition is the same shape but lighter (0.25 vCPU / 512MB, no secrets,
+port named `frontend`).
+
+**Service discovery gotcha:** `frontend/nginx.conf` proxies to the bare hostname
+`http://backend:8080` — a Docker Compose convention that doesn't resolve automatically
+between two separate ECS services. Rather than touch app config, use **ECS Service
+Connect**: it lets the frontend service resolve `backend` by giving the backend service a
+client alias of that name, pointing at the `backend`-named port from the task def above. This
+needs a Cloud Map namespace, which the CLI (unlike the console) does not create for you
+automatically:
+
+```bash
+aws servicediscovery create-private-dns-namespace \
+  --name manga-tracker --vpc vpc-0abc123456789ef01 --region sa-east-1
+# poll the returned operation-id with:
+aws servicediscovery get-operation --operation-id <operation-id> --region sa-east-1
+```
+
+Then create the backend service with Service Connect enabled:
+
+```bash
+aws ecs create-service \
+  --cluster manga-tracker-cluster \
+  --service-name manga-tracker-backend \
+  --task-definition manga-tracker-backend \
+  --desired-count 1 \
+  --launch-type FARGATE \
+  --network-configuration '{
+    "awsvpcConfiguration": {
+      "subnets": ["subnet-0abc123456789ef01", "subnet-0def456789abc1234"],
+      "securityGroups": ["sg-0ccc333ddd444e555"],
+      "assignPublicIp": "ENABLED"
+    }
+  }' \
+  --service-connect-configuration '{
+    "enabled": true,
+    "namespace": "manga-tracker",
+    "services": [{
+      "portName": "backend",
+      "clientAliases": [{ "port": 8080, "dnsName": "backend" }]
+    }]
+  }' \
+  --region sa-east-1
+```
+
+`assignPublicIp: ENABLED` is needed here only because the default VPC has no NAT gateway —
+tasks still need a route out to reach ECR, Secrets Manager, and CloudWatch. The security
+group (from step 5) still blocks all unwanted inbound traffic regardless of the public IP.
+
+The frontend service is created the same way, minus the `services` array in Service Connect
+(it only needs to *resolve* `backend`, not expose anything itself) — that comes with a
+`--load-balancers` flag once the ALB exists (step 7). Both services eventually settle at
+`RUNNING (1/1)`.
+
+## 7. ALB — expose it to the internet
+
+- **Web:** [EC2 → Load
+  Balancers](https://console.aws.amazon.com/ec2/home?region=sa-east-1#LoadBalancers:) and
+  [EC2 → Target
+  Groups](https://console.aws.amazon.com/ec2/home?region=sa-east-1#TargetGroups:) — the
+  target group's **Targets** tab shows each task's health check status live.
+
+```bash
+aws elbv2 create-load-balancer \
+  --name manga-tracker-alb --type application --scheme internet-facing \
+  --subnets subnet-0abc123456789ef01 subnet-0def456789abc1234 \
+  --security-groups sg-0aaa111bbb222c333 --region sa-east-1
+
+aws elbv2 create-target-group \
+  --name manga-tracker-frontend-tg --protocol HTTP --port 8080 \
+  --vpc-id vpc-0abc123456789ef01 --target-type ip \
+  --health-check-path /actuator/health --region sa-east-1
+
+aws elbv2 create-listener \
+  --load-balancer-arn <alb-arn-from-first-command> \
+  --protocol HTTP --port 80 \
+  --default-actions Type=forward,TargetGroupArn=<target-group-arn> \
+  --region sa-east-1
+```
+
+**Gotcha:** ECS will not let you attach a load balancer to a service that's already running —
+`loadBalancers` is a create-time-only field via the API. If the frontend service already
+exists from step 6, the only option (short of a blue/green cutover) is to delete it and
+recreate it with `--load-balancers` set this time.
+
+**Gotcha:** the frontend container listens on port **8080**, not 80 — the nginx-unprivileged
+base image can't bind to a port below 1024. The target group above already used 8080, but the
+security group rule from step 5 only opened port 80 from the ALB to the frontend. Target
+health showed `Target.Timeout` until adding one more ingress rule: allow tcp/8080 on the
+frontend SG, sourced from the ALB SG.
+
+With that fixed, the target turns healthy and the Sign In page loads through the ALB's DNS
+name (`manga-tracker-alb-123456789.sa-east-1.elb.amazonaws.com` in this account).
+
+## 8. Verify — health check and login, end to end
+
+```bash
+curl http://manga-tracker-alb-123456789.sa-east-1.elb.amazonaws.com/actuator/health
+```
+
+**Gotcha:** the first real request through the ALB came back `502 Bad Gateway` from nginx.
+Nothing to do with the ALB or security groups — the backend logs showed
+`NoRouteToHostException` connecting to Postgres. Root cause: the RDS instance had been
+stopped (a cost-saving habit from the day before) — Flyway/Hikari couldn't connect at
+startup, so the Spring context never came up, so nginx's `proxy_pass` had nothing to reach.
+Fixed with `aws rds start-db-instance`, waited for `available`, then forced a fresh ECS
+deployment so the backend would retry the connection:
+
+```bash
+aws rds start-db-instance --db-instance-identifier manga-tracker-db --region sa-east-1
+aws rds wait db-instance-available --db-instance-identifier manga-tracker-db --region sa-east-1
+aws ecs update-service --cluster manga-tracker-cluster --service manga-tracker-backend \
+  --force-new-deployment --region sa-east-1
+```
+
+After that, `/actuator/health` returns `200 {"status":"UP"}` and the login form works
+end-to-end through the ALB's DNS name, using the seeded owner/demo credentials from the app
+secret. **All 8 phases done.**
+
+**Lesson for future-me:** if resuming this stack after a break and something looks broken,
+check RDS status first — a stopped database produces the exact same 502 symptom every time,
+and it's the cheapest thing to rule out before debugging anything else.
+
+## Later
+
+- Convert this whole manual setup to Terraform or CDK — clicking through the console once was
+  worth it for learning, but it's not how I'd want to reproduce or tear this down again.
+- Buy a domain, add an ACM (AWS Certificate Manager) certificate, move the ALB to HTTPS, flip
+  `AUTH_COOKIE_SECURE=true`.
+- A real bug surfaced during verification (CSRF cookies misbehaving on login) that turned into
+  its own debugging story — Spring Security internals, reproducing with a real browser,
+  instrumenting the framework to find the actual cause. Probably a separate post.
 
 ## Cost note
 
 None of this is fully free. ECR/RDS instance size chosen here fit within AWS's free-tier
 eligible instance classes, but **ECS Fargate and the ALB have no free tier at all** — expect
-real cost if left running continuously (I'm using AWS's newer credit-based Free Plan to
-cover it during the learning phase, and scale ECS tasks to 0 / stop RDS when not actively
-testing to conserve credit).
+real cost if left running continuously (I'm using AWS's newer credit-based Free Plan to cover
+it during the learning phase, and scale ECS tasks to 0 / stop RDS when not actively testing to
+conserve credit — just remember to start RDS back up before debugging anything, per the
+lesson above).
