@@ -62,8 +62,7 @@ VAPID_PRIVATE_KEY=<private key>
 VAPID_SUBJECT=mailto:you@example.com
 ```
 
-docker compose passes these to the backend automatically. Without them the app still
-runs, but the push endpoints return an error when you try to subscribe.
+docker compose passes these to the backend automatically. Without a public key, browsers cannot subscribe; without the private key, delivery fails when a push is sent.
 
 > **Keep the private key secret.** Never commit `.env`. The public key is safe to expose.
 
@@ -82,12 +81,13 @@ This prints a temporary `https://<random>.trycloudflare.com` URL. Then on your p
 1. Open that URL in **Chrome (Android)** or **Safari (iOS 16.4+)**.
 2. *(iOS only)* **Add to Home Screen** and open the app from there — iOS only allows
    push from an installed PWA.
-3. Tap **Notify** on a manga card and grant the notification permission.
-4. Tap **Test push** — a notification should appear on your phone.
+3. Open **Settings**, enable phone notifications, and grant permission.
+4. Use each card's **Notify** toggle only to mute or unmute that manga.
+5. Tap **Test push** — a notification should appear on your phone.
 
 ## Local Development (Without Docker)
 
-**Backend** (Java 21) — needs a local PostgreSQL:
+**Backend** (Java 21) — needs a local PostgreSQL and `JWT_SECRET`; set `OWNER_PASSWORD` or `DEMO_PASSWORD` to log in:
 
 ```bash
 cd backend
@@ -96,7 +96,7 @@ cd backend
 
 API on **<http://localhost:8080>**.
 
-**Frontend** (Node 24.15+):
+**Frontend** (Node matching `frontend/package.json` engines):
 
 ```bash
 cd frontend
@@ -114,12 +114,14 @@ Dev server on **<http://localhost:4200>**, proxies `/api` to `localhost:8080`.
 | `DB_USERNAME`        | `manga_tracker`                                  | PostgreSQL username                  |
 | `DB_PASSWORD`        | `manga_tracker`                                  | PostgreSQL password                  |
 | `JWT_SECRET`         | *(required)*                                     | JWT signing secret, at least 32 bytes|
+| `OWNER_PASSWORD`     | *(empty)*                                        | Seeds the private owner account      |
+| `DEMO_PASSWORD`      | *(empty)*                                        | Seeds the public demo account        |
+| `AUTH_COOKIE_SECURE` | `true`                                           | Set `false` for HTTP-only local dev  |
 | `VAPID_PUBLIC_KEY`   | *(empty)*                                        | VAPID public key for web push        |
 | `VAPID_PRIVATE_KEY`  | *(empty)*                                        | VAPID private key (keep secret)      |
 | `VAPID_SUBJECT`      | `mailto:…`                                       | VAPID subject (contact mailto/URL)   |
-| `SCRAPER_TIMEOUT_MS` | `10000`                                          | Per-request scraper timeout (ms)     |
 
-In docker compose, DB vars are set automatically and VAPID vars come from `.env`.
+In docker compose, DB vars are set automatically and app secrets come from `.env`.
 
 ## Quality Gates
 
@@ -127,11 +129,12 @@ In docker compose, DB vars are set automatically and VAPID vars come from `.env`
 # backend
 cd backend
 ./gradlew spotlessApply             # format
-./gradlew test jacocoTestReport     # tests + coverage (needs Docker for Testcontainers)
+./gradlew test jacocoTestReport jacocoTestCoverageVerification
 
 # frontend
 cd frontend
-npm run format && npm test && npm run lint
+npm run format:check && npm test && npm run lint
+npm run build -- --configuration production
 npm run e2e                         # Playwright, mocked backend
 ```
 

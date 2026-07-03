@@ -30,17 +30,21 @@ Use this default split for faster delivery with clearer responsibilities:
 
 ## Required Verification Commands
 
+Run the relevant checks from `docs/developer-guide.md#running-tests` and report anything skipped.
+Common full-suite commands:
+
 ```bash
 # Backend
 cd backend
 ./gradlew spotlessApply
-./gradlew test jacocoTestReport
+./gradlew test jacocoTestReport jacocoTestCoverageVerification
 
 # Frontend
 cd frontend
-npm run format
+npm run format:check
 npm test                         # Vitest unit tests
 npm run lint
+npm run build -- --configuration production
 npm run e2e
 ```
 

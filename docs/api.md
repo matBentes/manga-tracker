@@ -57,7 +57,7 @@ When the limit is exceeded, the API returns `429` with the shared error envelope
 
 ## Error Format
 
-All JSON error responses use the same envelope:
+Handled application exceptions use this JSON envelope:
 
 ```json
 { "error": "Human-readable error message" }
@@ -72,3 +72,5 @@ Common statuses:
 - `409`: duplicate manga URL.
 - `422`: scraper could not extract manga data.
 - `429`: rate limit exceeded.
+
+Spring Security and framework-level errors may return an empty or default body.

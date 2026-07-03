@@ -38,19 +38,21 @@ Read these in order:
 
 ## Verification
 
-Run relevant checks before final approval and report anything skipped:
+Run relevant checks from `docs/developer-guide.md#running-tests` before final approval and report
+anything skipped. Common full-suite commands:
 
 ```bash
 # Backend
 cd backend
 ./gradlew spotlessApply
-./gradlew test jacocoTestReport
+./gradlew test jacocoTestReport jacocoTestCoverageVerification
 
 # Frontend
 cd frontend
-npm run format
+npm run format:check
 npm test
 npm run lint
+npm run build -- --configuration production
 npm run e2e
 ```
 
