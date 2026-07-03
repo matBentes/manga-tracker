@@ -132,7 +132,9 @@ public class PlaywrightBrowserManager {
         }
       } catch (PlaywrightException e) {
         invalidateBrowserIfDisconnected(activeBrowser);
-        throw new ScrapingException("Failed to fetch manga page via Playwright: " + url, e);
+        LOGGER.error("Failed to fetch manga page via Playwright: {}", url, e);
+        throw new ScrapingException(
+            "Failed to fetch manga page via Playwright: " + url + " (" + e.getMessage() + ")", e);
       }
     }
   }
