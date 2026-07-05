@@ -1,0 +1,33 @@
+flowchart LR
+    browser["Browser / PWA\nAngular SPA + Service Worker"]
+    pushService["Browser Push Service\nFCM / APNs / Web Push"]
+
+    subgraph frontend["Frontend Container"]
+        nginx["nginx\nStatic assets + /api proxy"]
+    end
+
+    subgraph backend["Backend Container - Spring Boot"]
+        controllers["Controllers\nManga / Auth / Push"]
+        security["Security\nCookie JWT + CSRF + Rate Limit"]
+        services["Services\nManga + Notification + Push"]
+        jobs["Scheduled Jobs\nDaily MangaDex check + Demo reset"]
+        mangadexClient["MangaDexClient"]
+        repositories["Repositories\nSpring Data JPA"]
+    end
+
+    db[("PostgreSQL 16\nFlyway-managed schema")]
+    mangadex["api.mangadex.org"]
+
+    browser -->|"Load SPA"| nginx
+    browser -->|"/api/* cookies + CSRF"| nginx
+    nginx -->|"Proxy /api/*"| controllers
+    controllers --> security
+    security --> services
+    services --> repositories
+    repositories -->|"JDBC / SQL"| db
+    services --> mangadexClient
+    jobs --> services
+    jobs --> mangadexClient
+    mangadexClient -->|"HTTPS REST\nsearch + metadata + English chapter feed"| mangadex
+    services -->|"Web Push / VAPID"| pushService
+    pushService -->|"Notification delivery"| browser

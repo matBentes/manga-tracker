@@ -106,7 +106,7 @@ Run this when a change touches frontend/backend behavior together:
 | Add or change an API endpoint | `backend/src/main/java/com/mangatracker/backend/controller/` | Keep endpoint contracts in controller annotations and DTOs; Swagger is generated. |
 | Change manga business rules | `backend/src/main/java/com/mangatracker/backend/service/MangaService.java` | Preserve owner scoping: cross-user access should look like `404`. |
 | Add a database change | `backend/src/main/resources/db/migration/` | Add a new Flyway migration. Never edit an existing migration. |
-| Add a new scraper | `backend/src/main/java/com/mangatracker/backend/scraper/` | Implement `MangaScraper`; Spring discovers the bean automatically. |
+| Change MangaDex integration | `backend/src/main/java/com/mangatracker/backend/service/MangaDexClient.java` | Search, manga metadata, and English chapter feed all go through this client. |
 | Change login/auth behavior | `backend/src/main/java/com/mangatracker/backend/security/` and `frontend/src/app/services/auth.service.ts` | Remember CSRF and `withCredentials`. |
 | Change dashboard UI | `frontend/src/app/dashboard/` | Keep service calls in `frontend/src/app/services/`. |
 | Change push notifications | `backend/src/main/java/com/mangatracker/backend/service/PushNotificationService.java` and `frontend/src/app/services/push.service.ts` | Test on HTTPS for real phones. |
@@ -138,9 +138,12 @@ cd frontend
 npx playwright install --with-deps chromium
 ```
 
-### Scraping Is Flaky
+### MangaDex Requests Fail Or Time Out
 
-Sakura scraping depends on a rendered page and Cloudflare behavior. Start with `SakuraMangasScraperTest` for parser behavior and `PlaywrightBrowserManagerTest` for browser setup. Treat live-site failures as integration/environment issues until reproduced with saved HTML.
+Search, add, and the daily notification job all call the public MangaDex API
+(`api.mangadex.org`). A `502` response means the upstream request failed; start with
+`MangaDexClientTest` (mocked HTTP) and treat live-API failures as an environment/upstream issue
+rather than a local bug.
 
 ## Review Checklist
 

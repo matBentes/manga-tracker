@@ -13,6 +13,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
@@ -42,6 +43,8 @@ public class MangaDexClient {
   private final Object requestThrottle = new Object();
   private long nextRequestAtNanos;
 
+  /** Marks the production constructor for Spring; the package-private one is test-only. */
+  @Autowired
   public MangaDexClient(RestClient.Builder restClientBuilder) {
     this(buildRestClient(restClientBuilder), Thread::sleep);
   }

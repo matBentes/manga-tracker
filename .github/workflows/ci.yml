@@ -290,11 +290,8 @@ jobs:
             --app.auth.jwt-secret=ci-test-secret-that-is-at-least-32-bytes-long \
             --app.auth.demo-password=demo \
             --app.auth.owner-password=owner \
-            --management.health.mail.enabled=false \
-            --scraper.sakura.playwright.enabled=false &
+            --management.health.mail.enabled=false &
           echo $! > /tmp/backend.pid
-        env:
-          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
 
       - name: Wait for backend to be ready
         run: |

@@ -1,16 +1,33 @@
 # MangaTracker
 
-Track the manga you read, and get a **push notification on your phone** the moment a new chapter drops.
+Track the manga you read, enriched by the **MangaDex API**, and get a **best-effort push
+notification on your phone** when a new English chapter drops.
 
-Add a manga by pasting its URL. The backend scrapes the source once a day, detects new chapters, and pushes a notification to every device you've subscribed. A neo-brutalist dashboard shows what's new at a glance.
+Search MangaDex, add a title with real metadata (cover, synopsis), and track your own reading
+progress and status. Keep an optional "read it here" link if you follow the chapters somewhere
+else. A daily job checks MangaDex's English chapter feed for titles you're tracking and pushes a
+notification to every device you've subscribed. A neo-brutalist dashboard shows what's new at a
+glance.
 
 ![Dashboard](docs/images/dashboard.png)
 
+We originally scraped a manga site directly for new chapters; that approach ran into Cloudflare
+bot protection that can't be automated unattended, so the app pivoted to a MangaDex-backed
+tracker — see [`docs/cloudflare-scraper-investigation.md`](docs/cloudflare-scraper-investigation.md)
+for the engineering case study behind the pivot.
+
 ## Features
 
-- **Add manga by URL** — paste a source link, the scraper fetches the title, cover, and latest chapter.
+- **Search & add from MangaDex** — search by title, pick a result, and the app pulls in the
+  title, cover, and synopsis automatically.
+- **Reading progress & status** — track current/latest chapter and a reading status
+  (Reading, Completed, On Hold, Dropped, Plan to Read) per title.
+- **Optional read-here link** — attach a source URL to jump straight to where you read, or leave
+  it blank.
 - **Web push notifications** — real browser/phone push (no email). Works on Android and installed iOS PWAs.
-- **Daily chapter check** — scheduled scrape every day at 08:00 (America/São_Paulo); new chapters trigger a push.
+- **Best-effort English chapter check** — a daily job (08:00 America/São_Paulo) polls MangaDex's
+  English chapter feed for tracked titles; new chapters trigger a push. Non-English chapters and
+  half/decimal chapter numbers are not tracked.
 - **Per-manga notify toggle** — mute titles you don't care about.
 - **Read / unread tracking** — mark chapters read, "NEW" badge for anything you haven't caught up on.
 - **Test push** — one button per card to verify notifications reach your device.
@@ -24,8 +41,8 @@ Add a manga by pasting its URL. The backend scrapes the source once a day, detec
 | Frontend  | Angular 22 · TypeScript · SCSS · Service Worker    |
 | Database  | PostgreSQL 16 · Flyway migrations                  |
 | Push      | Web Push (VAPID) · `nl.martijndwars:web-push`      |
-| Scraping  | Playwright (stealth) · rendered-DOM scrape         |
-| Testing   | JUnit 5 · Mockito · Testcontainers · Playwright    |
+| Metadata  | MangaDex API (search, cover art, English chapter feed) |
+| Testing   | JUnit 5 · Mockito · Testcontainers · Playwright (frontend E2E) |
 | Container | Docker · docker compose                            |
 
 ## Quick Start
@@ -44,7 +61,7 @@ docker compose up
 
 App: **<http://localhost:4200>** once all services report healthy.
 
-> First startup builds the images and downloads Playwright's browser — give it a few minutes.
+> First startup builds the images — give it a few minutes.
 
 ## Web Push Setup (VAPID)
 
@@ -142,6 +159,8 @@ npm run e2e                         # Playwright, mocked backend
 
 - [API Concepts](docs/api.md) — auth, CSRF, demo behavior, rate limits, and error format. Full endpoint reference is generated at `http://localhost:8080/swagger-ui.html`.
 - [Architecture Overview](docs/architecture.md)
+- [Architecture Diagrams](docs/diagrams/README.md)
+- [Why We Pivoted From Scraping To MangaDex](docs/cloudflare-scraper-investigation.md)
 - [AWS Deployment Runbook](docs/aws-deployment.md)
 - [New Developer Onboarding](docs/onboarding.md)
 - [Developer Guide](docs/developer-guide.md)

@@ -46,14 +46,37 @@ Swagger UI can browse the contract without authentication. For "Try it out" on s
 
 The demo library is reset nightly by `DemoResetJob`, so it is safe for public experimentation.
 
+## MangaDex-Backed Endpoints
+
+Manga metadata comes from the [MangaDex API](https://api.mangadex.org/docs/), called
+server-side — the frontend never talks to MangaDex directly.
+
+- `GET /api/manga/search?q=` — proxies a MangaDex title search; returns MangaDex id, title,
+  cover URL, and synopsis for each result.
+- `POST /api/manga` — adds a manga by `mangaDexId` (required), with optional `sourceUrl`
+  (an optional "read it here" link — no longer required or unique on its own), starting
+  `currentChapter`, and starting `readingStatus`. Duplicate detection is per-user on
+  `(ownerId, mangaDexId)`; adding the same MangaDex title twice returns `409`.
+- `PATCH /api/manga/{id}` — updates `currentChapter`, `latestChapter`, `readingStatus`, and/or
+  `notificationsEnabled`.
+
+Chapter numbers are stored as integers. MangaDex chapter values are strings and may be decimal
+or non-numeric; only a leading positive integer is parsed, so half/decimal chapters are not
+tracked.
+
+Full request/response contracts are in Swagger, not duplicated here.
+
 ## Rate Limit
 
-Adding manga is rate-limited per authenticated user. Defaults are controlled by:
+Adding manga and searching MangaDex are both rate-limited per authenticated user. Defaults are
+controlled by:
 
 - `app.ratelimit.add-manga.max` (default `20`)
 - `app.ratelimit.add-manga.window-seconds` (default `60`)
+- `app.ratelimit.search-manga.max` (default `30`)
+- `app.ratelimit.search-manga.window-seconds` (default `60`)
 
-When the limit is exceeded, the API returns `429` with the shared error envelope.
+When a limit is exceeded, the API returns `429` with the shared error envelope.
 
 ## Error Format
 
@@ -65,12 +88,13 @@ Handled application exceptions use this JSON envelope:
 
 Common statuses:
 
-- `400`: bad request, validation failure, or unsupported source.
+- `400`: bad request, validation failure, or an invalid `sourceUrl` (must be an absolute
+  http(s) URL, if provided).
 - `401`: missing or invalid auth cookie.
 - `403`: missing or invalid CSRF token on state-changing requests.
 - `404`: resource not found.
-- `409`: duplicate manga URL.
-- `422`: scraper could not extract manga data.
-- `429`: rate limit exceeded.
+- `409`: duplicate manga — the same `(ownerId, mangaDexId)` is already tracked.
+- `429`: rate limit exceeded (add-manga or search).
+- `502`: MangaDex upstream request failed.
 
 Spring Security and framework-level errors may return an empty or default body.

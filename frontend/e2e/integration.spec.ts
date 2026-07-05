@@ -60,7 +60,7 @@ test.describe('Settings', () => {
     await page.goto('/settings');
 
     await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
-    await expect(page.getByText('Phone Notifications')).toBeVisible();
+    await expect(page.getByText('Phone Notifications', { exact: true })).toBeVisible();
     await expect(
       page.getByText(/push notification on this device when a tracked manga has a new chapter/i),
     ).toBeVisible();
