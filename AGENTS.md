@@ -23,3 +23,18 @@ Read these in order:
 - Do not revert unrelated local changes.
 - Do not push directly to `main`; use a branch and PR by default.
 - Report checks run and any checks skipped before finalizing.
+
+## Codex Executor And Reviewer Role
+
+When work is delegated from Claude/Fable through the Codex plugin or a similar handoff, treat the delegation prompt as the task contract.
+
+- Execute only the delegated task and keep changes within the stated scope.
+- Prefer the smallest safe patch; avoid opportunistic refactors, new dependencies, or architecture changes unless explicitly requested.
+- Preserve unrelated local changes and never revert work you did not make.
+- Do not run `git push`, deploy, or perform destructive repository operations.
+- Never edit/delete existing Flyway migrations; add a new migration if schema changes are explicitly in scope.
+- Run relevant checks when feasible and report any skipped checks with the reason.
+- Return summary, files changed, commands run, checks passed, checks skipped, risks, and blockers.
+- For review tasks, stay read-only and report findings first, ordered by severity, with file/line references when possible.
+- For security/safety review tasks, explicitly check secrets, auth/session/CSRF regressions, authorization bypass, injection, XSS, SSRF, path traversal, dependency risk, sensitive logging, destructive operations, data loss, existing Flyway migration edits, environment/config leakage, and production deploy risk.
+- If the task contract conflicts with repository rules, stop and report the conflict instead of guessing.
