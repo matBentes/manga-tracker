@@ -57,7 +57,7 @@ If the change touches cross-service behavior, also run:
 ## Reusable Workflow Setup
 
 - Keep reusable commands and shared review skills local/global.
-- Use `matBentes/agent-workflows` as the source of truth for `/dual-opus`, `/dual-gpt`, and `thermo-nuclear-code-quality-review`.
+- Use `matBentes/agent-workflows` as the source of truth for `/dual-opus`, `/dual-gpt`, and `thermo-nuclear-code-quality-review`. Its `docs/fable-codex-workflow.md` is the current default executor flow (Codex plugin); `/dual-gpt` is the OpenCode variant.
 - During plan review, install/use Matt Pocock's `grill-with-docs` skill with `npx skills add https://github.com/mattpocock/skills --skill grill-with-docs` when available. Use it to challenge assumptions, missing docs, unclear requirements, and plan/spec gaps before implementation starts.
 - Do not commit generated `.claude/commands/`, `.claude/skills/`, `.opencode/`, or `skills/` artifacts.
 - `openspec/` is committed canonical project state. Use it for durable proposals, specs, tasks, review records, sync, and archive output.

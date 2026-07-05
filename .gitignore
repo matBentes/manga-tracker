@@ -63,9 +63,20 @@ skills/
 
 # ── AWS manual deploy scratch files (contain real account ARNs) ──────────────
 backend-task-def.json
+backend-taskdef.json
 frontend-task-def.json
+frontend-taskdef.json
 task-done.json
 ingress-rules.txt
 
 # ── Personal AWS deploy resume notes (contains real account/VPC/RDS IDs) ─────
 docs/aws-deploy-progress.md
+
+# ── Personal portfolio/LinkedIn drafts (not project docs) ─────────────────────
+docs/portfolio-pivot-notes.md
+
+# ── Excalidraw diagram experiments (local reference only, not canonical) ─────
+docs/diagrams/*.excalidraw
+docs/diagrams/rendered/*.svg
+docs/diagrams/rendered/*.png
+docs/diagrams/rendered-opencode/

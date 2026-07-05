@@ -2,12 +2,15 @@
 
 This is the compact Claude Code entrypoint for this repository.
 
-Read these in order:
+Read first:
 
-1. `docs/agent-workflow.md` (shared agent rules and dual-agent workflow)
+1. `docs/agent-workflow.md` (shared agent rules, review criteria, verification commands)
 2. `docs/developer-guide.md` (project structure, tests, quality gates)
-3. `docs/architecture.md` and `docs/api.md` (system behavior and API concepts; use Swagger for endpoint contracts)
-4. `docs/github-operations.md` (rulesets, required checks, autofix, merge flow)
+
+Read when the task touches the relevant area:
+
+- `docs/architecture.md` and `docs/api.md` (system behavior and API concepts; use Swagger for endpoint contracts)
+- `docs/github-operations.md` (rulesets, required checks, autofix, merge flow)
 
 ## Project Snapshot
 
@@ -17,32 +20,31 @@ Read these in order:
 
 ## Agent Setup
 
-- Reusable dual-agent workflow templates and shared review skills live at `https://github.com/matBentes/agent-workflows`.
-- Install `/dual-opus`, `/dual-gpt`, OpenSpec command bootstrap files, and `thermo-nuclear-code-quality-review` from that repo; do not vendor generated command/skill artifacts here.
+- Reusable dual-agent workflow templates and shared review skills live at `https://github.com/matBentes/agent-workflows`. The current default is `docs/fable-codex-workflow.md` there (Fable orchestrates, the Codex plugin executes); the OpenCode `/dual-gpt` flow is the legacy variant.
+- Install `/dual-opus`, OpenSpec command bootstrap files, and `thermo-nuclear-code-quality-review` from that repo; do not vendor generated command/skill artifacts here.
 - `openspec/` is vendored and canonical. Use `docs/agent-workflow.md` for planning, review criteria, and archive rules.
 
-## Claude Role
+## Fable Role
 
-- Own exploration, proposal shaping, plan confirmation, implementation review, final approval, sync, and archive.
-- Use `/dual-opus explore`, `/dual-opus propose`, `/dual-opus confirm-plan`, `/dual-opus review-impl`, `/dual-opus final-review`, `/dual-opus sync`, and `/dual-opus archive` when the external workflow is installed.
-- Let OpenCode/GPT handle implementation, accepted fixes, PR warning fixes, and CI fixes via `/dual-gpt`.
+- Default to planning, delegation, review, re-planning, and synthesis. Do not implement directly unless the user explicitly asks or the change is a tiny local documentation/configuration edit.
+- Claude-side OpenSpec phases still use `/dual-opus` (`explore`, `propose`, `confirm-plan`, `review-impl`, `final-review`, `sync`, `archive`) when installed; delegate the executor side to Codex per the flow below.
+- If Fable is unavailable (usage limit, capacity, or model errors), run the same orchestrator role on the strongest available Claude model — Opus 4.8 first, then Sonnet 5. Keep the same tiers, templates, and gates; a weaker orchestrator must not skip gates and should go one tier up when in doubt. Return to Fable when it is available again.
 
-## Fable + Codex Delegation Flow
+## Review Tiers
 
-When acting as Fable/orchestrator, default to planning, delegation, review, re-planning, and synthesis. Do not implement directly unless the user explicitly asks for direct implementation or the change is a tiny local documentation/configuration edit.
+Pick the lightest tier that fits; when in doubt, go one tier up.
 
-- Use Codex through the Claude Code Codex plugin for executor and review work when available.
-- If Codex is unavailable (rate/usage limit hit, auth failure, or the plugin errors), fall back
-  to a Claude Sonnet 5 subagent (Agent tool, `model: sonnet`) for the same executor/review
-  tasks, choosing thinking effort appropriate to the task size. Keep the same delegation
-  template, scope discipline, and review gates. Return to Codex when the limit resets.
-- For non-trivial work, create a small, verifiable plan first, then ask Codex for adversarial plan review before implementation.
-- Delegate implementation to Codex with `/codex:rescue --model gpt-5.5 --effort xhigh --background` when the task is suitable for executor handoff.
-- After implementation, review the diff yourself, then run a read-only security/safety gate before final code review.
-- For the security/safety gate, ask Codex to check secrets, auth/session/CSRF regressions, authorization bypass, injection, XSS, SSRF, path traversal, dependency risk, sensitive logging, destructive operations, data loss, existing Flyway migration edits, environment/config leakage, and production deploy risk.
-- After the security/safety gate, ask Codex for adversarial code review with `/codex:adversarial-review --model gpt-5.5 --effort xhigh --background`.
-- As part of code review, pull and triage the PR's SonarCloud and CodeQL findings (e.g. the SonarCloud issues API for the PR), not just the check's pass/fail status — a passing Quality Gate can still carry new below-threshold issues, so a green check is not zero findings. Decide fix-now vs. defer-with-reason for each and record it. See `docs/agent-workflow.md#review-criteria` item 11.
-- Keep plan review and code review tasks read-only; implementation tasks may edit only the approved scope.
+- Small (docs, config, or a single-file fix with no API/schema/auth surface): implement, then Claude diff review. Skip the security gate and adversarial review only when the diff touches no security-sensitive code or configuration — auth/session/CSRF, CORS, cookies, security headers, secrets, environment/deploy config, or dependency changes stay gated.
+- Medium (multi-file feature or fix, no API contract or schema change): small verifiable plan + Codex adversarial plan review, delegate implementation, Claude diff review, security/safety gate, Codex adversarial code review.
+- Large (API contract, database schema, architecture, or multi-story work): full OpenSpec pipeline from `docs/agent-workflow.md` plus all medium-tier gates, then sync/archive.
+- Every PR: pull and triage the SonarCloud and CodeQL findings (e.g. the SonarCloud issues API for the PR), not just the check's pass/fail status — a passing Quality Gate can still carry new below-threshold issues. Decide fix-now vs. defer-with-reason for each and record it. See `docs/agent-workflow.md#review-criteria` item 11.
+
+## Codex Delegation Flow
+
+- Use Codex through the Claude Code Codex plugin for executor and review work.
+- If Codex is unavailable (rate/usage limit hit, auth failure, or the plugin errors), fall back to a Claude Sonnet 5 subagent (Agent tool, `model: sonnet`) for the same executor/review tasks, choosing thinking effort appropriate to the task size. Keep the same delegation template, scope discipline, and review gates. Return to Codex when the limit resets.
+- Delegate implementation with `/codex:rescue --model gpt-5.5 --effort xhigh --background`; run adversarial code review with `/codex:adversarial-review --model gpt-5.5 --effort xhigh --background`.
+- Keep plan review, the security gate, and code review read-only; implementation tasks may edit only the approved scope.
 - Do not run multiple editing executors against the same files concurrently.
 - Incorporate only actionable findings; reject speculative complexity and keep the smallest correct patch.
 - If Fable and Codex disagree, stop, reconcile the disagreement, and only then continue or ask the user.
@@ -93,23 +95,7 @@ Use this shape for the security/safety gate:
 
 ## Verification
 
-Run relevant checks from `docs/developer-guide.md#running-tests` before final approval and report
-anything skipped. Common full-suite commands:
-
-```bash
-# Backend
-cd backend
-./gradlew spotlessApply
-./gradlew test jacocoTestReport jacocoTestCoverageVerification
-
-# Frontend
-cd frontend
-npm run format:check
-npm test
-npm run lint
-npm run build -- --configuration production
-npm run e2e
-```
+Run relevant checks from `docs/developer-guide.md#running-tests` before final approval and report anything skipped. The common full-suite commands are listed in `docs/agent-workflow.md#required-verification-commands`.
 
 If the change touches cross-service behavior, also run `./run-e2e-integration.sh --down` from the repo root.
 
