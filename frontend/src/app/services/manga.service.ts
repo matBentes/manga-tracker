@@ -6,10 +6,12 @@ import { environment } from '../../environments/environment';
 export interface Manga {
   id: string;
   title: string;
-  sourceUrl: string;
+  sourceUrl: string | null;
+  mangadexId: string | null;
   currentChapter: number;
   latestChapter: number;
   coverImageUrl: string | null;
+  readingStatus: string;
   latestChapterAt: string | null;
   notificationsEnabled: boolean;
   lastCheckedAt: string | null;
@@ -17,8 +19,25 @@ export interface Manga {
   updatedAt: string;
 }
 
+export interface MangaSearchResult {
+  mangaDexId: string;
+  title: string;
+  description: string | null;
+  coverImageUrl: string | null;
+}
+
+export interface AddMangaPayload {
+  mangaDexId: string;
+  sourceUrl?: string;
+  currentChapter?: number;
+  readingStatus?: string;
+}
+
 export interface MangaPatch {
   notificationsEnabled?: boolean;
+  currentChapter?: number;
+  latestChapter?: number;
+  readingStatus?: string;
 }
 
 @Injectable({
@@ -32,8 +51,12 @@ export class MangaService {
     return this.http.get<Manga[]>(this.apiUrl);
   }
 
-  addManga(sourceUrl: string): Observable<Manga> {
-    return this.http.post<Manga>(this.apiUrl, { sourceUrl });
+  searchManga(q: string): Observable<MangaSearchResult[]> {
+    return this.http.get<MangaSearchResult[]>(`${this.apiUrl}/search`, { params: { q } });
+  }
+
+  addManga(payload: AddMangaPayload): Observable<Manga> {
+    return this.http.post<Manga>(this.apiUrl, payload);
   }
 
   updateManga(id: string, patch: MangaPatch): Observable<Manga> {

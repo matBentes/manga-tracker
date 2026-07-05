@@ -88,9 +88,14 @@ Grant the task execution role permission to read only the specific secret ARNs i
 
 ## ECS Fargate Service
 
-Use ECS Fargate tasks for the frontend and backend containers. Size the backend task at a minimum of `1 vCPU` and `2 GB` memory because the backend image includes Google Chrome for Playwright-based scraping.
+Use ECS Fargate tasks for the frontend and backend containers. The backend image is a slim JRE
+image with no bundled browser, so it no longer needs the elevated CPU/memory headroom a
+Playwright/Chrome scraper required; size the task from observed JVM/traffic usage instead.
 
-Run a single backend replica for now. The scheduled scraper runs inside the backend process and has no distributed leader lock, so multiple replicas can duplicate daily scraping and notifications. Add a lock or move the scraper to a dedicated scheduled task before scaling backend replicas above one.
+Run a single backend replica for now. The scheduled `MangaDexNotificationJob` runs inside the
+backend process and has no distributed leader lock, so multiple replicas can duplicate daily
+MangaDex checks and notifications. Add a lock or move the job to a dedicated scheduled task
+before scaling backend replicas above one.
 
 Configure the ALB with:
 

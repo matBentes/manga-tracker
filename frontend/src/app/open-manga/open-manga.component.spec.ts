@@ -10,9 +10,11 @@ const manga: Manga = {
   id: '11111111-1111-1111-1111-111111111111',
   title: 'Blue Lock',
   sourceUrl: 'https://sakuramangas.org/obras/blue-lock/',
+  mangadexId: '22222222-2222-2222-2222-222222222222',
   currentChapter: 169,
   latestChapter: 169,
   coverImageUrl: null,
+  readingStatus: 'READING',
   latestChapterAt: null,
   notificationsEnabled: true,
   lastCheckedAt: null,
@@ -56,6 +58,24 @@ describe('OpenMangaComponent', () => {
     const { redirect } = await renderComponent(
       activatedRoute(manga.id, 'https://evil.example/phish'),
       vi.fn(() => throwError(() => new Error('not found'))),
+    );
+
+    expect(redirect).toHaveBeenCalledWith('/');
+  });
+
+  it('falls back to the dashboard when the manga has no source URL', async () => {
+    const { redirect } = await renderComponent(
+      activatedRoute(manga.id),
+      vi.fn(() => of({ ...manga, sourceUrl: null })),
+    );
+
+    expect(redirect).toHaveBeenCalledWith('/');
+  });
+
+  it('falls back to the dashboard for a non-http source URL', async () => {
+    const { redirect } = await renderComponent(
+      activatedRoute(manga.id),
+      vi.fn(() => of({ ...manga, sourceUrl: 'javascript:alert(1)' })),
     );
 
     expect(redirect).toHaveBeenCalledWith('/');

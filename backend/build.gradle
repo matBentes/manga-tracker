@@ -50,10 +50,6 @@ dependencies {
     implementation 'org.flywaydb:flyway-database-postgresql'
     runtimeOnly 'org.postgresql:postgresql'
 
-    // Scraping
-    implementation 'org.jsoup:jsoup:1.18.3'
-    implementation 'com.microsoft.playwright:playwright:1.52.0'
-
     // Utilities
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'

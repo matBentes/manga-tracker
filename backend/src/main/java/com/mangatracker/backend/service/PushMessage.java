@@ -8,7 +8,7 @@ import java.util.UUID;
  * @param mangaId used to build the "mark as read + open" deep link the service worker follows on
  *     tap.
  * @param ownerId user whose browser subscriptions should receive the push.
- * @param sourceUrl the manga page to open after marking it read.
+ * @param sourceUrl optional manga page retained for clients that can open an external read target.
  * @param coverImageUrl optional cover shown in the notification; may be {@code null}.
  */
 public record PushMessage(

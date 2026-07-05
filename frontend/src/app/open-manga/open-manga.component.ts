@@ -12,8 +12,9 @@ export const REDIRECT_TO_URL = new InjectionToken<(url: string) => void>('REDIRE
 
 /**
  * Landing route the push notification opens. It marks the manga as read (the user is opening it, so
- * they're caught up) and then redirects to the manga's source page. Marking read is best-effort:
- * the redirect happens regardless so a failed API call never traps the user here.
+ * they're caught up) and then redirects to the optional read-here page when one is available.
+ * Marking read is best-effort: the redirect happens regardless so a failed API call never traps the
+ * user here.
  */
 @Component({
   selector: 'app-open-manga',
@@ -43,12 +44,25 @@ export class OpenMangaComponent implements OnInit {
       return;
     }
     this.mangaService.markRead(id).subscribe({
-      next: (manga) => this.redirect(manga.sourceUrl),
+      next: (manga) => this.redirect(this.safeRedirectUrl(manga.sourceUrl)),
       error: () => this.redirect('/'),
     });
   }
 
   private redirect(url: string): void {
     this.redirectToUrl(url);
+  }
+
+  private safeRedirectUrl(url: string | null): string {
+    const trimmedUrl = url?.trim();
+    if (!trimmedUrl) {
+      return '/';
+    }
+    try {
+      const parsed = new URL(trimmedUrl);
+      return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? trimmedUrl : '/';
+    } catch {
+      return '/';
+    }
   }
 }

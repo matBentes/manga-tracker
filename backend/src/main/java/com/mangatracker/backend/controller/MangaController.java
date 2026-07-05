@@ -1,7 +1,9 @@
 package com.mangatracker.backend.controller;
 
 import com.mangatracker.backend.model.Manga;
+import com.mangatracker.backend.model.ReadingStatus;
 import com.mangatracker.backend.security.JwtCookieAuthFilter;
+import com.mangatracker.backend.service.MangaDexManga;
 import com.mangatracker.backend.service.MangaService;
 import com.mangatracker.backend.service.PushMessage;
 import com.mangatracker.backend.service.PushNotificationService;
@@ -23,6 +25,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -53,13 +56,38 @@ public class MangaController {
     return mangaService.listManga();
   }
 
+  @GetMapping("/search")
+  @Operation(summary = "Search MangaDex")
+  @ApiResponses({
+    @ApiResponse(responseCode = "200", description = "MangaDex search results"),
+    @ApiResponse(
+        responseCode = "400",
+        description = "Missing or invalid query",
+        content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+    @ApiResponse(
+        responseCode = "401",
+        description = "Missing or invalid auth cookie",
+        content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+    @ApiResponse(
+        responseCode = "429",
+        description = "Search rate limit exceeded",
+        content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+    @ApiResponse(
+        responseCode = "502",
+        description = "MangaDex request failed",
+        content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+  })
+  public List<MangaDexManga> searchManga(@RequestParam("q") String query) {
+    return mangaService.searchManga(query);
+  }
+
   @PostMapping
-  @Operation(summary = "Add a manga by source URL")
+  @Operation(summary = "Add a manga from MangaDex")
   @ApiResponses({
     @ApiResponse(responseCode = "201", description = "Manga added"),
     @ApiResponse(
         responseCode = "400",
-        description = "Unsupported or invalid source URL",
+        description = "Invalid add request",
         content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
     @ApiResponse(
         responseCode = "401",
@@ -67,26 +95,35 @@ public class MangaController {
         content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
     @ApiResponse(
         responseCode = "409",
-        description = "Manga URL already tracked",
-        content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-    @ApiResponse(
-        responseCode = "422",
-        description = "Scraper could not extract manga data",
+        description = "MangaDex title already tracked",
         content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
     @ApiResponse(
         responseCode = "429",
         description = "Add-manga rate limit exceeded",
+        content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+    @ApiResponse(
+        responseCode = "502",
+        description = "MangaDex request failed",
         content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
   })
   public ResponseEntity<Manga> addManga(@RequestBody AddMangaRequest request) {
-    Manga manga = mangaService.addManga(request.sourceUrl());
+    Manga manga =
+        mangaService.addManga(
+            request.mangaDexId(),
+            request.sourceUrl(),
+            request.currentChapter(),
+            request.readingStatus());
     return ResponseEntity.status(HttpStatus.CREATED).body(manga);
   }
 
   @PatchMapping("/{id}")
-  @Operation(summary = "Update manga notification settings")
+  @Operation(summary = "Update manga progress, status, or notification settings")
   @ApiResponses({
     @ApiResponse(responseCode = "200", description = "Manga updated"),
+    @ApiResponse(
+        responseCode = "400",
+        description = "Invalid update request",
+        content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
     @ApiResponse(
         responseCode = "401",
         description = "Missing or invalid auth cookie",
@@ -97,7 +134,12 @@ public class MangaController {
         content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
   })
   public Manga updateManga(@PathVariable UUID id, @RequestBody PatchMangaRequest request) {
-    return mangaService.updateManga(id, request.notificationsEnabled());
+    return mangaService.updateManga(
+        id,
+        request.notificationsEnabled(),
+        request.currentChapter(),
+        request.latestChapter(),
+        request.readingStatus());
   }
 
   @PostMapping("/{id}/read")
@@ -217,14 +259,28 @@ public class MangaController {
 
   record AddMangaRequest(
       @Schema(
-              description = "Supported manga source URL to scrape and track",
-              example = "https://sakuramangas.org/manga/one-piece/",
+              description = "MangaDex manga identifier to track",
+              example = "32f3b331-0c6a-4bc0-94b6-866e142e6c3a",
               requiredMode = Schema.RequiredMode.REQUIRED)
-          String sourceUrl) {}
+          UUID mangaDexId,
+      @Schema(
+              description = "Optional read-here URL",
+              example = "https://sakuramangas.org/obras/one-piece/",
+              nullable = true)
+          String sourceUrl,
+      @Schema(description = "Optional starting chapter", example = "42", nullable = true)
+          Integer currentChapter,
+      @Schema(description = "Optional starting reading status", nullable = true)
+          ReadingStatus readingStatus) {}
 
   record PatchMangaRequest(
       @Schema(
               description = "Whether this manga should trigger new chapter notifications",
-              requiredMode = Schema.RequiredMode.REQUIRED)
-          Boolean notificationsEnabled) {}
+              nullable = true)
+          Boolean notificationsEnabled,
+      @Schema(description = "Chapter the user has read up to", example = "43", nullable = true)
+          Integer currentChapter,
+      @Schema(description = "Latest known English chapter", example = "100", nullable = true)
+          Integer latestChapter,
+      @Schema(description = "User reading status", nullable = true) ReadingStatus readingStatus) {}
 }

@@ -1,0 +1,37 @@
+flowchart LR
+    browser["Browser / PWA"]
+    acm["ACM Certificate"]
+    alb["Application Load Balancer\nHTTPS listener"]
+    registry["Container Registry\nFrontend + Backend images"]
+    secrets["AWS Secrets Manager\nRuntime secrets"]
+    pushService["Browser Push Service\nFCM / APNs / Web Push"]
+    albSg["ALB SG\n443 from internet/approved ranges"]
+    backendSg["Backend SG\nInbound only from frontend/proxy SG"]
+    rdsSg["RDS SG\n5432 only from backend SG"]
+
+    subgraph vpc["AWS VPC"]
+        subgraph public["Public Entry"]
+            alb
+        end
+
+        subgraph private["Private Application/Data Tier"]
+            frontend["ECS Fargate Frontend\nnginx + Angular assets"]
+            backend["ECS Fargate Backend\nSpring Boot API + jobs"]
+            rds[("RDS PostgreSQL 16")]
+        end
+    end
+
+    browser -->|"HTTPS"| alb
+    acm -->|"TLS certificate"| alb
+    alb -->|"HTTP target"| frontend
+    frontend -->|"/api/ HTTP proxy"| backend
+    backend -->|"JDBC / SQL"| rds
+    backend -->|"ECS task secrets"| secrets
+    registry -->|"Task definition images"| frontend
+    registry -->|"Task definition images"| backend
+    backend -->|"Web Push / VAPID"| pushService
+    pushService -->|"Notification delivery"| browser
+
+    albSg -.-> alb
+    backendSg -.-> backend
+    rdsSg -.-> rds

@@ -3,15 +3,24 @@ import { test, expect, type Page, type Route } from '@playwright/test';
 const sampleManga = {
   id: '11111111-1111-1111-1111-111111111111',
   title: 'One Punch Man',
-  sourceUrl: 'https://sakuramangas.org/manga/one-punch-man/',
-  currentChapter: 0,
+  sourceUrl: 'https://example.com/read/one-punch-man',
+  mangadexId: '22222222-2222-2222-2222-222222222222',
+  currentChapter: 3,
   latestChapter: 180,
   coverImageUrl: null,
+  readingStatus: 'PLAN_TO_READ',
   latestChapterAt: null,
   notificationsEnabled: true,
   lastCheckedAt: null,
   createdAt: '2024-01-01T00:00:00',
   updatedAt: '2024-01-01T00:00:00',
+};
+
+const searchResult = {
+  mangaDexId: sampleManga.mangadexId,
+  title: sampleManga.title,
+  description: 'A hero who can defeat any opponent with one punch.',
+  coverImageUrl: null,
 };
 
 type ApiHandler = (route: Route, pathname: string) => Promise<boolean>;
@@ -44,8 +53,9 @@ async function mockApi(page: Page, handleManga: ApiHandler): Promise<void> {
   });
 }
 
-test('add manga by URL - appears in reading list with detected title', async ({ page }) => {
+test('search MangaDex and add a picked title to the reading list', async ({ page }) => {
   let mangaList: Array<typeof sampleManga> = [];
+  let postedBody: unknown = null;
 
   await mockApi(page, async (route, pathname) => {
     const method = route.request().method();
@@ -55,7 +65,13 @@ test('add manga by URL - appears in reading list with detected title', async ({ 
       return true;
     }
 
+    if (pathname === '/api/manga/search' && method === 'GET') {
+      await route.fulfill({ json: [searchResult] });
+      return true;
+    }
+
     if (pathname === '/api/manga' && method === 'POST') {
+      postedBody = route.request().postDataJSON();
       mangaList = [sampleManga];
       await route.fulfill({ status: 201, json: sampleManga });
       return true;
@@ -67,11 +83,22 @@ test('add manga by URL - appears in reading list with detected title', async ({ 
   await page.goto('/');
   await expect(page.locator('.state-box')).toHaveText(/No manga tracked yet/);
 
-  await page.fill('.url-input', sampleManga.sourceUrl);
+  await page.fill('.search-input', 'one punch');
+  await expect(page.locator('.search-result')).toContainText(sampleManga.title);
+  await page.click('.search-result');
+  await page.fill('.read-url-input', sampleManga.sourceUrl);
+  await page.fill('.chapter-input', String(sampleManga.currentChapter));
+  await page.selectOption('.add-form .status-select', sampleManga.readingStatus);
   await page.click('.submit-btn');
 
   await expect(page.locator('.manga-title').first()).toHaveText(sampleManga.title);
   await expect(page.locator('.form-success')).toBeVisible();
+  expect(postedBody).toEqual({
+    mangaDexId: sampleManga.mangadexId,
+    sourceUrl: sampleManga.sourceUrl,
+    currentChapter: sampleManga.currentChapter,
+    readingStatus: sampleManga.readingStatus,
+  });
 });
 
 test('mark as read - card shows caught up after marking', async ({ page }) => {

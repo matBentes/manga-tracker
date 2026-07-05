@@ -35,7 +35,7 @@ class OpenApiDocumentationTest {
     assertThat(PushController.class.getAnnotation(Tag.class).name()).isEqualTo("Push");
 
     assertThat(documentedEndpointCount(AuthController.class)).isEqualTo(5);
-    assertThat(documentedEndpointCount(MangaController.class)).isEqualTo(8);
+    assertThat(documentedEndpointCount(MangaController.class)).isEqualTo(9);
     assertThat(documentedEndpointCount(PushController.class)).isEqualTo(3);
   }
 

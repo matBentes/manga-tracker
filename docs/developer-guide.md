@@ -23,8 +23,7 @@ manga-tracker/
 │       │   │   ├── service/     Business logic
 │       │   │   ├── repository/  JPA repositories
 │       │   │   ├── model/       JPA entities
-│       │   │   ├── scraper/     MangaScraper implementations and registry
-│       │   │   ├── job/         Scheduled scraping and demo reset jobs
+│       │   │   ├── job/         Scheduled MangaDex notification and demo reset jobs
 │       │   │   ├── security/    Cookie-JWT auth, CSRF, current-user helpers
 │       │   │   └── exception/   Domain exceptions
 │       │   └── resources/
@@ -64,6 +63,8 @@ cd backend
 
 # Individual test class
 ./gradlew test --tests "com.mangatracker.backend.service.MangaServiceTest"
+./gradlew test --tests "com.mangatracker.backend.service.MangaDexClientTest"
+./gradlew test --tests "com.mangatracker.backend.job.MangaDexNotificationJobTest"
 ```
 
 Backend integration tests (repository layer) use **Testcontainers** to spin up a real PostgreSQL
@@ -124,16 +125,18 @@ npx playwright test e2e/integration.spec.ts
 
 ---
 
-## Adding a New Scraper
+## MangaDex Integration
 
-To support a new manga site:
+Manga metadata (search results, cover art, latest English chapter) comes from the MangaDex API
+via `MangaDexClient` (`backend/src/main/java/com/mangatracker/backend/service/MangaDexClient.java`),
+not from scraping any manga site directly.
 
-1. Create a `@Component` implementing `MangaScraper` in
-   `backend/src/main/java/com/mangatracker/backend/scraper/`.
-2. No registration is needed. Spring wires all `MangaScraper` beans into `ScraperRegistry`.
-3. Add scraper tests under `backend/src/test/java/com/mangatracker/backend/scraper/`.
+- `MangaDexClientTest` covers search, metadata lookup, and English-chapter parsing against
+  mocked HTTP responses.
+- `MangaDexNotificationJobTest` covers the daily best-effort English-chapter notification job.
 
-Use `SakuraMangasScraper` and `SakuraMangasScraperTest` as the current pattern.
+The optional `sourceUrl` field on a tracked manga is just a "read it here" link the user
+supplies — it is never fetched or scraped by the backend.
 
 ---
 

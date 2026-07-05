@@ -66,6 +66,6 @@ The repository SHALL document a reproducible AWS deployment using ECS Fargate, a
 #### Scenario: Operator follows the runbook
 
 - **WHEN** an operator follows `docs/aws-deployment.md`
-- **THEN** the document specifies the ECS service shape (CPU/memory sized for the bundled Chrome scraper), single-replica scraper constraint, ALB HTTPS listener with an ACM certificate, RDS provisioning, and Secrets Manager wiring
+- **THEN** the document specifies the ECS service shape (CPU/memory sized from observed usage, no bundled-browser overhead), the single-replica constraint for the scheduled `MangaDexNotificationJob`, ALB HTTPS listener with an ACM certificate, RDS provisioning, and Secrets Manager wiring
 - **AND** it states the rollback approach for a failed deployment
 

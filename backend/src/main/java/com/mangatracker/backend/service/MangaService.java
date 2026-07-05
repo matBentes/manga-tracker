@@ -1,17 +1,21 @@
 package com.mangatracker.backend.service;
 
 import com.mangatracker.backend.exception.DuplicateMangaException;
+import com.mangatracker.backend.exception.MangaDexUpstreamException;
 import com.mangatracker.backend.exception.MangaNotFoundException;
 import com.mangatracker.backend.model.Manga;
+import com.mangatracker.backend.model.ReadingStatus;
 import com.mangatracker.backend.repository.MangaRepository;
-import com.mangatracker.backend.scraper.MangaScraper;
-import com.mangatracker.backend.scraper.ScrapedManga;
-import com.mangatracker.backend.scraper.ScraperRegistry;
 import com.mangatracker.backend.security.AddMangaRateLimiter;
 import com.mangatracker.backend.security.CurrentUser;
+import com.mangatracker.backend.security.SearchMangaRateLimiter;
+import java.net.URI;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.OptionalInt;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,40 +29,76 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class MangaService {
 
+  private static final int MAX_SEARCH_QUERY_LENGTH = 200;
+  private static final String INVALID_SOURCE_URL_MESSAGE =
+      "sourceUrl must be an absolute http(s) URL";
+  private static final Logger LOG = LoggerFactory.getLogger(MangaService.class);
+
   private final MangaRepository mangaRepository;
-  private final ScraperRegistry scraperRegistry;
+  private final MangaDexClient mangaDexClient;
   private final CurrentUser currentUser;
   private final AddMangaRateLimiter addMangaRateLimiter;
+  private final SearchMangaRateLimiter searchMangaRateLimiter;
 
   public MangaService(
       MangaRepository mangaRepository,
-      ScraperRegistry scraperRegistry,
+      MangaDexClient mangaDexClient,
       CurrentUser currentUser,
-      AddMangaRateLimiter addMangaRateLimiter) {
+      AddMangaRateLimiter addMangaRateLimiter,
+      SearchMangaRateLimiter searchMangaRateLimiter) {
     this.mangaRepository = mangaRepository;
-    this.scraperRegistry = scraperRegistry;
+    this.mangaDexClient = mangaDexClient;
     this.currentUser = currentUser;
     this.addMangaRateLimiter = addMangaRateLimiter;
+    this.searchMangaRateLimiter = searchMangaRateLimiter;
   }
 
-  public Manga addManga(String sourceUrl) {
+  @Transactional(readOnly = true)
+  public List<MangaDexManga> searchManga(String query) {
+    String normalizedQuery = requireSearchQuery(query);
+    searchMangaRateLimiter.check(currentUser.requireId());
+    return mangaDexClient.search(normalizedQuery);
+  }
+
+  public Manga addManga(
+      UUID mangaDexId, String sourceUrl, Integer currentChapter, ReadingStatus readingStatus) {
+    if (mangaDexId == null) {
+      throw new IllegalArgumentException("mangaDexId is required");
+    }
+    int startingChapter = nonNegativeOrDefault(currentChapter, 0, "currentChapter");
+    String normalizedSourceUrl = optionalSourceUrl(sourceUrl);
     UUID ownerId = currentUser.requireId();
     // Reject duplicates (scoped to this user) before consuming rate-limit quota, so retrying an
-    // already-tracked URL doesn't burn the limiter, and so the error is accurate.
-    if (mangaRepository.existsBySourceUrlAndOwnerId(sourceUrl, ownerId)) {
-      throw new DuplicateMangaException("Manga already tracked: " + sourceUrl);
+    // already-tracked MangaDex title doesn't burn the limiter, and so the error is accurate.
+    if (mangaRepository.existsByMangadexIdAndOwnerId(mangaDexId, ownerId)) {
+      throw new DuplicateMangaException("Manga already tracked: " + mangaDexId);
     }
     addMangaRateLimiter.check(ownerId);
-    MangaScraper scraper = scraperRegistry.resolve(sourceUrl);
-    ScrapedManga scraped = scraper.scrape(sourceUrl);
+    MangaDexManga metadata = mangaDexClient.getManga(mangaDexId);
+    OptionalInt latestEnglishChapter;
+    try {
+      latestEnglishChapter = mangaDexClient.latestEnglishChapter(mangaDexId);
+    } catch (MangaDexUpstreamException e) {
+      LOG.warn(
+          "Unable to fetch latest English MangaDex chapter for {}; adding manga without it",
+          mangaDexId,
+          e);
+      latestEnglishChapter = OptionalInt.empty();
+    }
+    int latestChapter =
+        Math.max(
+            latestEnglishChapter.isPresent() ? latestEnglishChapter.getAsInt() : 0,
+            startingChapter);
     Manga manga =
         Manga.builder()
-            .title(scraped.title())
-            .sourceUrl(sourceUrl)
-            .currentChapter(0)
-            .latestChapter(scraped.latestChapter())
-            .coverImageUrl(scraped.coverImageUrl())
-            .latestChapterAt(LocalDateTime.now())
+            .title(metadata.title())
+            .sourceUrl(normalizedSourceUrl)
+            .mangadexId(mangaDexId)
+            .currentChapter(startingChapter)
+            .latestChapter(latestChapter)
+            .coverImageUrl(metadata.coverImageUrl())
+            .latestChapterAt(latestChapter > 0 ? LocalDateTime.now() : null)
+            .readingStatus(readingStatus == null ? ReadingStatus.READING : readingStatus)
             .notificationsEnabled(true)
             .ownerId(ownerId)
             .build();
@@ -66,7 +106,7 @@ public class MangaService {
       return mangaRepository.save(manga);
     } catch (DataIntegrityViolationException e) {
       // Handles race condition where two concurrent requests pass the duplicate check
-      throw new DuplicateMangaException("Manga already tracked: " + sourceUrl);
+      throw new DuplicateMangaException("Manga already tracked: " + mangaDexId);
     }
   }
 
@@ -80,10 +120,27 @@ public class MangaService {
     return requireOwned(id);
   }
 
-  public Manga updateManga(UUID id, Boolean notificationsEnabled) {
+  public Manga updateManga(
+      UUID id,
+      Boolean notificationsEnabled,
+      Integer currentChapter,
+      Integer latestChapter,
+      ReadingStatus readingStatus) {
     Manga manga = requireOwned(id);
     if (notificationsEnabled != null) {
       manga.setNotificationsEnabled(notificationsEnabled);
+    }
+    if (currentChapter != null) {
+      manga.setCurrentChapter(nonNegativeOrDefault(currentChapter, 0, "currentChapter"));
+    }
+    if (latestChapter != null) {
+      manga.setLatestChapter(nonNegativeOrDefault(latestChapter, 0, "latestChapter"));
+    }
+    if (readingStatus != null) {
+      manga.setReadingStatus(readingStatus);
+    }
+    if (manga.getCurrentChapter() > manga.getLatestChapter()) {
+      manga.setLatestChapter(manga.getCurrentChapter());
     }
     return mangaRepository.save(manga);
   }
@@ -109,12 +166,55 @@ public class MangaService {
   }
 
   /**
-   * Loads a manga owned by the current user, or throws {@link MangaNotFoundException} (404) — which
+   * Loads a manga owned by the current user, or throws {@link MangaNotFoundException} (404), which
    * is also what another user's id produces, preventing existence leaks.
    */
   private Manga requireOwned(UUID id) {
     return mangaRepository
         .findByIdAndOwnerId(id, currentUser.requireId())
         .orElseThrow(() -> new MangaNotFoundException("Manga not found: " + id));
+  }
+
+  private static int nonNegativeOrDefault(Integer value, int defaultValue, String fieldName) {
+    if (value == null) {
+      return defaultValue;
+    }
+    if (value < 0) {
+      throw new IllegalArgumentException(fieldName + " must be non-negative");
+    }
+    return value;
+  }
+
+  private static String requireSearchQuery(String value) {
+    if (value == null || value.isBlank()) {
+      throw new IllegalArgumentException("Search query is required");
+    }
+    String trimmed = value.trim();
+    if (trimmed.length() > MAX_SEARCH_QUERY_LENGTH) {
+      throw new IllegalArgumentException("Search query must be 200 characters or fewer");
+    }
+    return trimmed;
+  }
+
+  private static String optionalSourceUrl(String value) {
+    if (value == null || value.isBlank()) {
+      return null;
+    }
+    String trimmed = value.trim();
+    URI uri;
+    try {
+      uri = URI.create(trimmed);
+    } catch (IllegalArgumentException e) {
+      throw new IllegalArgumentException(INVALID_SOURCE_URL_MESSAGE);
+    }
+    String scheme = uri.getScheme();
+    String host = uri.getHost();
+    if (scheme == null
+        || (!"http".equalsIgnoreCase(scheme) && !"https".equalsIgnoreCase(scheme))
+        || host == null
+        || host.isBlank()) {
+      throw new IllegalArgumentException(INVALID_SOURCE_URL_MESSAGE);
+    }
+    return trimmed;
   }
 }
