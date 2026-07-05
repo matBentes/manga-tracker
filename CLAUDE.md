@@ -34,7 +34,7 @@ Read when the task touches the relevant area:
 
 Pick the lightest tier that fits; when in doubt, go one tier up.
 
-- Small (docs, config, or a single-file fix with no API/schema/auth surface): implement, then Claude diff review. Skip the security gate and adversarial review unless the diff touches security-sensitive code.
+- Small (docs, config, or a single-file fix with no API/schema/auth surface): implement, then Claude diff review. Skip the security gate and adversarial review only when the diff touches no security-sensitive code or configuration — auth/session/CSRF, CORS, cookies, security headers, secrets, environment/deploy config, or dependency changes stay gated.
 - Medium (multi-file feature or fix, no API contract or schema change): small verifiable plan + Codex adversarial plan review, delegate implementation, Claude diff review, security/safety gate, Codex adversarial code review.
 - Large (API contract, database schema, architecture, or multi-story work): full OpenSpec pipeline from `docs/agent-workflow.md` plus all medium-tier gates, then sync/archive.
 - Every PR: pull and triage the SonarCloud and CodeQL findings (e.g. the SonarCloud issues API for the PR), not just the check's pass/fail status — a passing Quality Gate can still carry new below-threshold issues. Decide fix-now vs. defer-with-reason for each and record it. See `docs/agent-workflow.md#review-criteria` item 11.
