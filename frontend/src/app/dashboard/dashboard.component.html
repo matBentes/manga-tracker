@@ -41,9 +41,29 @@
               </button>
             </p>
 
+            <p class="progress-line">
+              <span>Read Ch {{ manga.currentChapter }}</span>
+              <span>Latest English Ch {{ manga.latestChapter }}</span>
+            </p>
+
             @if (manga.latestChapterAt) {
               <p class="latest-chapter-date">{{ getRelativeDate(manga.latestChapterAt) }}</p>
             }
+
+            <label class="status-control">
+              <span>Status</span>
+              <select
+                class="status-select"
+                [value]="manga.readingStatus"
+                [disabled]="busy[manga.id]"
+                [attr.aria-label]="'Reading status for ' + manga.title"
+                (change)="changeReadingStatus(manga, $event)"
+              >
+                @for (status of statusOptions; track status.value) {
+                  <option [value]="status.value">{{ status.label }}</option>
+                }
+              </select>
+            </label>
 
             @if (actionError[manga.id]) {
               <p class="card-error">{{ actionError[manga.id] }}</p>
@@ -51,14 +71,18 @@
 
             <div class="card-actions">
               <div class="action-row">
-                <a
-                  [href]="manga.sourceUrl"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="open-btn"
+                @if (readHereUrl(manga); as sourceUrl) {
+                  <a [href]="sourceUrl" target="_blank" rel="noopener noreferrer" class="open-btn">
+                    Read here
+                  </a>
+                }
+                <button
+                  class="increment-btn"
+                  [disabled]="busy[manga.id]"
+                  (click)="incrementChapter(manga)"
                 >
-                  Open
-                </a>
+                  +1 chapter
+                </button>
                 <button class="read-btn" [disabled]="busy[manga.id]" (click)="toggleRead(manga)">
                   @if (busy[manga.id]) {
                     …
@@ -70,14 +94,14 @@
                   Delete
                 </button>
               </div>
-              <label class="notify-toggle" title="Notify on new chapters">
+              <label class="notify-toggle" title="Best-effort English-only new chapter alerts">
                 <input
                   type="checkbox"
                   [checked]="manga.notificationsEnabled"
                   [disabled]="busy[manga.id]"
                   (change)="toggleNotifications(manga, $event)"
                 />
-                <span>Notify</span>
+                <span>Notify (English only)</span>
               </label>
             </div>
           </div>

@@ -10,6 +10,6 @@ export const routes: Routes = [
   { path: 'login', component: LoginComponent },
   { path: '', component: DashboardComponent, canActivate: [authGuard] },
   { path: 'settings', component: SettingsComponent, canActivate: [authGuard] },
-  // Push-notification landing: mark the manga read, then redirect to its source page.
+  // Push-notification landing: mark the manga read, then open its optional read-here link.
   { path: 'open/:id', component: OpenMangaComponent, canActivate: [authGuard] },
 ];

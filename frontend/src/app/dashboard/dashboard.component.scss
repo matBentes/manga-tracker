@@ -134,6 +134,23 @@
   font-weight: 800;
 }
 
+.progress-line {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 0 0 8px;
+  color: $ink;
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-transform: uppercase;
+
+  span {
+    border: 3px solid $ink;
+    background: $white;
+    padding: 3px 7px;
+  }
+}
+
 .latest-chapter-date {
   margin: 0 0 12px;
   font-size: 0.75rem;
@@ -162,6 +179,33 @@
   font-size: 0.72rem;
   font-weight: 800;
   color: $danger;
+}
+
+.status-control {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0 0 10px;
+  color: $ink;
+  font-size: 0.66rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.status-select {
+  width: min(100%, 180px);
+  border: 3px solid $ink;
+  background: $white;
+  color: $ink;
+  font-family: inherit;
+  font-size: 0.76rem;
+  font-weight: 800;
+  padding: 5px 7px;
+  text-transform: uppercase;
+
+  &:disabled {
+    opacity: 0.6;
+  }
 }
 
 .card-actions {
@@ -209,6 +253,10 @@
 }
 
 .read-btn {
+  @include brutal-btn($white, $ink);
+}
+
+.increment-btn {
   @include brutal-btn($white, $ink);
 }
 

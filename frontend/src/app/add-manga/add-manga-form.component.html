@@ -1,32 +1,142 @@
 <form class="add-form" (ngSubmit)="onSubmit()">
   <h2 class="add-form-title">Add Manga</h2>
-  <div class="add-form-row">
+
+  <div class="field-group">
+    <label class="field-label" for="manga-search">Search MangaDex</label>
     <input
-      class="url-input"
+      id="manga-search"
+      class="search-input"
       type="text"
-      [(ngModel)]="url"
-      (ngModelChange)="onUrlChange()"
-      name="url"
-      placeholder="Paste a manga URL (e.g. https://sakuramangas.org/manga/...)"
-      [disabled]="isSubmitting"
+      [(ngModel)]="searchQuery"
+      (ngModelChange)="onSearchQueryChange($event)"
+      name="searchQuery"
+      placeholder="Search by title"
+      [disabled]="isSubmitting()"
       autocomplete="off"
     />
-    <button class="submit-btn" type="submit" [disabled]="isSubmitting || !isUrlValid">
-      @if (isSubmitting) {
-        <span class="btn-spinner"></span>
-        Adding...
-      } @else {
-        Add Manga
-      }
-    </button>
   </div>
-  @if (urlValidationError) {
-    <div class="form-error">{{ urlValidationError }}</div>
+
+  @if (searchQuery.trim().length > 0 && searchQuery.trim().length < minimumSearchLength) {
+    <div class="form-hint">Type at least {{ minimumSearchLength }} characters to search.</div>
   }
-  @if (error) {
-    <div class="form-error">{{ error }}</div>
+  @if (isSearching()) {
+    <div class="form-hint">
+      <span class="btn-spinner"></span>
+      Searching MangaDex...
+    </div>
   }
-  @if (successMessage) {
-    <div class="form-success">{{ successMessage }}</div>
+  @if (searchError(); as searchErrorMessage) {
+    <div class="form-error">{{ searchErrorMessage }}</div>
   }
+
+  @if (searchResults().length > 0) {
+    <ul class="search-results" aria-label="MangaDex search results">
+      @for (result of searchResults(); track result.mangaDexId) {
+        <li>
+          <button class="search-result" type="button" (click)="selectResult(result)">
+            <span class="result-cover">
+              @if (result.coverImageUrl) {
+                <img [src]="result.coverImageUrl" [alt]="result.title + ' cover'" />
+              } @else {
+                <span class="result-cover-placeholder">{{ result.title.charAt(0) }}</span>
+              }
+            </span>
+            <span class="result-body">
+              <span class="result-title">{{ result.title }}</span>
+              <span class="result-description">{{ descriptionSnippet(result) }}</span>
+            </span>
+          </button>
+        </li>
+      }
+    </ul>
+  } @else if (hasSearched() && !isSearching() && !searchError() && !selectedResult()) {
+    <div class="form-hint">No MangaDex results found.</div>
+  }
+
+  @if (selectedResult(); as selected) {
+    <section class="selected-preview" aria-label="Selected manga">
+      <div class="result-cover">
+        @if (selected.coverImageUrl) {
+          <img [src]="selected.coverImageUrl" [alt]="selected.title + ' cover'" />
+        } @else {
+          <div class="result-cover-placeholder">{{ selected.title.charAt(0) }}</div>
+        }
+      </div>
+      <div class="selected-body">
+        <span class="selected-label">Selected MangaDex title</span>
+        <h3>{{ selected.title }}</h3>
+        <p>{{ descriptionSnippet(selected) }}</p>
+      </div>
+    </section>
+  }
+
+  <div class="optional-fields">
+    <label class="field-group" for="read-url">
+      <span class="field-label">Read-here URL</span>
+      <input
+        id="read-url"
+        class="read-url-input"
+        type="url"
+        [(ngModel)]="sourceUrl"
+        (ngModelChange)="onSourceUrlChange()"
+        name="sourceUrl"
+        placeholder="Optional http(s) link"
+        [disabled]="isSubmitting()"
+        autocomplete="off"
+      />
+    </label>
+
+    <label class="field-group compact" for="starting-chapter">
+      <span class="field-label">Starting chapter</span>
+      <input
+        id="starting-chapter"
+        class="chapter-input"
+        type="number"
+        min="0"
+        step="1"
+        [(ngModel)]="currentChapter"
+        (ngModelChange)="onChapterChange()"
+        name="currentChapter"
+        placeholder="0"
+        [disabled]="isSubmitting()"
+      />
+    </label>
+
+    <label class="field-group compact" for="reading-status">
+      <span class="field-label">Status</span>
+      <select
+        id="reading-status"
+        class="status-select"
+        [(ngModel)]="selectedStatus"
+        name="selectedStatus"
+        [disabled]="isSubmitting()"
+      >
+        @for (status of statusOptions; track status.value) {
+          <option [value]="status.value">{{ status.label }}</option>
+        }
+      </select>
+    </label>
+  </div>
+
+  @if (sourceUrlValidationError(); as sourceUrlError) {
+    <div class="form-error">{{ sourceUrlError }}</div>
+  }
+  @if (chapterValidationError(); as chapterError) {
+    <div class="form-error">{{ chapterError }}</div>
+  }
+  @if (error(); as errorMessage) {
+    <div class="form-error">{{ errorMessage }}</div>
+  }
+  @if (successMessage(); as message) {
+    <div class="form-success">{{ message }}</div>
+  }
+
+  <button class="submit-btn" type="submit" [disabled]="!canSubmit()">
+    @if (isSubmitting()) {
+      <span class="btn-spinner"></span>
+      Adding...
+    } @else {
+      Add Manga
+    }
+  </button>
 </form>

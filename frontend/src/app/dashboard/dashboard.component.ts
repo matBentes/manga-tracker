@@ -17,6 +17,14 @@ export class DashboardComponent implements OnInit {
   private readonly changeDetector = inject(ChangeDetectorRef);
   private readonly destroyRef = inject(DestroyRef);
 
+  readonly statusOptions = [
+    { value: 'READING', label: 'Reading' },
+    { value: 'COMPLETED', label: 'Completed' },
+    { value: 'ON_HOLD', label: 'On hold' },
+    { value: 'DROPPED', label: 'Dropped' },
+    { value: 'PLAN_TO_READ', label: 'Plan to read' },
+  ];
+
   mangaList: Manga[] = [];
   isLoading = false;
   error: string | null = null;
@@ -69,7 +77,7 @@ export class DashboardComponent implements OnInit {
     this.actionError[manga.id] = null;
     request$.subscribe({
       next: (updated) => {
-        manga.currentChapter = updated.currentChapter;
+        this.applyMangaUpdate(manga, updated);
         this.busy[manga.id] = false;
         this.changeDetector.detectChanges();
       },
@@ -92,7 +100,7 @@ export class DashboardComponent implements OnInit {
         updatedList.forEach((updated) => {
           const local = this.mangaList.find((m) => m.id === updated.id);
           if (local) {
-            local.currentChapter = updated.currentChapter;
+            this.applyMangaUpdate(local, updated);
           }
         });
         this.isMarkingAll = false;
@@ -113,7 +121,7 @@ export class DashboardComponent implements OnInit {
     this.busy[manga.id] = true;
     this.mangaService.updateManga(manga.id, { notificationsEnabled: newValue }).subscribe({
       next: (updated) => {
-        manga.notificationsEnabled = updated.notificationsEnabled;
+        this.applyMangaUpdate(manga, updated);
         this.busy[manga.id] = false;
         this.changeDetector.detectChanges();
       },
@@ -124,6 +132,68 @@ export class DashboardComponent implements OnInit {
         this.changeDetector.detectChanges();
       },
     });
+  }
+
+  incrementChapter(manga: Manga): void {
+    if (this.busy[manga.id]) {
+      return;
+    }
+    this.busy[manga.id] = true;
+    this.actionError[manga.id] = null;
+    this.mangaService
+      .updateManga(manga.id, { currentChapter: manga.currentChapter + 1 })
+      .subscribe({
+        next: (updated) => {
+          this.applyMangaUpdate(manga, updated);
+          this.busy[manga.id] = false;
+          this.changeDetector.detectChanges();
+        },
+        error: () => {
+          this.actionError[manga.id] = 'Failed to update progress.';
+          this.busy[manga.id] = false;
+          this.changeDetector.detectChanges();
+        },
+      });
+  }
+
+  changeReadingStatus(manga: Manga, event: Event): void {
+    const select = event.target as HTMLSelectElement;
+    const previousStatus = manga.readingStatus;
+    const newStatus = select.value;
+
+    if (newStatus === previousStatus || this.busy[manga.id]) {
+      select.value = previousStatus;
+      return;
+    }
+
+    this.busy[manga.id] = true;
+    this.actionError[manga.id] = null;
+    this.mangaService.updateManga(manga.id, { readingStatus: newStatus }).subscribe({
+      next: (updated) => {
+        this.applyMangaUpdate(manga, updated);
+        this.busy[manga.id] = false;
+        this.changeDetector.detectChanges();
+      },
+      error: () => {
+        select.value = previousStatus;
+        this.actionError[manga.id] = 'Failed to update status.';
+        this.busy[manga.id] = false;
+        this.changeDetector.detectChanges();
+      },
+    });
+  }
+
+  readHereUrl(manga: Manga): string | null {
+    const sourceUrl = manga.sourceUrl?.trim();
+    if (!sourceUrl) {
+      return null;
+    }
+    try {
+      const url = new URL(sourceUrl);
+      return url.protocol === 'http:' || url.protocol === 'https:' ? sourceUrl : null;
+    } catch {
+      return null;
+    }
   }
 
   onDelete(manga: Manga): void {
@@ -174,5 +244,18 @@ export class DashboardComponent implements OnInit {
     } else {
       return `Latest chapter added ${diffDays} days ago`;
     }
+  }
+
+  private applyMangaUpdate(local: Manga, updated: Manga): void {
+    local.sourceUrl = updated.sourceUrl;
+    local.mangadexId = updated.mangadexId;
+    local.currentChapter = updated.currentChapter;
+    local.latestChapter = updated.latestChapter;
+    local.coverImageUrl = updated.coverImageUrl;
+    local.readingStatus = updated.readingStatus;
+    local.latestChapterAt = updated.latestChapterAt;
+    local.notificationsEnabled = updated.notificationsEnabled;
+    local.lastCheckedAt = updated.lastCheckedAt;
+    local.updatedAt = updated.updatedAt;
   }
 }

@@ -5,8 +5,9 @@
     <div class="push-info">
       <span class="label-text">Phone Notifications</span>
       <span class="label-desc">
-        Get a push notification on this device when a tracked manga has a new chapter. Tapping it
-        marks the manga as read and opens it.
+        Get a best-effort English-only push notification on this device when a tracked manga has a
+        new chapter. Tapping it marks the manga as read and opens your read-here link when one is
+        set.
       </span>
     </div>
     @if (!pushSupported) {
@@ -37,7 +38,7 @@
   <section class="schedule-card">
     <span class="label-text">New-chapter check</span>
     <span class="label-desc"
-      >{{ dailyCheckLabel }}. This runs automatically — nothing to configure.</span
+      >{{ dailyCheckLabel }}. MangaDex checks are best-effort and English-only.</span
     >
   </section>
 </div>

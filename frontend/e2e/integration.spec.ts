@@ -11,37 +11,37 @@ test.describe('Dashboard', () => {
 
     await expect(page.getByRole('heading', { name: 'Reading List' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Add Manga' })).toBeVisible();
-    await expect(page.getByRole('textbox', { name: /manga URL/i })).toBeVisible();
+    await expect(page.getByRole('textbox', { name: /Search MangaDex/i })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Add Manga' })).toBeDisabled();
   });
 
-  test('add manga button stays disabled when URL is empty', async ({ page }) => {
+  test('add manga button stays disabled until a MangaDex title is picked', async ({ page }) => {
     await page.goto('/');
 
-    const input = page.getByRole('textbox', { name: /manga URL/i });
+    const input = page.getByRole('textbox', { name: /Search MangaDex/i });
     await input.fill('');
 
     await expect(page.getByRole('button', { name: 'Add Manga' })).toBeDisabled();
   });
 
-  test('shows client-side validation error for non-URL text', async ({ page }) => {
+  test('shows client-side validation error for a non-http read-here URL', async ({ page }) => {
     await page.goto('/');
 
-    const input = page.getByRole('textbox', { name: /manga URL/i });
+    const input = page.getByRole('textbox', { name: /Read-here URL/i });
     await input.fill('not-a-url');
 
     await expect(page.getByRole('button', { name: 'Add Manga' })).toBeDisabled();
-    await expect(page.getByText(/valid URL starting with http/i)).toBeVisible();
+    await expect(page.getByText(/must start with http:\/\/ or https:\/\//i)).toBeVisible();
   });
 
-  test('enables button for valid URL format', async ({ page }) => {
+  test('accepts valid read-here URL format', async ({ page }) => {
     await page.goto('/');
 
-    const input = page.getByRole('textbox', { name: /manga URL/i });
+    const input = page.getByRole('textbox', { name: /Read-here URL/i });
     await input.fill('https://example.com/manga/test');
 
-    await expect(page.getByRole('button', { name: 'Add Manga' })).toBeEnabled();
-    await expect(page.getByText(/valid URL starting with http/i)).not.toBeVisible();
+    await expect(page.getByText(/must start with http:\/\/ or https:\/\//i)).not.toBeVisible();
+    await expect(page.getByRole('button', { name: 'Add Manga' })).toBeDisabled();
   });
 
   test('navigation links work', async ({ page }) => {

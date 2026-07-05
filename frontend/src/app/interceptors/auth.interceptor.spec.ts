@@ -27,7 +27,7 @@ describe('authInterceptor', () => {
   afterEach(() => httpMock.verify());
 
   it('fetches csrf token and attaches it to unsafe api requests', () => {
-    http.post('/api/manga', { sourceUrl: 'https://example.test/manga' }).subscribe();
+    http.post('/api/manga', { mangaDexId: '22222222-2222-2222-2222-222222222222' }).subscribe();
 
     const csrfReq = httpMock.expectOne('/api/auth/csrf');
     expect(csrfReq.request.method).toBe('GET');
