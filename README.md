@@ -161,6 +161,7 @@ npm run e2e                         # Playwright, mocked backend
 - [Architecture Overview](docs/architecture.md)
 - [Architecture Diagrams](docs/diagrams/README.md)
 - [Why We Pivoted From Scraping To MangaDex](docs/cloudflare-scraper-investigation.md)
+- [Pivot Retrospective & Learnings](docs/pivot-retrospective.md)
 - [AWS Deployment Runbook](docs/aws-deployment.md)
 - [New Developer Onboarding](docs/onboarding.md)
 - [Developer Guide](docs/developer-guide.md)

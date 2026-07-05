@@ -142,6 +142,8 @@ Verdict: implementation is faithful to the plan + delegation refinements. Review
 
 ## Final state (all phases complete)
 
+- **PR #32 open: https://github.com/matBentes/manga-tracker/pull/32**
+- Learnings write-up: [`pivot-retrospective.md`](pivot-retrospective.md) (linked from README).
 - Commits: `a8d3324` (phase 1), `403e8ac` (phase 2), `777362a` (phase 3), `10a1c96` (phase 4).
 - Final verification, all green: backend `spotlessApply test jacocoTestReport
   jacocoTestCoverageVerification`; frontend `format:check`/`test`/`lint`/prod `build`/`e2e`;
