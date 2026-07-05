@@ -139,6 +139,9 @@ public class MangaService {
     if (readingStatus != null) {
       manga.setReadingStatus(readingStatus);
     }
+    if (manga.getCurrentChapter() > manga.getLatestChapter()) {
+      manga.setLatestChapter(manga.getCurrentChapter());
+    }
     return mangaRepository.save(manga);
   }
 

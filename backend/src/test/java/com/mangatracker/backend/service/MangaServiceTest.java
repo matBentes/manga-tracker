@@ -292,6 +292,25 @@ class MangaServiceTest {
   }
 
   @Test
+  void updateManga_bumpsLatestChapterWhenCurrentExceedsLatest_andMarkReadKeepsProgress() {
+    UUID id = UUID.randomUUID();
+    Manga manga = buildManga(id, 10);
+    manga.setCurrentChapter(10);
+    when(mangaRepository.findByIdAndOwnerId(id, USER_ID)).thenReturn(Optional.of(manga));
+    when(mangaRepository.save(manga)).thenReturn(manga);
+
+    Manga updated = mangaService.updateManga(id, null, 11, null, null);
+
+    assertThat(updated.getCurrentChapter()).isEqualTo(11);
+    assertThat(updated.getLatestChapter()).isEqualTo(11);
+
+    Manga markedRead = mangaService.markRead(id);
+
+    assertThat(markedRead.getCurrentChapter()).isEqualTo(11);
+    assertThat(markedRead.getLatestChapter()).isEqualTo(11);
+  }
+
+  @Test
   void updateManga_throwsMangaNotFoundException_forCrossUserId() {
     UUID id = UUID.randomUUID();
     when(mangaRepository.findByIdAndOwnerId(id, USER_ID)).thenReturn(Optional.empty());
