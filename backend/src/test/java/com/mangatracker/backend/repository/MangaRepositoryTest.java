@@ -72,9 +72,9 @@ class MangaRepositoryTest {
     UUID mangadexId = UUID.randomUUID();
 
     mangaRepository.saveAndFlush(buildManga("https://read/one", mangadexId, ownerId));
+    Manga duplicate = buildManga("https://read/two", mangadexId, ownerId);
 
-    assertThatThrownBy(
-            () -> mangaRepository.saveAndFlush(buildManga("https://read/two", mangadexId, ownerId)))
+    assertThatThrownBy(() -> mangaRepository.saveAndFlush(duplicate))
         .isInstanceOf(DataIntegrityViolationException.class);
   }
 

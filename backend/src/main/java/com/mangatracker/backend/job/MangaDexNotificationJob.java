@@ -5,6 +5,7 @@ import com.mangatracker.backend.repository.MangaRepository;
 import com.mangatracker.backend.service.MangaDexClient;
 import com.mangatracker.backend.service.NotificationService;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.OptionalInt;
@@ -75,7 +76,7 @@ public class MangaDexNotificationJob {
 
   private void pollManga(Manga manga, OptionalInt latestEnglishChapter) {
     try {
-      LocalDateTime checkedAt = LocalDateTime.now();
+      LocalDateTime checkedAt = LocalDateTime.now(ZoneId.systemDefault());
       manga.setLastCheckedAt(checkedAt);
       if (latestEnglishChapter.isPresent()) {
         int fetchedChapter = latestEnglishChapter.getAsInt();
@@ -102,7 +103,7 @@ public class MangaDexNotificationJob {
   }
 
   private void stampFailure(Manga manga) {
-    manga.setLastCheckedAt(LocalDateTime.now());
+    manga.setLastCheckedAt(LocalDateTime.now(ZoneId.systemDefault()));
     saveFailureStamp(manga);
   }
 

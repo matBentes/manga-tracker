@@ -11,6 +11,7 @@ import com.mangatracker.backend.security.CurrentUser;
 import com.mangatracker.backend.security.SearchMangaRateLimiter;
 import java.net.URI;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.OptionalInt;
 import java.util.UUID;
@@ -97,7 +98,7 @@ public class MangaService {
             .currentChapter(startingChapter)
             .latestChapter(latestChapter)
             .coverImageUrl(metadata.coverImageUrl())
-            .latestChapterAt(latestChapter > 0 ? LocalDateTime.now() : null)
+            .latestChapterAt(latestChapter > 0 ? LocalDateTime.now(ZoneId.systemDefault()) : null)
             .readingStatus(readingStatus == null ? ReadingStatus.READING : readingStatus)
             .notificationsEnabled(true)
             .ownerId(ownerId)
