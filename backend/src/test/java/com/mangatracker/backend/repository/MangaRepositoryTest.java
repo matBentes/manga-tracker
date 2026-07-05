@@ -113,6 +113,20 @@ class MangaRepositoryTest {
   }
 
   @Test
+  void findAllByMangadexIdIsNotNullAndNotificationsEnabledTrue_filtersNotificationCandidates() {
+    UUID ownerId = createOwner("owner-a");
+    Manga candidate = buildManga("https://read/candidate", UUID.randomUUID(), ownerId);
+    Manga manual = buildManga("https://read/manual", null, ownerId);
+    Manga disabled = buildManga("https://read/disabled", UUID.randomUUID(), ownerId);
+    disabled.setNotificationsEnabled(false);
+    mangaRepository.saveAllAndFlush(List.of(candidate, manual, disabled));
+
+    List<Manga> result = mangaRepository.findAllByMangadexIdIsNotNullAndNotificationsEnabledTrue();
+
+    assertThat(result).extracting(Manga::getId).containsExactly(candidate.getId());
+  }
+
+  @Test
   void deleteById_removesEntity() {
     Manga saved = mangaRepository.save(buildManga("https://read/one-piece", null, null));
 
