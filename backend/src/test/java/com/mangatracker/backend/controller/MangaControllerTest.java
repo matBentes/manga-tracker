@@ -110,8 +110,7 @@ class MangaControllerTest {
     UUID id = UUID.randomUUID();
     Manga manga = buildManga(id);
     String sourceUrl = "https://sakuramangas.org/obras/test/";
-    when(mangaService.addManga(
-            eq(MANGADEX_ID), eq(sourceUrl), eq(42), eq(ReadingStatus.PLAN_TO_READ)))
+    when(mangaService.addManga(MANGADEX_ID, sourceUrl, 42, ReadingStatus.PLAN_TO_READ))
         .thenReturn(manga);
 
     mockMvc

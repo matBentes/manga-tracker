@@ -28,6 +28,8 @@ public class MangaDexClient {
 
   private static final String API_BASE_URL = "https://api.mangadex.org";
   private static final String COVER_BASE_URL = "https://uploads.mangadex.org/covers/";
+  private static final String ATTRIBUTES_FIELD = "attributes";
+  private static final String COVER_ART_TYPE = "cover_art";
   private static final int SEARCH_LIMIT = 10;
   private static final int CHAPTER_FEED_LIMIT = 10;
   private static final int MAX_ATTEMPTS = 2;
@@ -66,7 +68,7 @@ public class MangaDexClient {
                             uriBuilder
                                 .path("/manga")
                                 .queryParam("title", normalizedQuery)
-                                .queryParam("includes[]", "cover_art")
+                                .queryParam("includes[]", COVER_ART_TYPE)
                                 .queryParam("limit", SEARCH_LIMIT)
                                 .queryParam("offset", 0)
                                 .build())
@@ -89,7 +91,7 @@ public class MangaDexClient {
                         uriBuilder ->
                             uriBuilder
                                 .path("/manga/{id}")
-                                .queryParam("includes[]", "cover_art")
+                                .queryParam("includes[]", COVER_ART_TYPE)
                                 .build(mangaDexId))
                     .retrieve()
                     .onStatus(HttpStatusCode::isError, this::throwUpstreamException)
@@ -127,7 +129,7 @@ public class MangaDexClient {
       return OptionalInt.empty();
     }
     for (JsonNode entry : data) {
-      String chapter = textOrNull(entry.path("attributes").path("chapter"));
+      String chapter = textOrNull(entry.path(ATTRIBUTES_FIELD).path("chapter"));
       OptionalInt parsed = parseLeadingPositiveInteger(chapter, mangaDexId);
       if (parsed.isPresent()) {
         return parsed;
@@ -165,7 +167,7 @@ public class MangaDexClient {
       return null;
     }
 
-    JsonNode attributes = data.path("attributes");
+    JsonNode attributes = data.path(ATTRIBUTES_FIELD);
     String title = localizedText(attributes.path("title"));
     if (title == null) {
       LOG.warn("Skipping MangaDex result without a title: {}", mangaDexId);
@@ -200,8 +202,8 @@ public class MangaDexClient {
       return null;
     }
     for (JsonNode relationship : relationships) {
-      if ("cover_art".equals(textOrNull(relationship.path("type")))) {
-        return textOrNull(relationship.path("attributes").path("fileName"));
+      if (COVER_ART_TYPE.equals(textOrNull(relationship.path("type")))) {
+        return textOrNull(relationship.path(ATTRIBUTES_FIELD).path("fileName"));
       }
     }
     return null;
@@ -279,7 +281,7 @@ public class MangaDexClient {
     }
     try {
       long seconds = Long.parseLong(header.trim());
-      return Duration.ofSeconds(Math.min(Math.max(0, seconds), MAX_RATE_LIMIT_RETRY.toSeconds()));
+      return Duration.ofSeconds(Math.clamp(seconds, 0L, MAX_RATE_LIMIT_RETRY.toSeconds()));
     } catch (NumberFormatException e) {
       return DEFAULT_RATE_LIMIT_RETRY;
     }

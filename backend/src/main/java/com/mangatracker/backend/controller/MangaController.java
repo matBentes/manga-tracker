@@ -58,25 +58,23 @@ public class MangaController {
 
   @GetMapping("/search")
   @Operation(summary = "Search MangaDex")
-  @ApiResponses({
-    @ApiResponse(responseCode = "200", description = "MangaDex search results"),
-    @ApiResponse(
-        responseCode = "400",
-        description = "Missing or invalid query",
-        content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-    @ApiResponse(
-        responseCode = "401",
-        description = "Missing or invalid auth cookie",
-        content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-    @ApiResponse(
-        responseCode = "429",
-        description = "Search rate limit exceeded",
-        content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-    @ApiResponse(
-        responseCode = "502",
-        description = "MangaDex request failed",
-        content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
-  })
+  @ApiResponse(responseCode = "200", description = "MangaDex search results")
+  @ApiResponse(
+      responseCode = "400",
+      description = "Missing or invalid query",
+      content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+  @ApiResponse(
+      responseCode = "401",
+      description = "Missing or invalid auth cookie",
+      content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+  @ApiResponse(
+      responseCode = "429",
+      description = "Search rate limit exceeded",
+      content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+  @ApiResponse(
+      responseCode = "502",
+      description = "MangaDex request failed",
+      content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
   public List<MangaDexManga> searchManga(@RequestParam("q") String query) {
     return mangaService.searchManga(query);
   }
