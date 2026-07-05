@@ -14,11 +14,13 @@ import org.springframework.stereotype.Component;
  * <p>The app deliberately avoids a username-only global budget: that would let an attacker lock out
  * the real owner account from many source IPs. BCrypt plus this per-IP composite key is the
  * accepted posture for this single-node deployment. Client IP comes from {@link
- * HttpServletRequest#getRemoteAddr()}; with {@code server.forward-headers-strategy=framework},
- * upstream nginx/ALB must sanitize X-Forwarded-For before it reaches the app.
+ * HttpServletRequest#getRemoteAddr()}, after Tomcat's native RemoteIpValve resolves X-Forwarded-For
+ * right-to-left past trusted private-range proxies.
  */
 @Component
 public class LoginRateLimiter extends SlidingWindowRateLimiter {
+
+  private static final int MAX_USERNAME_KEY_CHARS = 100;
 
   @Autowired
   public LoginRateLimiter(
@@ -45,6 +47,10 @@ public class LoginRateLimiter extends SlidingWindowRateLimiter {
   }
 
   private static String normalizedUsername(String username) {
-    return username == null ? "" : username.trim().toLowerCase(Locale.ROOT);
+    String normalized = username == null ? "" : username.trim().toLowerCase(Locale.ROOT);
+    // LoginRequest has no length validation, so cap per-key memory before building the limiter key.
+    return normalized.length() <= MAX_USERNAME_KEY_CHARS
+        ? normalized
+        : normalized.substring(0, MAX_USERNAME_KEY_CHARS);
   }
 }
