@@ -50,7 +50,7 @@ promises are how trust dies; labeled best-effort is fine.
 This is the strongest lesson of the project. Nothing was redundant:
 
 | Layer | What it caught |
-|-------|----------------|
+| ------- | ---------------- |
 | Unit tests | Chapter-parsing policy, dedup, limiter windows |
 | Security review gate | Stored XSS via the optional read-here URL (`javascript:` → `window.location.href`); unbounded search proxy (no rate limit, uncapped `Retry-After` sleeps) |
 | Adversarial review | Notification permanently lost if delivery failed after `latestChapter` advanced; `limit=1` feed query blinded by one "Extra" chapter |

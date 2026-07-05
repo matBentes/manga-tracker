@@ -47,7 +47,9 @@ best-effort English new-chapter push notifications from MangaDex.
 ## Add / change
 
 ### Data model — new Flyway migration only (never edit existing)
+
 `V13__reading_tracker_fields.sql`:
+
 - `ALTER TABLE manga ADD COLUMN reading_status VARCHAR(32) NOT NULL DEFAULT 'READING';`
 - `ALTER TABLE manga ADD COLUMN mangadex_id UUID;`
 - `ALTER TABLE manga ALTER COLUMN source_url DROP NOT NULL;`
@@ -61,8 +63,10 @@ Entity (`Manga.java`): add `readingStatus` (`@Enumerated(EnumType.STRING)`), `ma
 (user/MangaDex-sourced, not scraped).
 
 ### MangaDex integration (backend)
+
 New `MangaDexClient` (`@Service`) against `https://api.mangadex.org` (no auth). See official
-docs: https://api.mangadex.org/docs/ .
+docs: <https://api.mangadex.org/docs/> .
+
 - **Search:** `GET /manga?title={q}&includes[]=cover_art&limit=10&offset=0`. From each result:
   id, `attributes.title` (prefer `en`), description, and cover filename from the `cover_art`
   relationship's `attributes.fileName`.
@@ -73,6 +77,7 @@ docs: https://api.mangadex.org/docs/ .
 - Timeouts, 429 backoff/retry, and ~5 req/s courtesy limit. Handle pagination where relevant.
 
 ### Endpoints (`MangaController`)
+
 - `GET /api/manga/search?q=` → proxied MangaDex search results (title, cover, id, synopsis).
 - Add-manga accepts `mangaDexId` (+ optional `sourceUrl`, starting progress/status) → fetch
   metadata → persist; reject duplicate `(owner_id, mangadex_id)`.
@@ -81,6 +86,7 @@ docs: https://api.mangadex.org/docs/ .
   update OpenAPI annotations.
 
 ### Notification job (replaces ScrapingJob)
+
 - New scheduled job (keep daily cadence). New repository query for manga with `mangadexId != null`
   AND `notificationsEnabled` (owner-scoped rows). For each: `latestEnglishChapter`; if it
   exceeds stored `latestChapter`, update and fire the existing
@@ -89,6 +95,7 @@ docs: https://api.mangadex.org/docs/ .
   the run. English-only / best-effort.
 
 ### Frontend (Angular, `inject()` DI — never constructor injection)
+
 - `add-manga` (`add-manga-form.component.ts`, `manga.service.ts`): replace URL-only form with
   MangaDex **search-and-pick** — query, list results with cover, select to pre-fill
   title/cover/synopsis; optional "read here" URL + starting progress/status. Update the add DTO.
@@ -99,18 +106,21 @@ docs: https://api.mangadex.org/docs/ .
 - Keep `settings`/push UI; label notifications as best-effort English-only.
 
 ### Tests (offset removed scraper coverage — gate is 70%, `build.gradle:87`)
+
 Scraper assumptions also live in `MangaServiceTest`, `ScrapingJobTest`, `MangaControllerTest`,
 `SecurityConfigTest` — update/replace these. Add tests for: `MangaDexClient` (mocked HTTP),
 the add/search flow, the new notification job, and the migration/repository dedup behavior.
 Add replacements before deleting scraper coverage so the gate stays green.
 
 ## Out of scope
+
 - No Sakura scraping, no Playwright, no Cloudflare work.
 - No non-English notification reliability; no half/decimal-chapter tracking (integer-only).
 - No new auth/session/CSRF changes.
 - Do not edit existing Flyway migrations; do not push to `main`; branch + PR.
 
 ## Success criteria
+
 - Backend compiles at every phase boundary; Playwright dep + Chromium gone; smaller image; CI
   scraper flag removed.
 - Search MangaDex, add a title with real metadata, edit progress + status — persisted per user;
@@ -121,12 +131,14 @@ Add replacements before deleting scraper coverage so the gate stays green.
 - Frontend: `npm run format:check`, `npm test`, `npm run lint`, prod `build` pass.
 
 ## Compile-safety checklist (touch together, keep it building)
+
 `MangaService` (`:7,29,52`), `MangaController` + tests, `GlobalExceptionHandler`, `ScrapingJob`
 (`:5,50`), `MangaRepository` (`existsBySourceUrlAndOwnerId` `:23` → mangadex_id dedup),
 removed exceptions, OpenAPI docs, `build.gradle`, `Dockerfile`, `ci.yml`, frontend DTOs +
 `open-manga` null-`sourceUrl` path, and the docs listed below.
 
 ### Docs to update (during the build, alongside the code — not before)
+
 - `README.md` — reframe as a MangaDex-backed reading tracker (not a scraper).
 - `CLAUDE.md` — the "Project Snapshot" line ("backend scrapes for new chapters").
 - `docs/architecture.md` and `docs/api.md` — system behavior + endpoints.
@@ -137,6 +149,7 @@ removed exceptions, OpenAPI docs, `build.gradle`, `Dockerfile`, `ci.yml`, fronte
 - Leave historical journals as-is: `docs/aws-deploy-journey.md`, `docs/aws-deploy-progress.md`.
 
 ## Phasing (one editing executor at a time; each phase compiles + tests green)
+
 1. **Backend swap (single compiling patch):** add `MangaDexClient` + search/add endpoints +
    `V13` migration + entity changes + mangadex_id dedup, AND remove the scraper stack +
    replace the add path in `MangaService`, in the same phase. Update backend tests.

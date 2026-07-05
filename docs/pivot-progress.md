@@ -134,7 +134,7 @@ Verdict: implementation is faithful to the plan + delegation refinements. Review
 ## Phase status
 
 | Phase | Scope | Status |
-|-------|-------|--------|
+| ------- | ------- | -------- |
 | 1 | Backend swap: MangaDexClient + endpoints + V13 + scraper removal + tests | DONE — committed `a8d3324`, gates passed |
 | 2 | Notification job (MangaDex English feed) | DONE — committed `403e8ac`, reviewed + green |
 | 3 | Frontend search-and-pick, dashboard, null-sourceUrl open-manga | DONE — committed `777362a`; incl. signals CD fix + stale-response guard |
@@ -142,7 +142,7 @@ Verdict: implementation is faithful to the plan + delegation refinements. Review
 
 ## Final state (all phases complete)
 
-- **PR #32 open: https://github.com/matBentes/manga-tracker/pull/32**
+- **PR #32 open: <https://github.com/matBentes/manga-tracker/pull/32>**
 - Learnings write-up: [`pivot-retrospective.md`](pivot-retrospective.md) (linked from README).
 - Commits: `a8d3324` (phase 1), `403e8ac` (phase 2), `777362a` (phase 3), `10a1c96` (phase 4).
 - Final verification, all green: backend `spotlessApply test jacocoTestReport

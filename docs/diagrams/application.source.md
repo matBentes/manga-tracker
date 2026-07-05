@@ -9,7 +9,7 @@ Local/dev and containerized application architecture, based on `docs/architectur
 ## Components
 
 | Component | Technology | Responsibility |
-|-----------|------------|----------------|
+| ----------- | ------------ | ---------------- |
 | Browser / PWA | Angular SPA + service worker | User interface, installed PWA behavior, push subscription, push tap handling |
 | Frontend container | nginx | Serves Angular static assets and proxies `/api/*` to the backend |
 | Backend API | Spring Boot 3.4 / Java 21 | HTTP API, auth, CSRF, manga tracking, push subscription, MangaDex integration |
@@ -25,7 +25,7 @@ Local/dev and containerized application architecture, based on `docs/architectur
 ## Main Connections
 
 | From | To | Protocol / Mechanism | Notes |
-|------|----|----------------------|-------|
+| ------ | ---- | ---------------------- | ------- |
 | Browser / PWA | Frontend nginx | HTTP in local/dev, HTTPS in production | Loads SPA assets |
 | Browser / PWA | Frontend nginx `/api/*` | HTTP requests with cookies and CSRF headers | Same-origin API access through proxy |
 | Frontend nginx | Backend API | HTTP proxy | Proxies `/api/*` |

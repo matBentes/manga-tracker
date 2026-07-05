@@ -9,7 +9,7 @@ Production AWS deployment shape documented in `docs/aws-deployment.md`.
 ## Confirmed Components
 
 | Component | AWS / Runtime Service | Responsibility |
-|-----------|------------------------|----------------|
+| ----------- | ------------------------ | ---------------- |
 | Browser / PWA | End-user browser | Accesses the app over HTTPS and receives push notifications |
 | ACM certificate | AWS Certificate Manager | TLS certificate for the public HTTPS endpoint |
 | Application Load Balancer | ALB | Terminates HTTPS and routes traffic to ECS frontend/nginx target |
@@ -23,7 +23,7 @@ Production AWS deployment shape documented in `docs/aws-deployment.md`.
 ## Security Groups
 
 | Security Group | Inbound Allowed From | Port / Purpose |
-|----------------|----------------------|----------------|
+| ---------------- | ---------------------- | ---------------- |
 | ALB security group | Internet or approved source ranges | `443` HTTPS; optional `80` redirect |
 | Frontend ECS security group | ALB target group only | Frontend/nginx target port |
 | Backend ECS security group | Frontend/proxy security group only | Backend API port |
@@ -32,7 +32,7 @@ Production AWS deployment shape documented in `docs/aws-deployment.md`.
 ## Main Connections
 
 | From | To | Protocol / Mechanism | Notes |
-|------|----|----------------------|-------|
+| ------ | ---- | ---------------------- | ------- |
 | Browser / PWA | ALB | HTTPS | Public entrypoint |
 | ALB | Frontend ECS task | HTTP | TLS terminates at ALB |
 | Frontend ECS task | Backend ECS task | HTTP proxy for `/api/` | Backend is not internet-facing |
