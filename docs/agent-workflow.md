@@ -112,6 +112,7 @@ Use these criteria for implementer self-review, independent implementation revie
 8. Minimal dependencies: new dependencies are justified by the plan and do not replace simple local code without clear benefit.
 9. Tests and verification: relevant automated tests, formatters, linters, smoke checks, and skipped-check reasons are recorded with evidence.
 10. Technical debt: the change leaves touched code at least as maintainable as before and does not hide known follow-up work.
+11. Static-analysis triage: as part of review, pull and read the SonarCloud (and CodeQL) findings for the PR — not just the pass/fail check status. A **passing** Quality Gate can still carry new below-threshold issues, so a green check is not the same as zero findings. Open the findings, and for each decide fix-now vs. defer-with-reason; record that decision.
 
 ## Collaboration Rules
 

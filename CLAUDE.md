@@ -41,6 +41,7 @@ When acting as Fable/orchestrator, default to planning, delegation, review, re-p
 - After implementation, review the diff yourself, then run a read-only security/safety gate before final code review.
 - For the security/safety gate, ask Codex to check secrets, auth/session/CSRF regressions, authorization bypass, injection, XSS, SSRF, path traversal, dependency risk, sensitive logging, destructive operations, data loss, existing Flyway migration edits, environment/config leakage, and production deploy risk.
 - After the security/safety gate, ask Codex for adversarial code review with `/codex:adversarial-review --model gpt-5.5 --effort xhigh --background`.
+- As part of code review, pull and triage the PR's SonarCloud and CodeQL findings (e.g. the SonarCloud issues API for the PR), not just the check's pass/fail status — a passing Quality Gate can still carry new below-threshold issues, so a green check is not zero findings. Decide fix-now vs. defer-with-reason for each and record it. See `docs/agent-workflow.md#review-criteria` item 11.
 - Keep plan review and code review tasks read-only; implementation tasks may edit only the approved scope.
 - Do not run multiple editing executors against the same files concurrently.
 - Incorporate only actionable findings; reject speculative complexity and keep the smallest correct patch.
