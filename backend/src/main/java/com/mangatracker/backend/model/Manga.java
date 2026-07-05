@@ -3,6 +3,8 @@ package com.mangatracker.backend.model;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
@@ -33,24 +35,34 @@ public class Manga {
   private UUID id;
 
   @Column(nullable = false)
-  @Schema(description = "Title scraped from the source page")
+  @Schema(description = "Manga title")
   private String title;
 
-  @Column(name = "source_url", nullable = false)
-  @Schema(description = "Original source URL used for scraping and duplicate detection")
+  @Column(name = "source_url")
+  @Schema(description = "Optional read-here URL", nullable = true)
   private String sourceUrl;
+
+  @Column(name = "mangadex_id")
+  @Schema(description = "MangaDex manga identifier used for metadata and duplicate detection")
+  private UUID mangadexId;
 
   @Column(name = "current_chapter", nullable = false)
   @Schema(description = "Chapter the user has read up to")
   private int currentChapter;
 
   @Column(name = "latest_chapter", nullable = false)
-  @Schema(description = "Latest chapter found by the scraper")
+  @Schema(description = "Latest known English chapter")
   private int latestChapter;
 
   @Column(name = "cover_image_url", columnDefinition = "TEXT")
-  @Schema(description = "Cover image URL or data URL scraped from the source page", nullable = true)
+  @Schema(description = "Cover image URL or data URL", nullable = true)
   private String coverImageUrl;
+
+  @Builder.Default
+  @Enumerated(EnumType.STRING)
+  @Column(name = "reading_status", nullable = false)
+  @Schema(description = "User reading status")
+  private ReadingStatus readingStatus = ReadingStatus.READING;
 
   @Column(name = "latest_chapter_at")
   @Schema(description = "Timestamp when the latest chapter was first observed", nullable = true)
@@ -61,7 +73,7 @@ public class Manga {
   private boolean notificationsEnabled;
 
   @Column(name = "last_checked_at")
-  @Schema(description = "Timestamp of the latest scrape attempt", nullable = true)
+  @Schema(description = "Timestamp of the latest metadata refresh attempt", nullable = true)
   private LocalDateTime lastCheckedAt;
 
   @Column(name = "owner_id")

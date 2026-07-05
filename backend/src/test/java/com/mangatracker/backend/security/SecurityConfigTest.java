@@ -111,6 +111,9 @@ class SecurityConfigTest {
   void explicitlyProtectedPaths_requireAuthentication() throws Exception {
     mockMvc.perform(get("/api/auth/me")).andExpect(status().isUnauthorized());
     mockMvc.perform(get("/api/manga")).andExpect(status().isUnauthorized());
+    mockMvc
+        .perform(get("/api/manga/search").param("q", "one"))
+        .andExpect(status().isUnauthorized());
 
     mockMvc
         .perform(
@@ -153,7 +156,7 @@ class SecurityConfigTest {
             post("/api/manga")
                 .with(user("owner"))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"sourceUrl\":\"https://sakuramangas.org/obras/test/\"}"))
+                .content("{\"mangaDexId\":\"32f3b331-0c6a-4bc0-94b6-866e142e6c3a\"}"))
         .andExpect(status().isForbidden());
   }
 

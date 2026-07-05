@@ -37,7 +37,7 @@ public class NotificationService {
     }
 
     // Save log BEFORE sending: if the DB write fails, no push is sent. This prevents duplicate
-    // notifications on the next scraping poll.
+    // notifications on the next metadata poll.
     NotificationLog log =
         NotificationLog.builder().mangaId(manga.getId()).chapterNumber(newLatestChapter).build();
     notificationLogRepository.save(log);

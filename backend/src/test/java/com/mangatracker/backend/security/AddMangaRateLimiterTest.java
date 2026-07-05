@@ -100,7 +100,20 @@ class AddMangaRateLimiterTest {
 
     assertThatThrownBy(() -> limiter.check(user))
         .isInstanceOf(RateLimitExceededException.class)
-        .hasMessageContaining("Too many");
+        .hasMessage("Too many manga added. Limit is 1 per 60s; try again later.");
+  }
+
+  @Test
+  void searchLimiterUsesSameSlidingWindowBehavior() {
+    MutableClock clock = new MutableClock(start);
+    SearchMangaRateLimiter limiter = new SearchMangaRateLimiter(1, Duration.ofMinutes(1), clock);
+    UUID user = UUID.randomUUID();
+
+    assertThatCode(() -> limiter.check(user)).doesNotThrowAnyException();
+
+    assertThatThrownBy(() -> limiter.check(user))
+        .isInstanceOf(RateLimitExceededException.class)
+        .hasMessage("Too many MangaDex searches. Limit is 1 per 60s; try again later.");
   }
 
   @Test

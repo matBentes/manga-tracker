@@ -1,10 +1,9 @@
 package com.mangatracker.backend.controller;
 
 import com.mangatracker.backend.exception.DuplicateMangaException;
+import com.mangatracker.backend.exception.MangaDexUpstreamException;
 import com.mangatracker.backend.exception.MangaNotFoundException;
 import com.mangatracker.backend.exception.RateLimitExceededException;
-import com.mangatracker.backend.exception.ScrapingException;
-import com.mangatracker.backend.exception.UnsupportedSourceException;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -24,15 +23,9 @@ public class GlobalExceptionHandler {
     return errorResponse(HttpStatus.CONFLICT, ex);
   }
 
-  @ExceptionHandler(UnsupportedSourceException.class)
-  public ResponseEntity<Map<String, String>> handleUnsupportedSource(
-      UnsupportedSourceException ex) {
-    return errorResponse(HttpStatus.BAD_REQUEST, ex);
-  }
-
-  @ExceptionHandler(ScrapingException.class)
-  public ResponseEntity<Map<String, String>> handleScraping(ScrapingException ex) {
-    return errorResponse(HttpStatus.UNPROCESSABLE_ENTITY, ex);
+  @ExceptionHandler(MangaDexUpstreamException.class)
+  public ResponseEntity<Map<String, String>> handleMangaDexUpstream(MangaDexUpstreamException ex) {
+    return errorResponse(HttpStatus.BAD_GATEWAY, ex);
   }
 
   @ExceptionHandler(RateLimitExceededException.class)

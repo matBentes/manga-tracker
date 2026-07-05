@@ -19,8 +19,8 @@ public interface MangaRepository extends JpaRepository<Manga, UUID> {
   /** Owner-scoped fetch: returns the manga only if it belongs to the given user. */
   Optional<Manga> findByIdAndOwnerId(UUID id, UUID ownerId);
 
-  /** Owner-scoped duplicate check: a user may track a URL another user already tracks. */
-  boolean existsBySourceUrlAndOwnerId(String sourceUrl, UUID ownerId);
+  /** Owner-scoped duplicate check: a user may track a MangaDex title another user tracks. */
+  boolean existsByMangadexIdAndOwnerId(UUID mangadexId, UUID ownerId);
 
   /** Owner-scoped count. Used by the demo startup seed to fill an empty demo library. */
   long countByOwnerId(UUID ownerId);

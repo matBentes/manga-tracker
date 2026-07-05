@@ -59,6 +59,7 @@ class NotificationServiceTest {
     UUID ownerId = UUID.randomUUID();
     Manga manga = buildManga(mangaId, true, 0, 10);
     manga.setOwnerId(ownerId);
+    manga.setSourceUrl(null);
     when(notificationLogRepository.existsByMangaIdAndChapterNumber(mangaId, 11)).thenReturn(false);
 
     notificationService.notify(manga, 11);
@@ -71,7 +72,7 @@ class NotificationServiceTest {
     assertThat(sent.body()).contains("11");
     assertThat(sent.mangaId()).isEqualTo(mangaId);
     assertThat(sent.ownerId()).isEqualTo(ownerId);
-    assertThat(sent.sourceUrl()).isEqualTo("https://sakuramangas.org/manga/test/");
+    assertThat(sent.sourceUrl()).isNull();
   }
 
   @Test
