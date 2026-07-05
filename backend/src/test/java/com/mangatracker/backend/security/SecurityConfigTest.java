@@ -9,7 +9,9 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.mangatracker.backend.controller.AuthController;
@@ -20,6 +22,8 @@ import com.mangatracker.backend.service.MangaService;
 import com.mangatracker.backend.service.PushNotificationService;
 import com.mangatracker.backend.service.PushSubscriptionService;
 import com.mangatracker.backend.service.VapidKeys;
+import jakarta.servlet.DispatcherType;
+import jakarta.servlet.RequestDispatcher;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -33,7 +37,12 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.cors.CorsConfigurationSource;
 
 @WebMvcTest(controllers = {AuthController.class, MangaController.class, PushController.class})
-@Import({SecurityConfig.class, JwtCookieAuthFilter.class})
+@Import({
+  SecurityConfig.class,
+  JwtCookieAuthFilter.class,
+  LoginRateLimiter.class,
+  DemoLoginRateLimiter.class
+})
 class SecurityConfigTest {
 
   @Autowired private MockMvc mockMvc;
@@ -98,18 +107,33 @@ class SecurityConfigTest {
   void swaggerDocsPaths_areReachableWithoutAuthentication() throws Exception {
     mockMvc
         .perform(get("/swagger-ui.html"))
-        .andExpect(result -> assertThat(result.getResponse().getStatus()).isNotEqualTo(401));
+        .andExpect(result -> assertThat(result.getResponse().getStatus()).isNotIn(401, 403));
     mockMvc
         .perform(get("/swagger-ui/index.html"))
-        .andExpect(result -> assertThat(result.getResponse().getStatus()).isNotEqualTo(401));
+        .andExpect(result -> assertThat(result.getResponse().getStatus()).isNotIn(401, 403));
     mockMvc
         .perform(get("/v3/api-docs"))
-        .andExpect(result -> assertThat(result.getResponse().getStatus()).isNotEqualTo(401));
+        .andExpect(result -> assertThat(result.getResponse().getStatus()).isNotIn(401, 403));
+  }
+
+  @Test
+  void actuatorAndPublicKeyPaths_areReachableWithoutAuthentication() throws Exception {
+    when(vapidKeys.getPublicKey()).thenReturn("BPublicKey123");
+
+    mockMvc.perform(get("/api/push/public-key")).andExpect(status().isOk());
+    mockMvc
+        .perform(get("/actuator/health"))
+        .andExpect(result -> assertThat(result.getResponse().getStatus()).isNotIn(401, 403));
+    mockMvc
+        .perform(get("/actuator/info"))
+        .andExpect(result -> assertThat(result.getResponse().getStatus()).isNotIn(401, 403));
   }
 
   @Test
   void explicitlyProtectedPaths_requireAuthentication() throws Exception {
     mockMvc.perform(get("/api/auth/me")).andExpect(status().isUnauthorized());
+    // Error body rendering is covered by errorDispatchIsPermittedUnderDefaultDeny; MockMvc does
+    // not perform the container's ERROR dispatch, so only the status is observable here.
     mockMvc.perform(get("/api/manga")).andExpect(status().isUnauthorized());
     mockMvc
         .perform(get("/api/manga/search").param("q", "one"))
@@ -147,6 +171,49 @@ class SecurityConfigTest {
 
     mockMvc.perform(post("/api/auth/demo-login").with(csrf())).andExpect(status().isNotFound());
     mockMvc.perform(post("/api/auth/logout").with(csrf())).andExpect(status().isNoContent());
+  }
+
+  @Test
+  void missingCsrfOnLoginDoesNotConsumeRateLimitBudget() throws Exception {
+    String content = "{\"username\":\"csrf-budget-owner\",\"password\":\"secret\"}";
+    for (int i = 0; i < 11; i++) {
+      mockMvc
+          .perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON).content(content))
+          .andExpect(status().isForbidden());
+    }
+
+    mockMvc
+        .perform(
+            post("/api/auth/login")
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(content))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.error").value("Invalid credentials"));
+  }
+
+  @Test
+  void errorDispatchIsPermittedUnderDefaultDeny() throws Exception {
+    mockMvc
+        .perform(
+            get("/error")
+                .with(
+                    request -> {
+                      request.setDispatcherType(DispatcherType.ERROR);
+                      request.setAttribute(RequestDispatcher.ERROR_STATUS_CODE, 401);
+                      request.setAttribute(RequestDispatcher.ERROR_REQUEST_URI, "/api/manga");
+                      request.setAttribute(RequestDispatcher.ERROR_MESSAGE, "Unauthorized");
+                      return request;
+                    }))
+        .andExpect(status().isUnauthorized())
+        .andExpect(content().string(containsString("\"error\"")));
+  }
+
+  @Test
+  void unmappedApiPath_isDeniedByDefault() throws Exception {
+    // Anonymous access denials route through the authentication entry point, so default-deny
+    // surfaces as 401 (not 403) — which also avoids revealing whether the path exists.
+    mockMvc.perform(get("/api/nonexistent")).andExpect(status().isUnauthorized());
   }
 
   @Test
