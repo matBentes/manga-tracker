@@ -28,6 +28,7 @@ Read when the task touches the relevant area:
 
 - Default to planning, delegation, review, re-planning, and synthesis. Do not implement directly unless the user explicitly asks or the change is a tiny local documentation/configuration edit.
 - Claude-side OpenSpec phases still use `/dual-opus` (`explore`, `propose`, `confirm-plan`, `review-impl`, `final-review`, `sync`, `archive`) when installed; delegate the executor side to Codex per the flow below.
+- If Fable is unavailable (usage limit, capacity, or model errors), run the same orchestrator role on the strongest available Claude model — Opus 4.8 first, then Sonnet 5. Keep the same tiers, templates, and gates; a weaker orchestrator must not skip gates and should go one tier up when in doubt. Return to Fable when it is available again.
 
 ## Review Tiers
 
