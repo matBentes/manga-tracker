@@ -1,6 +1,6 @@
-import { ChangeDetectorRef, Component, OnInit, DestroyRef, inject } from '@angular/core';
+import { Component, OnInit, DestroyRef, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { forkJoin } from 'rxjs';
+import { forkJoin, type Observable } from 'rxjs';
 
 import { AddMangaFormComponent } from '../add-manga/add-manga-form.component';
 import { Manga, MangaService } from '../services/manga.service';
@@ -14,7 +14,6 @@ import { Manga, MangaService } from '../services/manga.service';
 })
 export class DashboardComponent implements OnInit {
   private readonly mangaService = inject(MangaService);
-  private readonly changeDetector = inject(ChangeDetectorRef);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly statusOptions = [
@@ -46,12 +45,10 @@ export class DashboardComponent implements OnInit {
         next: (manga) => {
           this.mangaList = manga;
           this.isLoading = false;
-          this.changeDetector.detectChanges();
         },
         error: () => {
           this.error = 'Failed to load manga list. Please try again.';
           this.isLoading = false;
-          this.changeDetector.detectChanges();
         },
       });
   }
@@ -73,20 +70,17 @@ export class DashboardComponent implements OnInit {
     const request$ = wasUnread
       ? this.mangaService.markRead(manga.id)
       : this.mangaService.markUnread(manga.id);
-    this.busy[manga.id] = true;
-    this.actionError[manga.id] = null;
-    request$.subscribe({
-      next: (updated) => {
+
+    this.runAction(
+      manga.id,
+      request$,
+      (updated) => {
         this.applyMangaUpdate(manga, updated);
-        this.busy[manga.id] = false;
-        this.changeDetector.detectChanges();
       },
-      error: () => {
+      () => {
         this.actionError[manga.id] = wasUnread ? 'Failed to mark as read.' : 'Failed to undo.';
-        this.busy[manga.id] = false;
-        this.changeDetector.detectChanges();
       },
-    });
+    );
   }
 
   markAllRead(): void {
@@ -104,12 +98,10 @@ export class DashboardComponent implements OnInit {
           }
         });
         this.isMarkingAll = false;
-        this.changeDetector.detectChanges();
       },
       error: () => {
         this.error = 'Failed to mark all as read. Please try again.';
         this.isMarkingAll = false;
-        this.changeDetector.detectChanges();
       },
     });
   }
@@ -118,42 +110,34 @@ export class DashboardComponent implements OnInit {
     const checkbox = event.target as HTMLInputElement;
     const newValue = checkbox.checked;
 
-    this.busy[manga.id] = true;
-    this.mangaService.updateManga(manga.id, { notificationsEnabled: newValue }).subscribe({
-      next: (updated) => {
+    this.runAction(
+      manga.id,
+      this.mangaService.updateManga(manga.id, { notificationsEnabled: newValue }),
+      (updated) => {
         this.applyMangaUpdate(manga, updated);
-        this.busy[manga.id] = false;
-        this.changeDetector.detectChanges();
       },
-      error: () => {
+      () => {
         checkbox.checked = manga.notificationsEnabled;
         this.actionError[manga.id] = 'Failed to update notifications.';
-        this.busy[manga.id] = false;
-        this.changeDetector.detectChanges();
       },
-    });
+    );
   }
 
   incrementChapter(manga: Manga): void {
     if (this.busy[manga.id]) {
       return;
     }
-    this.busy[manga.id] = true;
-    this.actionError[manga.id] = null;
-    this.mangaService
-      .updateManga(manga.id, { currentChapter: manga.currentChapter + 1 })
-      .subscribe({
-        next: (updated) => {
-          this.applyMangaUpdate(manga, updated);
-          this.busy[manga.id] = false;
-          this.changeDetector.detectChanges();
-        },
-        error: () => {
-          this.actionError[manga.id] = 'Failed to update progress.';
-          this.busy[manga.id] = false;
-          this.changeDetector.detectChanges();
-        },
-      });
+
+    this.runAction(
+      manga.id,
+      this.mangaService.updateManga(manga.id, { currentChapter: manga.currentChapter + 1 }),
+      (updated) => {
+        this.applyMangaUpdate(manga, updated);
+      },
+      () => {
+        this.actionError[manga.id] = 'Failed to update progress.';
+      },
+    );
   }
 
   changeReadingStatus(manga: Manga, event: Event): void {
@@ -166,21 +150,17 @@ export class DashboardComponent implements OnInit {
       return;
     }
 
-    this.busy[manga.id] = true;
-    this.actionError[manga.id] = null;
-    this.mangaService.updateManga(manga.id, { readingStatus: newStatus }).subscribe({
-      next: (updated) => {
+    this.runAction(
+      manga.id,
+      this.mangaService.updateManga(manga.id, { readingStatus: newStatus }),
+      (updated) => {
         this.applyMangaUpdate(manga, updated);
-        this.busy[manga.id] = false;
-        this.changeDetector.detectChanges();
       },
-      error: () => {
+      () => {
         select.value = previousStatus;
         this.actionError[manga.id] = 'Failed to update status.';
-        this.busy[manga.id] = false;
-        this.changeDetector.detectChanges();
       },
-    });
+    );
   }
 
   readHereUrl(manga: Manga): string | null {
@@ -205,30 +185,23 @@ export class DashboardComponent implements OnInit {
     this.mangaService.deleteManga(manga.id).subscribe({
       next: () => {
         this.mangaList = this.mangaList.filter((m) => m.id !== manga.id);
-        this.changeDetector.detectChanges();
       },
       error: () => {
         this.actionError[manga.id] = 'Failed to delete. Please try again.';
         this.busy[manga.id] = false;
-        this.changeDetector.detectChanges();
       },
     });
   }
 
   onTestPush(manga: Manga): void {
-    this.busy[manga.id] = true;
-    this.actionError[manga.id] = null;
-    this.mangaService.testPush(manga.id).subscribe({
-      next: () => {
-        this.busy[manga.id] = false;
-        this.changeDetector.detectChanges();
-      },
-      error: () => {
+    this.runAction(
+      manga.id,
+      this.mangaService.testPush(manga.id),
+      () => undefined,
+      () => {
         this.actionError[manga.id] = 'Failed to send test push. Please try again.';
-        this.busy[manga.id] = false;
-        this.changeDetector.detectChanges();
       },
-    });
+    );
   }
 
   getRelativeDate(dateString: string): string {
@@ -257,5 +230,25 @@ export class DashboardComponent implements OnInit {
     local.notificationsEnabled = updated.notificationsEnabled;
     local.lastCheckedAt = updated.lastCheckedAt;
     local.updatedAt = updated.updatedAt;
+  }
+
+  private runAction<T>(
+    mangaId: string,
+    request$: Observable<T>,
+    onSuccess: (value: T) => void,
+    onError: () => void,
+  ): void {
+    this.busy[mangaId] = true;
+    this.actionError[mangaId] = null;
+    request$.subscribe({
+      next: (value) => {
+        onSuccess(value);
+        this.busy[mangaId] = false;
+      },
+      error: () => {
+        onError();
+        this.busy[mangaId] = false;
+      },
+    });
   }
 }
