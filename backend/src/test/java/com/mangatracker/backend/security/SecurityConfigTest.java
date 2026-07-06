@@ -217,6 +217,13 @@ class SecurityConfigTest {
   }
 
   @Test
+  void unmappedApiPath_isForbiddenForAuthenticatedUser() throws Exception {
+    // An authenticated principal is past the entry point, so default-deny on an unmapped path
+    // surfaces as 403 — proving anyRequest().denyAll() rather than a mere authentication gap.
+    mockMvc.perform(get("/api/nonexistent").with(user("owner"))).andExpect(status().isForbidden());
+  }
+
+  @Test
   void protectedMutations_stillRequireCsrf() throws Exception {
     mockMvc
         .perform(

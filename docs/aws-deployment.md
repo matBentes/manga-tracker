@@ -18,7 +18,7 @@ The backend must not be reachable directly from the internet. Its security group
 
 ## Forwarded Headers
 
-TLS terminates at the ALB, so nginx receives HTTP from the ALB and must pass the original scheme to the backend. The frontend nginx config forwards `X-Forwarded-Proto`, `X-Forwarded-Host`, and `X-Forwarded-For`; Spring Boot trusts them with `server.forward-headers-strategy=framework`.
+TLS terminates at the ALB, so nginx receives HTTP from the ALB and must pass the original scheme to the backend. The frontend nginx config forwards `X-Forwarded-Proto`, `X-Forwarded-Host`, and `X-Forwarded-For`; the backend resolves them with `server.forward-headers-strategy=native` (Tomcat `RemoteIpValve`), which walks `X-Forwarded-For` right-to-left past trusted private-range proxies so client-spoofed tokens cannot forge the resolved client IP used by the login rate limiter.
 
 For AWS, the ALB supplies `X-Forwarded-Proto: https`, nginx passes it through, and the backend resolves the request scheme as HTTPS. If the app is accessed locally without an ALB header, nginx omits the empty forwarded-proto value and the backend falls back to the direct request scheme, so local HTTP development still works.
 
