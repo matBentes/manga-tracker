@@ -1,4 +1,4 @@
-import { Component, OnInit, DestroyRef, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, DestroyRef, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { forkJoin, type Observable } from 'rxjs';
 
@@ -14,6 +14,7 @@ import { Manga, MangaService } from '../services/manga.service';
 })
 export class DashboardComponent implements OnInit {
   private readonly mangaService = inject(MangaService);
+  private readonly changeDetector = inject(ChangeDetectorRef);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly statusOptions = [
@@ -45,10 +46,12 @@ export class DashboardComponent implements OnInit {
         next: (manga) => {
           this.mangaList = manga;
           this.isLoading = false;
+          this.changeDetector.detectChanges();
         },
         error: () => {
           this.error = 'Failed to load manga list. Please try again.';
           this.isLoading = false;
+          this.changeDetector.detectChanges();
         },
       });
   }
@@ -98,10 +101,12 @@ export class DashboardComponent implements OnInit {
           }
         });
         this.isMarkingAll = false;
+        this.changeDetector.detectChanges();
       },
       error: () => {
         this.error = 'Failed to mark all as read. Please try again.';
         this.isMarkingAll = false;
+        this.changeDetector.detectChanges();
       },
     });
   }
@@ -185,10 +190,12 @@ export class DashboardComponent implements OnInit {
     this.mangaService.deleteManga(manga.id).subscribe({
       next: () => {
         this.mangaList = this.mangaList.filter((m) => m.id !== manga.id);
+        this.changeDetector.detectChanges();
       },
       error: () => {
         this.actionError[manga.id] = 'Failed to delete. Please try again.';
         this.busy[manga.id] = false;
+        this.changeDetector.detectChanges();
       },
     });
   }
@@ -232,6 +239,9 @@ export class DashboardComponent implements OnInit {
     local.updatedAt = updated.updatedAt;
   }
 
+  // detectChanges is required here (and in loadManga/markAllRead/onDelete): under this app's
+  // change-detection setup the view does not reliably re-render from these async callbacks
+  // otherwise — verified by the Playwright loading/badge specs.
   private runAction<T>(
     mangaId: string,
     request$: Observable<T>,
@@ -244,10 +254,12 @@ export class DashboardComponent implements OnInit {
       next: (value) => {
         onSuccess(value);
         this.busy[mangaId] = false;
+        this.changeDetector.detectChanges();
       },
       error: () => {
         onError();
         this.busy[mangaId] = false;
+        this.changeDetector.detectChanges();
       },
     });
   }
