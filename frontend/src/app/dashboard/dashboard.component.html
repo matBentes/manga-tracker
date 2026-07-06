@@ -1,24 +1,24 @@
 <div class="dashboard">
   <div class="dashboard-header">
     <h1 class="dashboard-title">Reading List</h1>
-    @if (unreadCount > 0) {
-      <button class="mark-all-btn" [disabled]="isMarkingAll" (click)="markAllRead()">
-        {{ isMarkingAll ? 'Marking…' : 'Mark all read (' + unreadCount + ')' }}
+    @if (unreadCount() > 0) {
+      <button class="mark-all-btn" [disabled]="isMarkingAll()" (click)="markAllRead()">
+        {{ isMarkingAll() ? 'Marking…' : 'Mark all read (' + unreadCount() + ')' }}
       </button>
     }
   </div>
 
   <app-add-manga-form (mangaAdded)="loadManga()" />
 
-  @if (isLoading) {
+  @if (isLoading()) {
     <div class="state-box">Loading your manga list…</div>
-  } @else if (error) {
-    <div class="state-box error">{{ error }}</div>
-  } @else if (mangaList.length === 0) {
+  } @else if (error()) {
+    <div class="state-box error">{{ error() }}</div>
+  } @else if (mangaList().length === 0) {
     <div class="state-box">No manga tracked yet. Add your first manga above.</div>
   } @else {
     <div class="manga-grid">
-      @for (manga of mangaList; track manga.id) {
+      @for (manga of mangaList(); track manga.id) {
         <article class="manga-card" [class.is-unread]="isUnread(manga)">
           <div class="cover">
             @if (manga.coverImageUrl) {
@@ -36,7 +36,11 @@
               } @else {
                 <span class="caught-up">Caught up · Ch {{ manga.latestChapter }}</span>
               }
-              <button class="test-push-btn" [disabled]="busy[manga.id]" (click)="onTestPush(manga)">
+              <button
+                class="test-push-btn"
+                [disabled]="busy()[manga.id]"
+                (click)="onTestPush(manga)"
+              >
                 Test push
               </button>
             </p>
@@ -55,7 +59,7 @@
               <select
                 class="status-select"
                 [value]="manga.readingStatus"
-                [disabled]="busy[manga.id]"
+                [disabled]="busy()[manga.id]"
                 [attr.aria-label]="'Reading status for ' + manga.title"
                 (change)="changeReadingStatus(manga, $event)"
               >
@@ -65,8 +69,8 @@
               </select>
             </label>
 
-            @if (actionError[manga.id]) {
-              <p class="card-error">{{ actionError[manga.id] }}</p>
+            @if (actionError()[manga.id]) {
+              <p class="card-error">{{ actionError()[manga.id] }}</p>
             }
 
             <div class="card-actions">
@@ -78,19 +82,19 @@
                 }
                 <button
                   class="increment-btn"
-                  [disabled]="busy[manga.id]"
+                  [disabled]="busy()[manga.id]"
                   (click)="incrementChapter(manga)"
                 >
                   +1 chapter
                 </button>
-                <button class="read-btn" [disabled]="busy[manga.id]" (click)="toggleRead(manga)">
-                  @if (busy[manga.id]) {
+                <button class="read-btn" [disabled]="busy()[manga.id]" (click)="toggleRead(manga)">
+                  @if (busy()[manga.id]) {
                     …
                   } @else {
                     {{ isUnread(manga) ? 'Mark read' : 'Mark unread' }}
                   }
                 </button>
-                <button class="delete-btn" [disabled]="busy[manga.id]" (click)="onDelete(manga)">
+                <button class="delete-btn" [disabled]="busy()[manga.id]" (click)="onDelete(manga)">
                   Delete
                 </button>
               </div>
@@ -98,7 +102,7 @@
                 <input
                   type="checkbox"
                   [checked]="manga.notificationsEnabled"
-                  [disabled]="busy[manga.id]"
+                  [disabled]="busy()[manga.id]"
                   (change)="toggleNotifications(manga, $event)"
                 />
                 <span>Notify (English only)</span>
