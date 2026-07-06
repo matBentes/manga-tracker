@@ -57,17 +57,17 @@ describe('DashboardComponent', () => {
 
   it('increments current chapter through PATCH', () => {
     const { component, mangaService } = createComponent();
-    const localManga = component.mangaList[0];
+    const localManga = component.mangaList()[0];
 
     component.incrementChapter(localManga);
 
     expect(mangaService.updateManga).toHaveBeenCalledWith(localManga.id, { currentChapter: 4 });
-    expect(localManga.currentChapter).toBe(4);
+    expect(component.mangaList()[0].currentChapter).toBe(4);
   });
 
   it('updates reading status through PATCH', () => {
     const { component, mangaService } = createComponent();
-    const localManga = component.mangaList[0];
+    const localManga = component.mangaList()[0];
     const select = document.createElement('select');
     // A <select> ignores value assignments unless a matching <option> exists.
     const option = document.createElement('option');
@@ -80,7 +80,7 @@ describe('DashboardComponent', () => {
     expect(mangaService.updateManga).toHaveBeenCalledWith(localManga.id, {
       readingStatus: 'COMPLETED',
     });
-    expect(localManga.readingStatus).toBe('COMPLETED');
+    expect(component.mangaList()[0].readingStatus).toBe('COMPLETED');
   });
 
   it('only returns safe http(s) read-here URLs', () => {

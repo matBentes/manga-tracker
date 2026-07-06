@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, OnInit, DestroyRef, inject } from '@angular/core';
+import { Component, OnInit, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { forkJoin, type Observable } from 'rxjs';
 
@@ -14,7 +14,6 @@ import { Manga, MangaService } from '../services/manga.service';
 })
 export class DashboardComponent implements OnInit {
   private readonly mangaService = inject(MangaService);
-  private readonly changeDetector = inject(ChangeDetectorRef);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly statusOptions = [
@@ -25,33 +24,32 @@ export class DashboardComponent implements OnInit {
     { value: 'PLAN_TO_READ', label: 'Plan to read' },
   ];
 
-  mangaList: Manga[] = [];
-  isLoading = false;
-  error: string | null = null;
-  actionError: Record<string, string | null> = {};
-  busy: Record<string, boolean> = {};
-  isMarkingAll = false;
+  readonly mangaList = signal<Manga[]>([]);
+  readonly isLoading = signal(false);
+  readonly error = signal<string | null>(null);
+  readonly actionError = signal<Record<string, string | null>>({});
+  readonly busy = signal<Record<string, boolean>>({});
+  readonly isMarkingAll = signal(false);
+  readonly unreadCount = computed(() => this.mangaList().filter((m) => this.isUnread(m)).length);
 
   ngOnInit(): void {
     this.loadManga();
   }
 
   loadManga(): void {
-    this.isLoading = true;
-    this.error = null;
+    this.isLoading.set(true);
+    this.error.set(null);
     this.mangaService
       .getManga()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (manga) => {
-          this.mangaList = manga;
-          this.isLoading = false;
-          this.changeDetector.detectChanges();
+          this.mangaList.set(manga);
+          this.isLoading.set(false);
         },
         error: () => {
-          this.error = 'Failed to load manga list. Please try again.';
-          this.isLoading = false;
-          this.changeDetector.detectChanges();
+          this.error.set('Failed to load manga list. Please try again.');
+          this.isLoading.set(false);
         },
       });
   }
@@ -60,13 +58,9 @@ export class DashboardComponent implements OnInit {
     return manga.latestChapter > manga.currentChapter;
   }
 
-  get unreadCount(): number {
-    return this.mangaList.filter((m) => this.isUnread(m)).length;
-  }
-
   /** Toggle a manga between read (caught up) and unread — the latter undoes a mark-read. */
   toggleRead(manga: Manga): void {
-    if (this.busy[manga.id]) {
+    if (this.busy()[manga.id]) {
       return;
     }
     const wasUnread = this.isUnread(manga);
@@ -78,35 +72,30 @@ export class DashboardComponent implements OnInit {
       manga.id,
       request$,
       (updated) => {
-        this.applyMangaUpdate(manga, updated);
+        this.applyMangaUpdate(manga.id, updated);
       },
       () => {
-        this.actionError[manga.id] = wasUnread ? 'Failed to mark as read.' : 'Failed to undo.';
+        this.setActionError(manga.id, wasUnread ? 'Failed to mark as read.' : 'Failed to undo.');
       },
     );
   }
 
   markAllRead(): void {
-    const unread = this.mangaList.filter((m) => this.isUnread(m));
-    if (this.isMarkingAll || unread.length === 0) {
+    const unread = this.mangaList().filter((m) => this.isUnread(m));
+    if (this.isMarkingAll() || unread.length === 0) {
       return;
     }
-    this.isMarkingAll = true;
+    this.isMarkingAll.set(true);
     forkJoin(unread.map((m) => this.mangaService.markRead(m.id))).subscribe({
       next: (updatedList) => {
         updatedList.forEach((updated) => {
-          const local = this.mangaList.find((m) => m.id === updated.id);
-          if (local) {
-            this.applyMangaUpdate(local, updated);
-          }
+          this.applyMangaUpdate(updated.id, updated);
         });
-        this.isMarkingAll = false;
-        this.changeDetector.detectChanges();
+        this.isMarkingAll.set(false);
       },
       error: () => {
-        this.error = 'Failed to mark all as read. Please try again.';
-        this.isMarkingAll = false;
-        this.changeDetector.detectChanges();
+        this.error.set('Failed to mark all as read. Please try again.');
+        this.isMarkingAll.set(false);
       },
     });
   }
@@ -119,17 +108,17 @@ export class DashboardComponent implements OnInit {
       manga.id,
       this.mangaService.updateManga(manga.id, { notificationsEnabled: newValue }),
       (updated) => {
-        this.applyMangaUpdate(manga, updated);
+        this.applyMangaUpdate(manga.id, updated);
       },
       () => {
         checkbox.checked = manga.notificationsEnabled;
-        this.actionError[manga.id] = 'Failed to update notifications.';
+        this.setActionError(manga.id, 'Failed to update notifications.');
       },
     );
   }
 
   incrementChapter(manga: Manga): void {
-    if (this.busy[manga.id]) {
+    if (this.busy()[manga.id]) {
       return;
     }
 
@@ -137,10 +126,10 @@ export class DashboardComponent implements OnInit {
       manga.id,
       this.mangaService.updateManga(manga.id, { currentChapter: manga.currentChapter + 1 }),
       (updated) => {
-        this.applyMangaUpdate(manga, updated);
+        this.applyMangaUpdate(manga.id, updated);
       },
       () => {
-        this.actionError[manga.id] = 'Failed to update progress.';
+        this.setActionError(manga.id, 'Failed to update progress.');
       },
     );
   }
@@ -150,7 +139,7 @@ export class DashboardComponent implements OnInit {
     const previousStatus = manga.readingStatus;
     const newStatus = select.value;
 
-    if (newStatus === previousStatus || this.busy[manga.id]) {
+    if (newStatus === previousStatus || this.busy()[manga.id]) {
       select.value = previousStatus;
       return;
     }
@@ -159,11 +148,11 @@ export class DashboardComponent implements OnInit {
       manga.id,
       this.mangaService.updateManga(manga.id, { readingStatus: newStatus }),
       (updated) => {
-        this.applyMangaUpdate(manga, updated);
+        this.applyMangaUpdate(manga.id, updated);
       },
       () => {
         select.value = previousStatus;
-        this.actionError[manga.id] = 'Failed to update status.';
+        this.setActionError(manga.id, 'Failed to update status.');
       },
     );
   }
@@ -186,16 +175,14 @@ export class DashboardComponent implements OnInit {
     if (!confirmed) {
       return;
     }
-    this.busy[manga.id] = true;
+    this.setBusy(manga.id, true);
     this.mangaService.deleteManga(manga.id).subscribe({
       next: () => {
-        this.mangaList = this.mangaList.filter((m) => m.id !== manga.id);
-        this.changeDetector.detectChanges();
+        this.mangaList.update((list) => list.filter((m) => m.id !== manga.id));
       },
       error: () => {
-        this.actionError[manga.id] = 'Failed to delete. Please try again.';
-        this.busy[manga.id] = false;
-        this.changeDetector.detectChanges();
+        this.setActionError(manga.id, 'Failed to delete. Please try again.');
+        this.setBusy(manga.id, false);
       },
     });
   }
@@ -206,7 +193,7 @@ export class DashboardComponent implements OnInit {
       this.mangaService.testPush(manga.id),
       () => undefined,
       () => {
-        this.actionError[manga.id] = 'Failed to send test push. Please try again.';
+        this.setActionError(manga.id, 'Failed to send test push. Please try again.');
       },
     );
   }
@@ -226,40 +213,52 @@ export class DashboardComponent implements OnInit {
     }
   }
 
-  private applyMangaUpdate(local: Manga, updated: Manga): void {
-    local.sourceUrl = updated.sourceUrl;
-    local.mangadexId = updated.mangadexId;
-    local.currentChapter = updated.currentChapter;
-    local.latestChapter = updated.latestChapter;
-    local.coverImageUrl = updated.coverImageUrl;
-    local.readingStatus = updated.readingStatus;
-    local.latestChapterAt = updated.latestChapterAt;
-    local.notificationsEnabled = updated.notificationsEnabled;
-    local.lastCheckedAt = updated.lastCheckedAt;
-    local.updatedAt = updated.updatedAt;
+  private setBusy(id: string, value: boolean): void {
+    this.busy.update((b) => ({ ...b, [id]: value }));
   }
 
-  // detectChanges is required here (and in loadManga/markAllRead/onDelete): under this app's
-  // change-detection setup the view does not reliably re-render from these async callbacks
-  // otherwise — verified by the Playwright loading/badge specs.
+  private setActionError(id: string, msg: string | null): void {
+    this.actionError.update((e) => ({ ...e, [id]: msg }));
+  }
+
+  private applyMangaUpdate(id: string, updated: Manga): void {
+    this.mangaList.update((list) =>
+      list.map((m) =>
+        m.id === id
+          ? {
+              ...m,
+              sourceUrl: updated.sourceUrl,
+              mangadexId: updated.mangadexId,
+              currentChapter: updated.currentChapter,
+              latestChapter: updated.latestChapter,
+              coverImageUrl: updated.coverImageUrl,
+              readingStatus: updated.readingStatus,
+              latestChapterAt: updated.latestChapterAt,
+              notificationsEnabled: updated.notificationsEnabled,
+              lastCheckedAt: updated.lastCheckedAt,
+              updatedAt: updated.updatedAt,
+            }
+          : m,
+      ),
+    );
+  }
+
   private runAction<T>(
     mangaId: string,
     request$: Observable<T>,
     onSuccess: (value: T) => void,
     onError: () => void,
   ): void {
-    this.busy[mangaId] = true;
-    this.actionError[mangaId] = null;
+    this.setBusy(mangaId, true);
+    this.setActionError(mangaId, null);
     request$.subscribe({
       next: (value) => {
         onSuccess(value);
-        this.busy[mangaId] = false;
-        this.changeDetector.detectChanges();
+        this.setBusy(mangaId, false);
       },
       error: () => {
         onError();
-        this.busy[mangaId] = false;
-        this.changeDetector.detectChanges();
+        this.setBusy(mangaId, false);
       },
     });
   }
