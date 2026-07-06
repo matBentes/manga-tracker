@@ -4,8 +4,10 @@ import com.mangatracker.backend.model.AppUser;
 import com.mangatracker.backend.repository.AppUserRepository;
 import com.mangatracker.backend.security.AuthenticatedUser;
 import com.mangatracker.backend.security.CurrentUser;
+import com.mangatracker.backend.security.DemoLoginRateLimiter;
 import com.mangatracker.backend.security.JwtCookieAuthFilter;
 import com.mangatracker.backend.security.JwtService;
+import com.mangatracker.backend.security.LoginRateLimiter;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -50,6 +52,8 @@ public class AuthController {
   private final JwtService jwtService;
   private final CurrentUser currentUser;
   private final CsrfTokenRepository csrfTokenRepository;
+  private final LoginRateLimiter loginRateLimiter;
+  private final DemoLoginRateLimiter demoLoginRateLimiter;
   private final boolean cookieSecure;
 
   private volatile String dummyHash;
@@ -60,12 +64,16 @@ public class AuthController {
       JwtService jwtService,
       CurrentUser currentUser,
       CsrfTokenRepository csrfTokenRepository,
+      LoginRateLimiter loginRateLimiter,
+      DemoLoginRateLimiter demoLoginRateLimiter,
       @Value("${app.auth.cookie-secure:true}") boolean cookieSecure) {
     this.appUserRepository = appUserRepository;
     this.passwordEncoder = passwordEncoder;
     this.jwtService = jwtService;
     this.currentUser = currentUser;
     this.csrfTokenRepository = csrfTokenRepository;
+    this.loginRateLimiter = loginRateLimiter;
+    this.demoLoginRateLimiter = demoLoginRateLimiter;
     this.cookieSecure = cookieSecure;
   }
 
@@ -87,11 +95,17 @@ public class AuthController {
     @ApiResponse(
         responseCode = "401",
         description = "Invalid credentials",
+        content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+    @ApiResponse(
+        responseCode = "429",
+        description = "Login rate limit exceeded",
         content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
   })
-  public ResponseEntity<Map<String, String>> login(@RequestBody LoginRequest request) {
+  public ResponseEntity<Map<String, String>> login(
+      @RequestBody LoginRequest request, HttpServletRequest httpRequest) {
     String username = request == null ? null : request.username();
     String password = request == null ? null : request.password();
+    loginRateLimiter.check(httpRequest, username);
     Optional<AppUser> found =
         username == null ? Optional.empty() : appUserRepository.findByUsername(username);
 
@@ -113,9 +127,14 @@ public class AuthController {
     @ApiResponse(
         responseCode = "404",
         description = "Demo account is not seeded",
+        content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+    @ApiResponse(
+        responseCode = "429",
+        description = "Demo-login rate limit exceeded",
         content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
   })
-  public ResponseEntity<Map<String, String>> demoLogin() {
+  public ResponseEntity<Map<String, String>> demoLogin(HttpServletRequest request) {
+    demoLoginRateLimiter.check(request);
     Optional<AppUser> demo = appUserRepository.findByUsername(DEMO_USERNAME);
     if (demo.isEmpty()) {
       return ResponseEntity.status(HttpStatus.NOT_FOUND).build();

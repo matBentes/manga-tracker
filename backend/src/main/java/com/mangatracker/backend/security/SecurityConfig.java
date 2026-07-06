@@ -1,5 +1,6 @@
 package com.mangatracker.backend.security;
 
+import jakarta.servlet.DispatcherType;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -147,12 +148,15 @@ public class SecurityConfig {
                         response.sendError(HttpServletResponse.SC_UNAUTHORIZED)))
         .authorizeHttpRequests(
             auth ->
-                auth.requestMatchers(AUTH_LOGIN, AUTH_LOGOUT, AUTH_DEMO_LOGIN, AUTH_CSRF)
+                auth.dispatcherTypeMatchers(DispatcherType.ERROR)
+                    .permitAll()
+                    .requestMatchers(AUTH_LOGIN, AUTH_LOGOUT, AUTH_DEMO_LOGIN, AUTH_CSRF)
                     .permitAll()
                     .requestMatchers("/actuator/health", "/actuator/info")
                     .permitAll()
                     .requestMatchers("/api/push/public-key")
                     .permitAll()
+                    // Swagger remains public intentionally as the portfolio API contract.
                     .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**")
                     .permitAll()
                     .requestMatchers("/api/auth/me")
@@ -162,7 +166,7 @@ public class SecurityConfig {
                     .requestMatchers("/api/push/**")
                     .authenticated()
                     .anyRequest()
-                    .permitAll())
+                    .denyAll())
         .formLogin(form -> form.disable())
         .httpBasic(basic -> basic.disable())
         .logout(logout -> logout.disable())

@@ -11,7 +11,7 @@ The reverse proxy SHALL forward the original request scheme to the backend, and 
 
 - **WHEN** a browser sends an HTTPS request through the ALB and nginx to the backend
 - **THEN** nginx sets `X-Forwarded-Proto: https` on the proxied request
-- **AND** the backend resolves the request scheme as `https` via `server.forward-headers-strategy=framework`
+- **AND** the backend resolves the request scheme as `https` via `server.forward-headers-strategy=native` (Tomcat `RemoteIpValve`, which also resolves the client IP right-to-left past trusted private-range proxies)
 
 #### Scenario: Secure auth cookie issued behind TLS load balancer
 

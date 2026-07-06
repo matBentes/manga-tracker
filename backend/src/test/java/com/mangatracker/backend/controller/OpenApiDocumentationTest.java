@@ -6,8 +6,11 @@ import com.mangatracker.backend.config.OpenApiConfig;
 import io.swagger.v3.oas.annotations.OpenAPIDefinition;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityScheme;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import org.junit.jupiter.api.Test;
@@ -57,6 +60,19 @@ class OpenApiDocumentationTest {
     assertThat(new ErrorResponse("not found").error()).isEqualTo("not found");
   }
 
+  @Test
+  void authLoginEndpoints_documentRateLimitResponses() throws Exception {
+    assertThat(
+            responseCodes(
+                AuthController.class.getDeclaredMethod(
+                    "login", AuthController.LoginRequest.class, HttpServletRequest.class)))
+        .contains("429");
+    assertThat(
+            responseCodes(
+                AuthController.class.getDeclaredMethod("demoLogin", HttpServletRequest.class)))
+        .contains("429");
+  }
+
   private static long documentedEndpointCount(Class<?> controllerClass) {
     return Arrays.stream(controllerClass.getDeclaredMethods())
         .filter(OpenApiDocumentationTest::isEndpoint)
@@ -69,5 +85,13 @@ class OpenApiDocumentationTest {
         || method.isAnnotationPresent(PostMapping.class)
         || method.isAnnotationPresent(PatchMapping.class)
         || method.isAnnotationPresent(DeleteMapping.class);
+  }
+
+  private static String[] responseCodes(Method method) {
+    ApiResponses apiResponses = method.getAnnotation(ApiResponses.class);
+    assertThat(apiResponses).isNotNull();
+    return Arrays.stream(apiResponses.value())
+        .map(ApiResponse::responseCode)
+        .toArray(String[]::new);
   }
 }

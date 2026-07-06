@@ -219,6 +219,8 @@ DEMO_PASSWORD=...         # secret — password for the public DEMO account; nev
 - All three live in `.env` (gitignored) and are documented in `.env.example` with placeholder
   values. Optional knobs: `app.auth.allowed-origins` (enable CORS for a cross-origin frontend),
   `app.ratelimit.add-manga.max` / `.window-seconds` (per-user add limit, default 20 / 60s),
+  `app.ratelimit.login.max` / `.window-seconds` (per IP+username login limit, default 10 / 900s),
+  `app.ratelimit.demo-login.max` / `.window-seconds` (per-IP demo-login limit, default 60 / 900s),
   `app.demo.reset-cron` (default `0 0 4 * * *`, `America/Sao_Paulo`).
 
 ---

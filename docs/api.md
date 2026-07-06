@@ -68,13 +68,18 @@ Full request/response contracts are in Swagger, not duplicated here.
 
 ## Rate Limit
 
-Adding manga and searching MangaDex are both rate-limited per authenticated user. Defaults are
-controlled by:
+Adding manga and searching MangaDex are both rate-limited per authenticated user, and the login
+endpoints are rate-limited per client IP (login also per username) before any credential check.
+Defaults are controlled by:
 
 - `app.ratelimit.add-manga.max` (default `20`)
 - `app.ratelimit.add-manga.window-seconds` (default `60`)
 - `app.ratelimit.search-manga.max` (default `30`)
 - `app.ratelimit.search-manga.window-seconds` (default `60`)
+- `app.ratelimit.login.max` (default `10`)
+- `app.ratelimit.login.window-seconds` (default `900`)
+- `app.ratelimit.demo-login.max` (default `60`)
+- `app.ratelimit.demo-login.window-seconds` (default `900`)
 
 When a limit is exceeded, the API returns `429` with the shared error envelope.
 

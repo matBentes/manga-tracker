@@ -5,6 +5,7 @@ import static org.hamcrest.Matchers.not;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -18,7 +19,9 @@ import com.mangatracker.backend.model.Role;
 import com.mangatracker.backend.repository.AppUserRepository;
 import com.mangatracker.backend.security.AuthenticatedUser;
 import com.mangatracker.backend.security.CurrentUser;
+import com.mangatracker.backend.security.DemoLoginRateLimiter;
 import com.mangatracker.backend.security.JwtService;
+import com.mangatracker.backend.security.LoginRateLimiter;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.UUID;
@@ -34,6 +37,7 @@ import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 @ExtendWith(MockitoExtension.class)
@@ -57,8 +61,13 @@ class AuthControllerTest {
             jwtService,
             currentUser,
             csrfTokenRepository,
+            new LoginRateLimiter(2, 900),
+            new DemoLoginRateLimiter(3, 900),
             false);
-    mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
+    mockMvc =
+        MockMvcBuilders.standaloneSetup(controller)
+            .setControllerAdvice(new GlobalExceptionHandler())
+            .build();
     when(passwordEncoder.encode(any())).thenReturn("$2a$10$dummy.timing.attack.hash");
   }
 
@@ -142,6 +151,34 @@ class AuthControllerTest {
   }
 
   @Test
+  void login_returns429AfterThreshold_forSameIpAndUsername() throws Exception {
+    when(appUserRepository.findByUsername("owner")).thenReturn(Optional.empty());
+
+    failedLogin("owner", "203.0.113.10").andExpect(status().isUnauthorized());
+    failedLogin("owner", "203.0.113.10").andExpect(status().isUnauthorized());
+
+    failedLogin("owner", "203.0.113.10")
+        .andExpect(status().isTooManyRequests())
+        .andExpect(
+            jsonPath("$.error")
+                .value("Too many login attempts. Limit is 2 per 900s; try again later."))
+        .andExpect(jsonPath("$.error", not(containsString("owner"))));
+    verify(appUserRepository, times(2)).findByUsername("owner");
+  }
+
+  @Test
+  void loginRateLimitBudget_isIsolatedByUsernameAndIp() throws Exception {
+    when(appUserRepository.findByUsername(anyString())).thenReturn(Optional.empty());
+
+    failedLogin("owner", "203.0.113.20").andExpect(status().isUnauthorized());
+    failedLogin("owner", "203.0.113.20").andExpect(status().isUnauthorized());
+
+    failedLogin("demo", "203.0.113.20").andExpect(status().isUnauthorized());
+    failedLogin("owner", "203.0.113.21").andExpect(status().isUnauthorized());
+    failedLogin(" OWNER ", "203.0.113.20").andExpect(status().isTooManyRequests());
+  }
+
+  @Test
   void demoLogin_returns200WithCookie_whenDemoSeeded() throws Exception {
     UUID demoId = UUID.randomUUID();
     AppUser demo = AppUser.builder().id(demoId).username("demo").role(Role.DEMO).build();
@@ -169,6 +206,25 @@ class AuthControllerTest {
         .perform(post("/api/auth/demo-login"))
         .andExpect(status().isNotFound())
         .andExpect(header().doesNotExist(HttpHeaders.SET_COOKIE));
+  }
+
+  @Test
+  void demoLogin_allowsSeveralCallsThenReturns429AtHigherThreshold() throws Exception {
+    UUID demoId = UUID.randomUUID();
+    AppUser demo = AppUser.builder().id(demoId).username("demo").role(Role.DEMO).build();
+    when(appUserRepository.findByUsername("demo")).thenReturn(Optional.of(demo));
+    when(jwtService.generateToken(demoId, Role.DEMO)).thenReturn("demo.jwt.token");
+    when(jwtService.getTokenTtl()).thenReturn(Duration.ofDays(7));
+
+    for (int i = 0; i < 3; i++) {
+      demoLogin("198.51.100.10").andExpect(status().isOk());
+    }
+
+    demoLogin("198.51.100.10")
+        .andExpect(status().isTooManyRequests())
+        .andExpect(
+            jsonPath("$.error")
+                .value("Too many demo login attempts. Limit is 3 per 900s; try again later."));
   }
 
   @Test
@@ -204,5 +260,31 @@ class AuthControllerTest {
     when(appUserRepository.findById(userId)).thenReturn(Optional.empty());
 
     mockMvc.perform(get("/api/auth/me")).andExpect(status().isUnauthorized());
+  }
+
+  private ResultActions failedLogin(String username, String remoteAddr) throws Exception {
+    return mockMvc.perform(
+        post("/api/auth/login")
+            .with(
+                request -> {
+                  request.setRemoteAddr(remoteAddr);
+                  return request;
+                })
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(
+                """
+                {"username":"%s","password":"wrong"}
+                """
+                    .formatted(username)));
+  }
+
+  private ResultActions demoLogin(String remoteAddr) throws Exception {
+    return mockMvc.perform(
+        post("/api/auth/demo-login")
+            .with(
+                request -> {
+                  request.setRemoteAddr(remoteAddr);
+                  return request;
+                }));
   }
 }
