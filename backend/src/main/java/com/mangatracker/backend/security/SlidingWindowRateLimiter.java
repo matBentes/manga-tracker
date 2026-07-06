@@ -55,6 +55,8 @@ abstract class SlidingWindowRateLimiter {
     Instant now = clock.instant();
     Instant cutoff = now.minus(window);
     while (true) {
+      // Not computeIfAbsent: a new key must run capacity eviction under capacityLock before
+      // insert, and ConcurrentHashMap forbids mutating the map inside a mapping function.
       Deque<Instant> hits = hitsByKey.get(key);
       if (hits == null) {
         synchronized (capacityLock) {
@@ -99,15 +101,15 @@ abstract class SlidingWindowRateLimiter {
   }
 
   private void sweepExpiredEntries(Instant cutoff) {
-    hitsByKey.forEach(
-        (key, hits) -> {
-          synchronized (hits) {
-            pruneExpired(hits, cutoff);
-            if (hits.isEmpty()) {
-              hitsByKey.remove(key, hits);
-            }
-          }
-        });
+    for (var entry : hitsByKey.entrySet()) {
+      Deque<Instant> hits = entry.getValue();
+      synchronized (hits) {
+        pruneExpired(hits, cutoff);
+        if (hits.isEmpty()) {
+          hitsByKey.remove(entry.getKey(), hits);
+        }
+      }
+    }
   }
 
   private boolean evictOldestNewestHit() {
