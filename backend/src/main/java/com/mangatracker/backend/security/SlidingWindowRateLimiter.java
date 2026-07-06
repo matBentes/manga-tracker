@@ -6,7 +6,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayDeque;
 import java.util.Deque;
-import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 abstract class SlidingWindowRateLimiter {
@@ -30,15 +29,12 @@ abstract class SlidingWindowRateLimiter {
     if (maxPerWindow <= 0) {
       throw new IllegalArgumentException("maxPerWindow must be positive");
     }
-    if (window == null || window.isZero() || window.isNegative()) {
+    if (window.isZero() || window.isNegative()) {
       throw new IllegalArgumentException("window must be positive");
-    }
-    if (maxTrackedKeys <= 0) {
-      throw new IllegalArgumentException("maxTrackedKeys must be positive");
     }
     this.maxPerWindow = maxPerWindow;
     this.window = window;
-    this.clock = Objects.requireNonNull(clock, "clock");
+    this.clock = clock;
     this.rejectionPrefix = rejectionPrefix;
     this.maxTrackedKeys = maxTrackedKeys;
   }
@@ -51,7 +47,6 @@ abstract class SlidingWindowRateLimiter {
    * @throws RateLimitExceededException if the key is already at the limit for the current window
    */
   protected final void check(String key) {
-    Objects.requireNonNull(key, "key");
     Instant now = clock.instant();
     Instant cutoff = now.minus(window);
     while (true) {
