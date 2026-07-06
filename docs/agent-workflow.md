@@ -113,6 +113,7 @@ Use these criteria for implementer self-review, independent implementation revie
 9. Tests and verification: relevant automated tests, formatters, linters, smoke checks, and skipped-check reasons are recorded with evidence.
 10. Technical debt: the change leaves touched code at least as maintainable as before and does not hide known follow-up work.
 11. Static-analysis triage: as part of review, pull and read the SonarCloud (and CodeQL) findings for the PR — not just the pass/fail check status. A **passing** Quality Gate can still carry new below-threshold issues, so a green check is not the same as zero findings. Open the findings, and for each decide fix-now vs. defer-with-reason; record that decision.
+12. Delegated-executor scope creep: when reviewing a diff produced by a delegated executor (Codex or a subagent), diff it against the task's SCOPE / OUT OF SCOPE, not just against correctness. Executors tend to add unrequested code — extra guard clauses, defensive validation on values that cannot be invalid, double-submit guards, and other speculative behavior changes that quietly turn a refactor into a behavior change. Reject and strip such additions unless they fix a real, named defect; keep the smallest correct patch.
 
 ## Collaboration Rules
 

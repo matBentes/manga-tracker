@@ -47,6 +47,7 @@ Pick the lightest tier that fits; when in doubt, go one tier up.
 - Keep plan review, the security gate, and code review read-only; implementation tasks may edit only the approved scope.
 - Do not run multiple editing executors against the same files concurrently.
 - Incorporate only actionable findings; reject speculative complexity and keep the smallest correct patch.
+- Review the executor's diff for scope creep: it tends to add unrequested guards, defensive validation, or behavior changes beyond the task. Diff against the task SCOPE/OUT OF SCOPE and strip additions that don't fix a named defect (see `docs/agent-workflow.md#review-criteria` item 12).
 - If Fable and Codex disagree, stop, reconcile the disagreement, and only then continue or ask the user.
 - Summarize final outcome with changed files, checks run, checks skipped with reasons, risks, and any remaining blockers.
 
