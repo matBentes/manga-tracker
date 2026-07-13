@@ -1,0 +1,48 @@
+# Rendered by the nginx image entrypoint (20-envsubst-on-templates.sh) from
+# /etc/nginx/templates. ${NGINX_LOCAL_RESOLVERS} is injected by
+# 15-local-resolvers.envsh from the container's resolv.conf. Only that variable
+# is substituted; nginx runtime variables ($host, $request_uri, ...) are left
+# untouched because they are not part of the container environment.
+server {
+    listen 8080;
+    server_name _;
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # Resolve the backend at request time instead of caching one address at
+    # startup. A bare "proxy_pass http://backend:8080" is resolved once at boot
+    # via getaddrinfo; if nginx starts before ECS Service Connect finishes wiring
+    # the "backend" alias, the name resolves to a bogus public IPv6 that has no
+    # route in the VPC, and nginx pins that dead address for the life of the
+    # process. Using a variable upstream + resolver re-resolves per request
+    # (honouring the TTL), and ipv6=off drops the unreachable AAAA answer so we
+    # only ever dial the backend over IPv4.
+    resolver ${NGINX_LOCAL_RESOLVERS} ipv6=off valid=10s;
+
+    # Proxy API calls to the backend
+    location /api/ {
+        set $backend_upstream backend;
+        proxy_pass http://$backend_upstream:8080$request_uri;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+
+    # Expose backend health through the same public entrypoint used by the ALB.
+    location = /actuator/health {
+        set $backend_upstream backend;
+        proxy_pass http://$backend_upstream:8080$request_uri;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+
+    # SPA fallback
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}
